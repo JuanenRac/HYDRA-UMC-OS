@@ -1,0 +1,11 @@
+Source: hydra-umc-platform-base
+Section: admin
+Priority: optional
+Maintainer: JuanenRac <electrohobby3d@gmail.com>
+Standards-Version: 4.6.2
+
+Package: hydra-umc-platform-base
+Architecture: all
+Depends: python3 (>= 3.11), systemd
+Description: HYDRA-UMC-OS base diagnostics platform
+ Read-only CM5 identity and health agent, configuration and service unit.

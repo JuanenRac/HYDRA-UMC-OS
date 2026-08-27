@@ -1,0 +1,12 @@
+# Local images, package output, secrets, and runtime state
+build/
+dist/
+*.deb
+*.img
+*.img.xz
+.env
+secrets/
+__pycache__/
+.pytest_cache/
+# HYDRA-UMC shared secret protection
+!.env.example

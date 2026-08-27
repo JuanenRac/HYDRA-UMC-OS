@@ -1,0 +1,27 @@
+# =============================================================================
+# HYDRA-UMC-OS - Read-only node diagnostics systemd unit
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+
+[Unit]
+Description=HYDRA-UMC read-only node diagnostics agent
+Documentation=https://github.com/JuanenRac/HYDRA-UMC-OS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hydra-umc
+Group=hydra-umc
+ExecStart=/usr/bin/hydra-umc-agent --config /etc/hydra-umc/config.json serve
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/hydra-umc
+
+[Install]
+WantedBy=multi-user.target

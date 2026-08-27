@@ -1,0 +1,8 @@
+#!/usr/bin/make -f
+# =============================================================================
+# HYDRA-UMC-OS - Debian package build rules
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+%:
+	dh $@

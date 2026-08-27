@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "node": {
+    "id": "hydra-umc-cm5-01",
+    "profile": "base"
+  },
+  "diagnostics": {
+    "minimum_free_bytes": 1073741824
+  }
+}
