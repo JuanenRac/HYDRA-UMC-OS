@@ -1,5 +1,16 @@
 # Changelog
 
+## Documentation
+
+### Added
+
+- `docs/AGENT_REFERENCE.md` - full CLI/JSON reference for
+  `hydra-umc-agent` (`describe`/`health`/`serve`), documenting every real
+  output field and how `state`/`checks.*` are derived, plus the
+  `--config` file's exact schema. Verified live against the running
+  agent. Linked from `docs/SERVICE_MODEL.md`. Documentation-only - no
+  code changed, no version bump.
+
 ## [0.0.3] - 2026-08-26
 
 ### Changed
