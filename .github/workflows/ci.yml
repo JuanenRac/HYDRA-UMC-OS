@@ -38,6 +38,13 @@ jobs:
               py_compile.compile(str(path), doraise=True)
           print(f"PYTHON_SYNTAX=PASS files={len(files)}")
           PY
+      - name: Test HYDRA-UMC-OS agent deployment contract
+        if: ${{ hashFiles('agent/tests/test_agent.py') != '' }}
+        env:
+          PYTHONPATH: agent/src
+        run: |
+          python -m unittest discover -s agent/tests -v
+          python tools/verify_agent_deployment_contract.py
       - name: Validate v1 SDK contract fixtures
         if: ${{ hashFiles('clients/python/tests/test_validation.py') != '' }}
         env:

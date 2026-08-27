@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import platform
 import shutil
@@ -28,7 +29,10 @@ from typing import Any
 DEFAULT_CONFIG: dict[str, Any] = {
     "schema_version": "1.0",
     "node": {"id": "hydra-umc-node", "profile": "base"},
-    "diagnostics": {"minimum_free_bytes": 1_073_741_824},
+    "diagnostics": {
+        "minimum_free_bytes": 1_073_741_824,
+        "maximum_temperature_celsius": 80.0,
+    },
 }
 
 
@@ -66,10 +70,29 @@ def load_config(path: Path | None) -> dict[str, Any]:
         raise ValueError("configuration schema_version must be '1.0'")
     node = candidate.get("node")
     diagnostics = candidate.get("diagnostics")
-    if not isinstance(node, dict) or not isinstance(node.get("id"), str) or not node["id"]:
+    if not isinstance(node, dict) or not isinstance(node.get("id"), str) or not node["id"].strip():
         raise ValueError("configuration node.id must be a non-empty string")
-    if not isinstance(diagnostics, dict) or not isinstance(diagnostics.get("minimum_free_bytes"), int):
-        raise ValueError("configuration diagnostics.minimum_free_bytes must be an integer")
+    if "profile" in node and (not isinstance(node["profile"], str) or not node["profile"].strip()):
+        raise ValueError("configuration node.profile must be a non-empty string when present")
+    if not isinstance(diagnostics, dict):
+        raise ValueError("configuration diagnostics must be an object")
+    minimum_free_bytes = diagnostics.get("minimum_free_bytes")
+    if isinstance(minimum_free_bytes, bool) or not isinstance(minimum_free_bytes, int) or minimum_free_bytes < 0:
+        raise ValueError("configuration diagnostics.minimum_free_bytes must be a non-negative integer")
+    # The threshold is optional for existing v1.0 configurations.  Keeping a
+    # safe default preserves compatibility while ensuring heat is never
+    # silently reported as healthy on a CM5.
+    maximum_temperature = diagnostics.setdefault(
+        "maximum_temperature_celsius",
+        DEFAULT_CONFIG["diagnostics"]["maximum_temperature_celsius"],
+    )
+    if (
+        isinstance(maximum_temperature, bool)
+        or not isinstance(maximum_temperature, (int, float))
+        or not math.isfinite(maximum_temperature)
+        or maximum_temperature <= 0
+    ):
+        raise ValueError("configuration diagnostics.maximum_temperature_celsius must be a positive finite number")
     return candidate
 
 
@@ -93,10 +116,16 @@ def load_profile(path: Path) -> dict[str, Any]:
         profile = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ValueError(f"profile is not valid JSON: {path}") from exc
-    if profile.get("schema_version") != "1.0" or not isinstance(profile.get("profile"), str):
-        raise ValueError("profile requires schema_version '1.0' and a profile name")
+    if profile.get("schema_version") != "1.0" or not isinstance(profile.get("profile"), str) or not profile["profile"]:
+        raise ValueError("profile requires schema_version '1.0' and a non-empty profile name")
     if not isinstance(profile.get("enabled_services"), list) or not isinstance(profile.get("requires"), list):
         raise ValueError("profile enabled_services and requires must be arrays")
+    for field in ("enabled_services", "requires"):
+        values = profile[field]
+        if not all(isinstance(value, str) and value for value in values):
+            raise ValueError(f"profile {field} must contain non-empty strings")
+        if len(values) != len(set(values)):
+            raise ValueError(f"profile {field} must not contain duplicates")
     return profile
 
 
@@ -125,14 +154,32 @@ def health(
     available = shutil.disk_usage(Path.cwd()).free if free_bytes is None else free_bytes
     active_interfaces = network_interfaces() if interfaces is None else interfaces
     temperature = read_temperature_celsius() if temperature_celsius is None else temperature_celsius
-    minimum = config["diagnostics"]["minimum_free_bytes"]
+    diagnostics = config["diagnostics"]
+    minimum = diagnostics["minimum_free_bytes"]
+    maximum_temperature = diagnostics.get(
+        "maximum_temperature_celsius",
+        DEFAULT_CONFIG["diagnostics"]["maximum_temperature_celsius"],
+    )
+    temperature_state = (
+        "WARN" if temperature is None
+        else "FAIL" if temperature >= maximum_temperature
+        else "PASS"
+    )
     checks = {
         "storage": {"state": "PASS" if available >= minimum else "FAIL", "free_bytes": available, "minimum_free_bytes": minimum},
         "network": {"state": "PASS" if active_interfaces else "WARN", "interfaces": active_interfaces},
         "runtime": {"state": "PASS", "python": platform.python_version(), "pid": os.getpid()},
-        "temperature": {"state": "PASS" if temperature is not None else "WARN", "celsius": temperature},
+        "temperature": {
+            "state": temperature_state,
+            "celsius": temperature,
+            "maximum_celsius": maximum_temperature,
+        },
     }
-    state = "FAULT" if checks["storage"]["state"] == "FAIL" else "DEGRADED" if checks["network"]["state"] == "WARN" else "READY"
+    state = (
+        "FAULT" if any(check["state"] == "FAIL" for check in checks.values())
+        else "DEGRADED" if checks["network"]["state"] == "WARN"
+        else "READY"
+    )
     return HealthReport(
         schema_version="1.0",
         state=state,
@@ -152,6 +199,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("command", choices=("describe", "health", "serve"))
     args = parser.parse_args(argv)
     try:
+        if args.command == "serve" and (not math.isfinite(args.interval) or args.interval <= 0):
+            raise ValueError("serve interval must be a finite number greater than zero")
         config = load_config(args.config)
         if args.command == "describe":
             emit(describe(config))

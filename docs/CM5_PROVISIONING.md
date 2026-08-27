@@ -12,17 +12,21 @@ HYDRA-UMC-OS is a reproducible product layer over the current official
 Raspberry Pi OS Lite ARM64 image. It does not replace the Raspberry Pi kernel,
 APT, systemd, NetworkManager, or official device APIs.
 
+Read [CM5 software readiness](CM5_SOFTWARE_READINESS.md) before applying the
+first-board sequence. It separates validated host-side software from the
+physical evidence still required on a real CM5.
+
 ## Initial node identity
 
 | Item | Value | Reason |
 | --- | --- | --- |
 | Visible node name | `HYDRA-UMC-TEST` | Human-facing identity. |
 | Technical hostname | `hydra-umc-test` | DNS and mDNS-compatible hostname. |
-| Administrator | `hydra_umc` | Interactive account with controlled sudo access. |
-| Service account | `hydra-umc` | Non-login least-privilege account for OS services. |
+| Administrator | `hydra-umc` | Interactive account with controlled sudo access. |
+| Service account | `hydra-umc-agent` | Non-login least-privilege account for the read-only agent. |
 
 Never place a password, Wi-Fi secret, private SSH key, or access token in this
-repository. Set the administrator password locally with `passwd hydra_umc`.
+repository. Set the administrator password locally with `passwd hydra-umc`.
 
 ## Deployment sequence
 
@@ -30,12 +34,22 @@ repository. Set the administrator password locally with `passwd hydra_umc`.
 2. Configure the local Wi-Fi with Raspberry Pi's supported first-boot method.
 3. Enable SSH with the administrator public key and verify a key login.
 4. Record image release, kernel, firmware and CM5 serial information.
-5. Run `sudo ./provisioning/first_boot.sh`; inspect its dry-run output.
-6. Run `sudo ./provisioning/first_boot.sh --apply`.
-7. Run `sudo ./provisioning/install_local_agent.sh`, inspect it, then repeat
+5. With a sibling `HYDRA-UMC-SDK` checkout available, run
+   `python3 provisioning/preflight_cm5.py --sdk-root ../HYDRA-UMC-SDK`. It is
+   read-only and must report `CM5_PREFLIGHT=PASS` before the CM5 is changed.
+6. Run `sudo bash provisioning/first_boot.sh`; inspect its dry-run output.
+7. Run `sudo bash provisioning/first_boot.sh --apply`.
+8. Run `sudo bash provisioning/install_local_agent.sh`, inspect it, then repeat
    with `--apply`. Enable the service only after reviewing configuration.
-8. Run the read-only `describe` and `health` commands; archive their JSON.
-9. Keep `control` and `vision` profiles disabled until each interface is
+9. Run the read-only `describe` and `health` commands; archive their JSON.
+10. Optionally install local Server only after a supported ARM64 Node.js 20+
+    runtime and a locally created `/etc/hydra-umc/server.env` are present:
+    `sudo bash provisioning/install_cm5_base.sh --apply --with-server`.
+    Add `--enable-services` only after review, then verify with
+    `sudo bash provisioning/verify_cm5_runtime.sh --with-server`.
+11. Before optional profiles, create a restricted recovery archive with
+    `sudo bash provisioning/cm5_recovery.sh backup /root/hydra-umc-state.tar.gz --apply`.
+12. Keep `control` and `vision` profiles disabled until each interface is
    physically validated.
 
 ## SSH policy

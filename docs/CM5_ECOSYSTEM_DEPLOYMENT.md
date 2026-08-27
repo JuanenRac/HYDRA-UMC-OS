@@ -12,8 +12,11 @@ phase has an explicit verification gate and may be rolled back independently.
 ## Phase 0 — Raspberry Pi OS Lite base
 
 Install the official ARM64 Lite image, local Wi-Fi, key-based SSH, identity,
-OS agent and its read-only health checks. No motion, CAN, Hailo, UI or service
-profile is enabled in this phase.
+OS agent and its read-only health checks. Run the preflight, reviewed dry-run,
+runtime verification and scoped backup in that order. No motion, CAN, Hailo,
+UI or service profile is enabled in this phase. See
+[CM5 software readiness](CM5_SOFTWARE_READINESS.md) for the precise boundary
+between host-validated software and physical validation.
 
 ## Phase 1 — Local control plane
 

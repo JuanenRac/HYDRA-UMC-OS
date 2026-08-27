@@ -19,8 +19,10 @@ handshake is.
 ## Implemented base agent
 
 `systemd/hydra-umc-agent.service` launches `hydra-umc-agent` as the dedicated
-`hydra-umc` user. It has no privilege escalation, private temporary storage,
-and a read-only system view except for its designated state directory. The
-agent currently emits `DeviceDescriptor` and `HealthReport` JSON documents.
-It does not open an MCU, CAN, motion, or update control path. See
+non-login `hydra-umc-agent` user. The executable code and configuration remain
+root-owned; only `/var/lib/hydra-umc/` is writable by the service. It has no
+privilege escalation, capabilities, personality changes, private temporary
+storage, and a read-only system view except for that designated state
+directory. The agent currently emits `DeviceDescriptor` and `HealthReport`
+JSON documents. It does not open an MCU, CAN, motion, or update control path. See
 [AGENT_REFERENCE.md](AGENT_REFERENCE.md) for the full CLI/JSON reference.

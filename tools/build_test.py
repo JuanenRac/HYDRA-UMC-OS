@@ -46,6 +46,19 @@ def compile_python_sources() -> None:
     print(f"PYTHON_COMPILE=PASS files={len(files)}")
 
 
+def run_agent_checks() -> None:
+    environment = dict(os.environ)
+    agent_source = str(ROOT / "agent" / "src")
+    existing_python_path = environment.get("PYTHONPATH")
+    environment["PYTHONPATH"] = agent_source if not existing_python_path else os.pathsep.join((agent_source, existing_python_path))
+    run(sys.executable, "-m", "unittest", "discover", "-s", "agent/tests", "-v", env=environment)
+    run(sys.executable, "tools/verify_agent_deployment_contract.py", env=environment)
+    run(sys.executable, "tools/verify_preflight_negative.py", env=environment)
+    # CI checks the self-contained BASE plan. A full local preflight also
+    # validates a sibling SDK checkout before a real CM5 is changed.
+    run(sys.executable, "provisioning/preflight_cm5.py", "--skip-sdk", env=environment)
+
+
 def main() -> int:
     try:
         manifest = json.loads((ROOT / "hydra-umc.project.json").read_text(encoding="utf-8"))
@@ -59,6 +72,8 @@ def main() -> int:
 
     if stack in {"python", "python-bare"}:
         compile_python_sources()
+        if (ROOT / "agent" / "tests").is_dir():
+            run_agent_checks()
     elif stack == "node":
         npm = "npm.cmd" if os.name == "nt" else "npm"
         # Reuse an existing local dependency tree so a running editor/linter
