@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- Optional loopback-only HYDRA-UMC-VOICE-UI provisioning, environment
+  templates and runtime health verification. This recognised-text gateway is
+  separate from the future Hailo STT/TTS stack and cannot actuate hardware.
+
 ### Fixed
 
 - Removed a duplicate standard-library import from the diagnostics agent.

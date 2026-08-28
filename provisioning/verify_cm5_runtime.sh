@@ -8,8 +8,15 @@
 set -euo pipefail
 
 WITH_SERVER=false
-[[ "${1:-}" == "--with-server" ]] && WITH_SERVER=true
-[[ -z "${2:-}" ]] || { echo "Usage: $0 [--with-server]" >&2; exit 2; }
+WITH_VOICE_UI=false
+for argument in "$@"; do
+  case "$argument" in
+    --with-server) WITH_SERVER=true ;;
+    --with-voice-ui) WITH_VOICE_UI=true ;;
+    *) echo "Usage: $0 [--with-server] [--with-voice-ui]" >&2; exit 2 ;;
+  esac
+done
+$WITH_VOICE_UI && ! $WITH_SERVER && { echo "--with-voice-ui requires --with-server." >&2; exit 2; }
 failures=0
 check() { if "$@"; then echo "RUNTIME_CHECK=PASS $*"; else echo "RUNTIME_CHECK=FAIL $*" >&2; failures=$((failures + 1)); fi; }
 check_test() { if eval "$1"; then echo "RUNTIME_CHECK=PASS $2"; else echo "RUNTIME_CHECK=FAIL $2" >&2; failures=$((failures + 1)); fi; }
@@ -34,6 +41,21 @@ else
   echo "RUNTIME_CHECK=FAIL agent health command" >&2; failures=$((failures + 1))
 fi
 
+if $WITH_VOICE_UI; then
+  check id hydra-umc-voice-ui
+  check systemctl is-active --quiet hydra-umc-voice-ui
+  check_test 'test "$(stat -c %U:%G:%a /etc/hydra-umc/voice-ui.env 2>/dev/null)" = root:hydra-umc-voice-ui:640' 'restricted Voice UI environment ownership'
+  if voice_json=$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8090/health); then
+    if python3 -c 'import json,sys; value=json.load(sys.stdin); sys.exit(0 if value.get("product") == "HYDRA-UMC-VOICE-UI" and value.get("voiceTurnEndpoint") == "/v1/voice/turn" else 1)' <<<"$voice_json"; then
+      echo "RUNTIME_CHECK=PASS local Voice UI health endpoint"
+    else
+      echo "RUNTIME_CHECK=FAIL local Voice UI health payload" >&2; failures=$((failures + 1))
+    fi
+  else
+    echo "RUNTIME_CHECK=FAIL local Voice UI health endpoint" >&2; failures=$((failures + 1))
+  fi
+fi
+
 if $WITH_SERVER; then
   check id hydra-umc-server
   check systemctl is-active --quiet hydra-umc-server
@@ -53,4 +75,4 @@ if (( failures > 0 )); then
   echo "CM5_RUNTIME=FAIL failures=$failures" >&2
   exit 1
 fi
-echo "CM5_RUNTIME=PASS profile=$($WITH_SERVER && printf control || printf base) changes=none"
+echo "CM5_RUNTIME=PASS profile=$($WITH_SERVER && printf control || printf base) voice_ui=$WITH_VOICE_UI changes=none"

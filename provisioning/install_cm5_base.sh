@@ -10,17 +10,23 @@ set -euo pipefail
 
 APPLY=false
 WITH_SERVER=false
+WITH_VOICE_UI=false
 ENABLE_SERVICES=false
 for argument in "$@"; do
   case "$argument" in
     --apply) APPLY=true ;;
     --with-server) WITH_SERVER=true ;;
+    --with-voice-ui) WITH_VOICE_UI=true ;;
     --enable-services) ENABLE_SERVICES=true ;;
-    *) echo "Usage: $0 [--apply] [--with-server] [--enable-services]" >&2; exit 2 ;;
+    *) echo "Usage: $0 [--apply] [--with-server] [--with-voice-ui] [--enable-services]" >&2; exit 2 ;;
   esac
 done
 if $ENABLE_SERVICES && ! $APPLY; then
   echo "--enable-services requires --apply." >&2
+  exit 2
+fi
+if $WITH_VOICE_UI && ! $WITH_SERVER; then
+  echo "--with-voice-ui requires --with-server so Server owns the Voice UI token boundary." >&2
   exit 2
 fi
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
@@ -41,14 +47,21 @@ if $APPLY; then
   if $WITH_SERVER; then
     provisioning/install_server.sh --apply
   fi
+  if $WITH_VOICE_UI; then
+    provisioning/install_voice_ui.sh --apply
+  fi
   if $ENABLE_SERVICES; then
     systemctl enable --now hydra-umc-agent
+    # The bounded Voice UI gateway must be ready before Server accepts
+    # authenticated Watch/phone voice turns that it relays locally.
+    $WITH_VOICE_UI && systemctl enable --now hydra-umc-voice-ui
     $WITH_SERVER && systemctl enable --now hydra-umc-server
   fi
-  echo "Installation complete. Run provisioning/verify_cm5_runtime.sh$($WITH_SERVER && printf ' --with-server') next."
+  echo "Installation complete. Run provisioning/verify_cm5_runtime.sh$($WITH_SERVER && printf ' --with-server')$($WITH_VOICE_UI && printf ' --with-voice-ui') next."
 else
   provisioning/first_boot.sh
   provisioning/install_local_agent.sh
   $WITH_SERVER && provisioning/install_server.sh
+  $WITH_VOICE_UI && provisioning/install_voice_ui.sh
   echo "Dry run complete. Re-run with --apply only after reviewing every command."
 fi

@@ -53,6 +53,7 @@ def run_agent_checks() -> None:
     environment["PYTHONPATH"] = agent_source if not existing_python_path else os.pathsep.join((agent_source, existing_python_path))
     run(sys.executable, "-m", "unittest", "discover", "-s", "agent/tests", "-v", env=environment)
     run(sys.executable, "tools/verify_agent_deployment_contract.py", env=environment)
+    run(sys.executable, "tools/verify_voice_gateway_deployment_contract.py", env=environment)
     run(sys.executable, "tools/verify_preflight_negative.py", env=environment)
     # CI checks the self-contained BASE plan. A full local preflight also
     # validates a sibling SDK checkout before a real CM5 is changed.

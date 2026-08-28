@@ -47,9 +47,15 @@ repository. Set the administrator password locally with `passwd hydra-umc`.
     `sudo bash provisioning/install_cm5_base.sh --apply --with-server`.
     Add `--enable-services` only after review, then verify with
     `sudo bash provisioning/verify_cm5_runtime.sh --with-server`.
-11. Before optional profiles, create a restricted recovery archive with
+11. To add the bounded text-only Voice UI relay, create
+    `/etc/hydra-umc/voice-ui.env` from its public template and set the same
+    long random token in both environment files. Then run
+    `sudo bash provisioning/install_cm5_base.sh --apply --with-server --with-voice-ui`.
+    Verify it with `sudo bash provisioning/verify_cm5_runtime.sh --with-server --with-voice-ui`.
+    This does not install Hailo, Whisper or neural TTS.
+12. Before optional profiles, create a restricted recovery archive with
     `sudo bash provisioning/cm5_recovery.sh backup /root/hydra-umc-state.tar.gz --apply`.
-12. Keep `control` and `vision` profiles disabled until each interface is
+13. Keep `control` and `vision` profiles disabled until each interface is
    physically validated.
 
 ## SSH policy

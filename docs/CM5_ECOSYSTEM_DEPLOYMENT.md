@@ -26,6 +26,12 @@ unit. Its service boundary listens on port 3000; the local UI opens
 behavior have been verified. `HYDRA-UMC-STUDIO`, DSI, mobile clients and CLI
 remain clients of Server; they are not privileged OS services.
 
+The bounded text-only `HYDRA-UMC-VOICE-UI` gateway may be installed as an
+optional loopback companion in this phase with `--with-server --with-voice-ui`.
+It does not install Hailo, STT or TTS models: Server owns the matching secret
+and relays authenticated voice turns to `127.0.0.1:8090`. Verify both services
+before any paired Wear client is introduced.
+
 ## Phase 2 — Observability and contracts
 
 Install SDK contract fixtures, Telemetry Collector, DataLake and only the
@@ -44,8 +50,10 @@ time. Do not mix arbitrary driver, runtime and Python-wheel versions.
 
 Hailo-10 integration remains conditional on physical hardware, PCIe topology,
 power budget and an official compatible runtime for the exact accelerator.
-Do not install Cognitive Node, VLA Engine, Voice UI, Semantic Planner or Docs
-QA as boot services until that verification succeeds.
+Do not install Cognitive Node, VLA Engine, Semantic Planner or Docs QA as boot
+services until that verification succeeds. The Phase 1 Voice UI gateway is an
+exception only because it is stdlib-only, accepts recognised text and cannot
+actuate hardware; Hailo STT/TTS remains a Phase 4 gate.
 
 ## Phase 5 — optional services
 

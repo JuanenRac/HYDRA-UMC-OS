@@ -17,7 +17,7 @@
   "family": "Platform Foundation & Contracts",
   "parent": null,
   "build": "Functional read-only CM5 platform agent, validated configuration, systemd unit and host-side tests.",
-  "notes": "A reproducible HYDRA-UMC product layer on Raspberry Pi OS, not a new Linux distribution. Version 0.0.3 provides a read-only agent, validated configuration, profiles, diagnostics and systemd staging; CM5 validation and production image assembly remain release gates.",
+  "notes": "A reproducible HYDRA-UMC product layer on Raspberry Pi OS, not a new Linux distribution. Version 0.0.3 provides a read-only agent, validated configuration, profiles, diagnostics, Server staging and an optional loopback Voice UI gateway; CM5 validation and production image assembly remain release gates.",
   "native_version": {
     "file": "CHANGELOG.md",
     "pattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
