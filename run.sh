@@ -1,16 +1,31 @@
 #!/usr/bin/env bash
-# =============================================================================
-# HYDRA-UMC-OS - Run the read-only node diagnostics agent
-# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-# GPL-3.0-or-later - see LICENSE
-# =============================================================================
+# HYDRA_UMC_SCRIPT_STANDARD_HEADER_BEGIN
+# *****************************************************************************
+# Project   : HYDRA-UMC-OS
+# Script    : run.sh
+# Purpose   : Runtime workflow for the project entry point.
+# Author    : JuanenRac (Electro Hobby 3D)
+# Email     : electrohobby3d@gmail.com
+# Copyright : (C) 2026 JuanenRac
+# License   : GPL-3.0-or-later - see LICENSE
+# *****************************************************************************
+# HYDRA_UMC_SCRIPT_STANDARD_HEADER_END
+# HYDRA_UMC_SCRIPT_STANDARD_BANNER_BEGIN
+printf '\n*******************************************************************************\n'
+printf '%s\n' "* HYDRA-UMC-OS - run.sh"
+printf '%s\n' "* Mode      : RUN WORKFLOW"
+printf '%s\n' "* Author    : JuanenRac (Electro Hobby 3D)"
+printf '%s\n' "* Email     : electrohobby3d@gmail.com"
+printf '%s\n' "* Copyright : (C) 2026 JuanenRac"
+printf '%s\n' "* License   : GPL-3.0-or-later - see LICENSE"
+printf '%s\n' "* ------------------------------------------------------------------------- *"
+printf '%s\n' "* 1. Resolve the runtime prerequisites declared by this script."
+printf '%s\n' "* 2. Start the project entry point and forward user arguments unchanged."
+printf '%s\n' "* 3. Preserve its result and keep an interactive terminal open."
+printf '%s\n' "*******************************************************************************"
+printf '\n'
+# HYDRA_UMC_SCRIPT_STANDARD_BANNER_END
 set -euo pipefail
-echo " ==============================================================="
-echo "  HYDRA-UMC-OS - run.sh"
-echo "  Runs the read-only node diagnostics agent."
-echo "  Copyright (C) 2026 JuanenRac (Electro Hobby 3D)"
-echo "  <electrohobby3d@gmail.com> | GPL-3.0-or-later - see LICENSE"
-echo " ==============================================================="
 cd "$(dirname "$0")"
 trap '[ -t 0 ] && read -r -p "Press Enter to close..." _' EXIT
 export PYTHONPATH="$PWD/agent/src"
