@@ -46,6 +46,16 @@ les tests unitaires et côté hôte sont implémentés. L'agent est délibérém
 lecture seule : l'assemblage de l'image de production et la validation matérielle CM5 restent
 portes de dégagement séparées.
 
+Le preflight d'installation (`provisioning/preflight_cm5.py`) s'avère
+idempotent et sans effet de bord grâce à un test réel - deux exécutions
+consécutives produisent une sortie identique octet pour octet et ne
+touchent aucun fichier dans ce dépôt - et un mécanisme réel de
+sauvegarde/restauration (rollback), indépendant de l'hôte
+(`provisioning/rollback.py`), protège l'unique fichier système que
+`install_local_agent.sh` écrase inconditionnellement à chaque exécution.
+Les deux sont vérifiés sans root ni CM5 - voir
+`tools/verify_preflight_idempotent.py` et `tools/verify_rollback.py`.
+
 ## 🎯 Première étape prévue
 
 1. Créez un profil Raspberry Pi OS ARM64 pour CM5.

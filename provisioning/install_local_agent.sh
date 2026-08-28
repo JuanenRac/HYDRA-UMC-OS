@@ -23,6 +23,8 @@ run install -d -o root -g "$SERVICE_USER" -m 0750 /etc/hydra-umc
 run cp -a "$ROOT/agent/src/hydra_umc_os" "$TARGET/"
 run chown -R root:root "$TARGET/hydra_umc_os"
 run chmod -R go-w "$TARGET/hydra_umc_os"
+run python3 "$ROOT/provisioning/rollback.py" backup /etc/systemd/system/hydra-umc-agent.service \
+  --backup-dir /var/lib/hydra-umc/rollback --manifest /var/lib/hydra-umc/rollback/manifest.json
 run install -m 0644 "$ROOT/systemd/hydra-umc-agent.service" /etc/systemd/system/hydra-umc-agent.service
 if $APPLY && [[ ! -f /etc/hydra-umc/config.json ]]; then
   install -m 0640 -o root -g "$SERVICE_USER" "$ROOT/config/hydra-umc-os.example.json" /etc/hydra-umc/config.json

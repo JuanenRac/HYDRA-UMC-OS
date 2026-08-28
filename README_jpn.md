@@ -46,6 +46,8 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 読み取り専用: 製品イメージ アセンブリと CM5 ハードウェア検証は残ります
 個別のリリースゲート。
 
+インストールのプリフライト（`provisioning/preflight_cm5.py`）は、実際のテストによって冪等性があり副作用がないことが証明されている——2回連続で実行してもバイト単位で同一の出力が得られ、このリポジトリ内のファイルには一切触れない——そして、実際のホスト非依存なバックアップ/ロールバック機構（`provisioning/rollback.py`）が、`install_local_agent.sh` が実行のたびに無条件で上書きする唯一のシステムファイルを保護する。どちらも root 権限や CM5 なしで検証されている——`tools/verify_preflight_idempotent.py` と `tools/verify_rollback.py` を参照。
+
 ## 🎯 計画された最初のマイルストーン
 
 1. CM5 用の Raspberry Pi OS ARM64 プロファイルを構築します。

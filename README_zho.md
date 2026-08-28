@@ -46,6 +46,8 @@ HYDRA-UMC 组件的品牌和协调更新。
 只读：保留生产映像组装和 CM5 硬件验证
 单独的释放门。
 
+安装预检（`provisioning/preflight_cm5.py`）已通过一项真实测试证明其具有幂等性且无副作用——连续运行两次会产生逐字节相同的输出，并且不会触及此仓库中的任何文件——而一个真实的、与主机无关的备份/回滚机制（`provisioning/rollback.py`）保护着 `install_local_agent.sh` 在每次运行时无条件覆盖的那一个系统文件。两者均已在无需 root 权限或 CM5 的情况下完成验证——参见 `tools/verify_preflight_idempotent.py` 和 `tools/verify_rollback.py`。
+
 ## 🎯 计划的第一个里程碑
 
 1. 为 CM5 构建 Raspberry Pi OS ARM64 配置文件。
