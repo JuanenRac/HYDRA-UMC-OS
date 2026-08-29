@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.0.6] - Fixed after a live ecosystem bug audit
+
+### Fixed
+
+- **`provisioning/inventory_cm5_projects.py`** - fixed a broken import that
+  made this script fail outright: it imported a static `PROJECTS` list
+  from `hydra_umc_updater.registry` that no longer exists (project
+  discovery moved to reading each repository's own
+  `hydra-umc.project.json`, and the static catalog was removed). Now uses
+  the same `discover_workspace()` manifest-based discovery every other
+  ecosystem tool uses; verified by actually running it against this
+  workspace.
+- **`agent/src/hydra_umc_os/agent.py`** (`health()`) - an unreadable
+  temperature sensor (`read_temperature_celsius()` returning `None` - no
+  `thermal_zone0`, a permission error, garbage contents) set the
+  `temperature` check itself to `WARN`, but the overall device state only
+  ever folded *network*'s `WARN` into `DEGRADED` - so a node that can't
+  read its own temperature was reported as overall `READY`. Any `WARN`
+  check now degrades the overall state. Covered by a new test
+  (`test_degraded_when_the_temperature_sensor_is_unreadable`); the
+  pre-existing `test_ready_when_storage_and_network_are_available` test
+  now passes an explicit in-range temperature instead of implicitly
+  depending on whether the test machine happens to expose a real thermal
+  sensor.
+
 ## [0.0.5] - Idempotent preflight verification, real system-file rollback
 
 ### Added

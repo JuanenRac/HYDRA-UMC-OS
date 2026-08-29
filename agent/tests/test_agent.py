@@ -7,6 +7,7 @@
 import json
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from hydra_umc_os.agent import DEFAULT_CONFIG, describe, health, load_config, load_profile, main, read_temperature_celsius
@@ -19,11 +20,35 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(descriptor.interfaces, ["eth0"])
 
     def test_ready_when_storage_and_network_are_available(self):
-        report = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=["eth0"])
+        # temperature_celsius is passed explicitly (a real, in-range
+        # reading) so this test does not depend on whether the machine
+        # running it actually exposes /sys/class/thermal/thermal_zone0 -
+        # on a non-CM5 dev machine that path never exists, which used to
+        # make this test's "READY" outcome an accident of the sensor-WARN
+        # bug fixed below rather than a real assertion about storage+network.
+        report = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=["eth0"], temperature_celsius=40.0)
         self.assertEqual(report.state, "READY")
 
     def test_degraded_without_a_network_interface(self):
-        report = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=[])
+        report = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=[], temperature_celsius=40.0)
+        self.assertEqual(report.state, "DEGRADED")
+
+    def test_degraded_when_the_temperature_sensor_is_unreadable(self):
+        # Real gap closed after a live audit: an unreadable sensor (no
+        # thermal_zone0, a permission error, garbage contents - anything
+        # read_temperature_celsius() turns into None) used to leave the
+        # temperature check at WARN but the *overall* state at READY,
+        # because only network's WARN was ever folded in. A node that
+        # can't tell you its own temperature must never report READY.
+        #
+        # health()'s own temperature_celsius=None means "not overridden,
+        # fall back to the real sensor read", so the real sensor read is
+        # patched to deterministically report unreadable, rather than
+        # relying on this test's own machine happening to lack
+        # thermal_zone0.
+        with unittest.mock.patch("hydra_umc_os.agent.read_temperature_celsius", return_value=None):
+            report = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=["eth0"])
+        self.assertEqual(report.checks["temperature"]["state"], "WARN")
         self.assertEqual(report.state, "DEGRADED")
 
     def test_fault_when_storage_is_below_profile_minimum(self):

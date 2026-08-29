@@ -175,9 +175,16 @@ def health(
             "maximum_celsius": maximum_temperature,
         },
     }
+    # Real bug fixed after a live audit: this used to only fold *network*
+    # WARN into the overall DEGRADED state - an unreadable temperature
+    # sensor (temperature_state == "WARN" above, e.g. a flaky/missing
+    # thermal_zone0 on real hardware) left every other check PASS and was
+    # silently reported as overall READY, exactly the kind of sensor
+    # failure this agent exists to surface. Any WARN check now degrades
+    # the overall state, matching what "WARN" is meant to signal.
     state = (
         "FAULT" if any(check["state"] == "FAIL" for check in checks.values())
-        else "DEGRADED" if checks["network"]["state"] == "WARN"
+        else "DEGRADED" if any(check["state"] == "WARN" for check in checks.values())
         else "READY"
     )
     return HealthReport(
