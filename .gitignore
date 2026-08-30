@@ -8,5 +8,6 @@ dist/
 secrets/
 __pycache__/
 .pytest_cache/
+*.egg-info/
 # HYDRA-UMC shared secret protection
 !.env.example

@@ -2,6 +2,20 @@
 
 ## [0.0.6] - Fixed after a live ecosystem bug audit
 
+### Fixed (additional, same version)
+
+- **Real version-mirror drift, `agent/pyproject.toml` and
+  `agent/src/hydra_umc_os/__init__.py`** - this repo's own manifest
+  declares `native_version.file` as `CHANGELOG.md` itself (not the
+  agent's own package files), so the ecosystem-wide
+  `bump_manifest_version.py` bumping the manifest+changelog here never
+  touches the real agent package's own version strings - only this
+  repo's own separate `bump_version.py` (which requires the manifest and
+  agent package to already match before it can run) does. That left the
+  real installed agent one build behind what the manifest/changelog
+  claimed. Manually caught both files up to 0.0.6 to match - a real
+  reconciliation, not a version bump. 13/13 agent tests still passing.
+
 ### Fixed
 
 - **`provisioning/inventory_cm5_projects.py`** - fixed a broken import that
