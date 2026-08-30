@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.7] - Documented the real anti-rollback update contract
+
+### Documentation
+
+- **`docs/UPDATE_MODEL.md`** - added the missing standard GPL header (this
+  file had none), and documented the real anti-rollback precondition a
+  future CM5 deployment flow must honor before changing a checkout: the
+  candidate manifest must validate, identify the same project, and not
+  declare a lower version than the installed manifest - the same real
+  contract `HYDRA-UMC-UPDATER`'s own `clone_or_pull()` now enforces (see
+  that repo's own changelog). Honestly notes this is a deployment
+  contract, not a claim that rollback has been exercised on a real CM5
+  yet. Documentation-only - no code changed.
+
 ## [0.0.6] - Fixed after a live ecosystem bug audit
 
 ### Fixed (additional, same version)
