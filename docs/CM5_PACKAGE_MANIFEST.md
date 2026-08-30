@@ -14,7 +14,7 @@ systemd. The server is the local dashboard endpoint at port 3000.
 ## Optional bounded Voice UI gateway
 
 No additional Python package is required for the current text-only gateway;
-it uses Python's standard library and binds only to `127.0.0.1:8090`. Create
+it uses Python's standard library and binds only to `127.0.0.1:8091`. Create
 matching long random values in `/etc/hydra-umc/server.env` and
 `/etc/hydra-umc/voice-ui.env`, then install with
 `install_cm5_base.sh --apply --with-server --with-voice-ui`. This does not

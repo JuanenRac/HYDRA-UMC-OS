@@ -29,7 +29,7 @@ remain clients of Server; they are not privileged OS services.
 The bounded text-only `HYDRA-UMC-VOICE-UI` gateway may be installed as an
 optional loopback companion in this phase with `--with-server --with-voice-ui`.
 It does not install Hailo, STT or TTS models: Server owns the matching secret
-and relays authenticated voice turns to `127.0.0.1:8090`. Verify both services
+and relays authenticated voice turns to `127.0.0.1:8091`. Verify both services
 before any paired Wear client is introduced.
 
 ## Phase 2 — Observability and contracts

@@ -45,7 +45,7 @@ if $WITH_VOICE_UI; then
   check id hydra-umc-voice-ui
   check systemctl is-active --quiet hydra-umc-voice-ui
   check_test 'test "$(stat -c %U:%G:%a /etc/hydra-umc/voice-ui.env 2>/dev/null)" = root:hydra-umc-voice-ui:640' 'restricted Voice UI environment ownership'
-  if voice_json=$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8090/health); then
+  if voice_json=$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8091/health); then
     if python3 -c 'import json,sys; value=json.load(sys.stdin); sys.exit(0 if value.get("product") == "HYDRA-UMC-VOICE-UI" and value.get("voiceTurnEndpoint") == "/v1/voice/turn" else 1)' <<<"$voice_json"; then
       echo "RUNTIME_CHECK=PASS local Voice UI health endpoint"
     else

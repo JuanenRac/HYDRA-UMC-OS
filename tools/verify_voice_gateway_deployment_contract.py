@@ -27,7 +27,7 @@ RUNTIME_CHECK = ROOT / "provisioning" / "verify_cm5_runtime.sh"
 SERVER_ENV_TEMPLATE = ROOT / "provisioning" / "server.env.example"
 
 VOICE_USER = "hydra-umc-voice-ui"
-VOICE_URL = "http://127.0.0.1:8090"
+VOICE_URL = "http://127.0.0.1:8091"
 VOICE_ENV = "/etc/hydra-umc/voice-ui.env"
 
 
@@ -63,8 +63,8 @@ def main() -> int:
         fail("Voice UI unit must use the dedicated non-login service account")
     if unit_value(unit, "EnvironmentFile") != VOICE_ENV:
         fail("Voice UI unit must read its token from the restricted environment file")
-    if not unit_value(unit, "ExecStart").endswith("--host 127.0.0.1 --port 8090"):
-        fail("Voice UI unit must bind only to loopback port 8090")
+    if not unit_value(unit, "ExecStart").endswith("--host 127.0.0.1 --port 8091"):
+        fail("Voice UI unit must bind only to loopback port 8091")
     for name, expected in {
         "NoNewPrivileges": "true",
         "PrivateTmp": "true",

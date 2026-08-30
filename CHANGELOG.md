@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.0.8] - Fixed the real port collision with HYDRA-UMC-JOB-DISPATCHER
+
+### Fixed
+
+- **Voice gateway loopback endpoint moved 8090 -> 8091**, matching the
+  real fix landing in HYDRA-UMC-VOICE-UI's own repo (that port was
+  identical to HYDRA-UMC-JOB-DISPATCHER's own default - flagged there,
+  not fixed, until now). Updated every real reference in this repo:
+  `tools/verify_voice_gateway_deployment_contract.py`'s own expected
+  endpoint and systemd `ExecStart` check,
+  `provisioning/server.env.example`'s `HYDRA_UMC_VOICE_UI_URL`,
+  `provisioning/verify_cm5_runtime.sh`'s health probe, and
+  `docs/CM5_ECOSYSTEM_DEPLOYMENT.md`/`docs/CM5_PACKAGE_MANIFEST.md`.
+  `VOICE_GATEWAY_DEPLOYMENT_CONTRACT=PASS`, full `build-test.bat` suite
+  passing (13 agent tests + every deployment-contract check).
+
 ## [0.0.7] - Documented the real anti-rollback update contract
 
 ### Documentation
