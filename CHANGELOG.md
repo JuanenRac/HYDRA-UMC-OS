@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.9] - verify_cm5_runtime.sh's Server checks, exercised live for the first time
+
+### Fixed
+
+- **`--with-server` never passed, on the first CM5 this was ever run
+  against with Server actually installed**, in 2 real, independent ways:
+  (1) `install_server.sh` only ever `chmod`'d `server.env`, never
+  `chgrp`'d it - an operator following `CM5_DEPLOYMENT_SEQUENCE.md`'s own
+  documented flow (create it as `root:root`) ends with
+  `root:root:640`, but the verifier checks for `root:hydra-umc-server:640`
+  specifically; this script had no way to pass as originally written.
+  Now `chown root:$SERVER_USER`s it once that group is guaranteed to
+  exist. (2) the verifier's own `/api/hydra-info` check asserted
+  `product == "server"` - HYDRA-UMC-SERVER's own real contract
+  (`src/server.ts`) documents and returns `product` as a human-readable,
+  operator-customisable server name (defaulting to `"HYDRA-UMC STUDIO"`),
+  never the literal string `"server"`. Now checks for a non-empty string,
+  matching what the real endpoint actually guarantees. Voice UI's own
+  equivalent check was verified correct against `HYDRA-UMC-VOICE-UI`'s
+  real source - `"HYDRA-UMC-VOICE-UI"` genuinely is a fixed constant
+  there, unlike Server's operator-customisable name.
+
 ## [0.1.8] - Kiosk boot is finally quiet: the real, complete story
 
 ### Fixed

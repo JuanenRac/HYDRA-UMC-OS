@@ -61,7 +61,14 @@ if $WITH_SERVER; then
   check systemctl is-active --quiet hydra-umc-server
   check_test 'test "$(stat -c %U:%G:%a /etc/hydra-umc/server.env 2>/dev/null)" = root:hydra-umc-server:640' 'restricted server environment ownership'
   if server_json=$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:3000/api/hydra-info); then
-    if python3 -c 'import json,sys; value=json.load(sys.stdin); sys.exit(0 if value.get("product") == "server" and value.get("remoteApiVersion", 0) >= 1 else 1)' <<<"$server_json"; then
+    # Real bug found live against a real Server instance: "product" is
+    # never the literal string "server" - HYDRA-UMC-SERVER's own
+    # /api/hydra-info (src/server.ts) documents and returns it as a
+    # human-readable, operator-customisable server name (settings'
+    # serverName, defaulting to "HYDRA-UMC STUDIO") - this check could
+    # never have passed as originally written. A non-empty string is
+    # what the real contract actually guarantees.
+    if python3 -c 'import json,sys; value=json.load(sys.stdin); sys.exit(0 if isinstance(value.get("product"), str) and value.get("product") and value.get("remoteApiVersion", 0) >= 1 else 1)' <<<"$server_json"; then
       echo "RUNTIME_CHECK=PASS local Server discovery endpoint"
     else
       echo "RUNTIME_CHECK=FAIL local Server discovery payload" >&2; failures=$((failures + 1))

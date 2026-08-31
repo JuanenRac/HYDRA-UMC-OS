@@ -20,6 +20,14 @@ if ! id -u "$SERVER_USER" >/dev/null 2>&1; then
 fi
 install -d -o root -g root -m 0755 "$TARGET"
 install -d -o "$SERVER_USER" -g "$SERVER_USER" -m 0750 "$TARGET/data"
+# Real bug found live on this device's first real --with-server install:
+# this only ever chmod'd server.env, never chgrp'd it - so an operator
+# following the documented flow (create it as root:root, per
+# CM5_DEPLOYMENT_SEQUENCE.md's own example commands) ended with
+# root:root:640, while verify_cm5_runtime.sh checks for
+# root:hydra-umc-server:640 specifically. chgrp only now that
+# $SERVER_USER's own group is guaranteed to exist (useradd above).
+chown root:"$SERVER_USER" /etc/hydra-umc/server.env
 chmod 0640 /etc/hydra-umc/server.env
 cp -a "$SOURCE/dist" "$SOURCE/public" "$SOURCE/package.json" "$SOURCE/package-lock.json" "$TARGET/"
 cd "$TARGET"; npm ci --omit=dev
