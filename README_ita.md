@@ -88,7 +88,7 @@ Leggi [l'architettura](docs/ARCHITECTURE.md) prima di implementare il codice.
 | Progetto | Rapporto con HYDRA-UMC-OS |
 | --- | --- |
 | [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK) | Contratti con versione, thin client e dispositivi di conformità utilizzati dall'agente del dispositivo. |
-| [SERVER-HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC-SERVER) | Limite del servizio autenticato per le integrazioni gestite del nodo. |
+| [HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER) | Limite del servizio autenticato per le integrazioni gestite del nodo. |
 | [HYDRA-UMC-UPDATER](https://github.com/JuanenRac/HYDRA-UMC-UPDATER) | Registro degli artefatti, metadati di compatibilità e flusso di lavoro di aggiornamento coordinato. |
 | [HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC) | Piattaforma hardware e firmware CM5/MCU configurata e supervisionata dal livello del sistema operativo. |
 | [URTC](https://github.com/JuanenRac/URTC) | Piattaforma tool-controller indipendente integrata tramite adattatori espliciti con versione. |
