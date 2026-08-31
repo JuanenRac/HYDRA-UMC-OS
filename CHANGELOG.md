@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.3.4] - Server mode for the 4 Rust services, closing the item-3 audit's full list
+
+### Added
+
+- **`provisioning/install_twin.sh`** (new) - installs the real family-
+  status/family-sync API. First Rust service in this ecosystem to get a
+  real HTTP server (`tiny_http`).
+- **`provisioning/install_swarm_sync.sh`** (new) - installs the real
+  CRDT-reconciliation API (POST /reconcile) - still a request/response
+  computation, not the deliberately-deferred live gossip network.
+- **`provisioning/install_hil_bridge.sh`** (new) - installs the real
+  route/mirror-bridging API - no real gRPC/WebSocket transport exists
+  yet, so both routes still only reach the CLI's own honest fakes
+  (`RecordingSink`/`SimulatedTransport`).
+- **`provisioning/install_orchestrator.sh`** (new) - installs the real
+  mission-registry API (dispatch/start/complete/cancel/fail/recover) -
+  purely in-memory bookkeeping, no real gRPC wiring to Job-Dispatcher/
+  Node-Healing and no real E-STOP-sending code anywhere in that
+  repository; this does not grant any new physical authority.
+- All 4 compile as release binaries on-device (unlike the Go services,
+  which build from source with the same `cargo build --release`
+  pattern `install_twin.sh` established first).
+- This closes the item-3 audit's full "CLI-only, no real server loop
+  yet" finding for every repo that had real, wrappable logic already
+  written. The 5 hardware bridges (CNC, Laser, OpenPnP, Printer3D, ROS2)
+  remain the one category left untouched - real physical actuators, a
+  network transport decision that stays deliberately not invented here.
+
 ## [0.3.3] - Server mode for 3 more CLI-only repos found in the item-3 audit
 
 ### Added
