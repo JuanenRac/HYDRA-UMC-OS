@@ -32,5 +32,13 @@ chmod 0640 /etc/hydra-umc/server.env
 cp -a "$SOURCE/dist" "$SOURCE/public" "$SOURCE/package.json" "$SOURCE/package-lock.json" "$TARGET/"
 cd "$TARGET"; npm ci --omit=dev
 install -m 0644 "$SOURCE/systemd/hydra-umc-server.service" /etc/systemd/system/hydra-umc-server.service
+# Lets $SERVER_USER (unprivileged, NoNewPrivileges) call systemctl
+# reboot/poweroff via systemd-logind's own polkit-gated D-Bus API -
+# server.ts's own POST /api/system/reboot and /api/system/shutdown, loop-
+# back-only, back the shutdown/restart buttons on STUDIO's pre-login
+# screen (AuthGate.tsx). See the rule file's own header comment for the
+# exact, narrow scope (only those 2 actions, only this one account).
+install -d -m 0755 /etc/polkit-1/rules.d
+install -m 0644 "$ROOT/provisioning/polkit/49-hydra-umc-server-power.rules" /etc/polkit-1/rules.d/49-hydra-umc-server-power.rules
 systemctl daemon-reload
 echo "Server installed. Enable manually after review: systemctl enable --now hydra-umc-server"

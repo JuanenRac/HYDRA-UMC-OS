@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.2.0] - Kiosk power buttons: polkit grant for shutdown/restart
+
+### Added
+
+- **`provisioning/polkit/49-hydra-umc-server-power.rules`** (new),
+  installed by `install_server.sh` - grants the unprivileged
+  `hydra-umc-server` service account (`NoNewPrivileges`) exactly 2
+  `systemd-logind` actions (`org.freedesktop.login1.reboot` and
+  `...power-off`, plus their `-multiple-sessions` variants), nothing
+  broader. Backs HYDRA-UMC-SERVER's new loopback-only `POST
+  /api/system/{reboot,shutdown}` (see that repo's own changelog), which
+  in turn back the shutdown/restart buttons STUDIO's `AuthGate.tsx` now
+  shows on its pre-login screen - a real power button for an operator
+  standing at this device's own HDMI kiosk (`install_kiosk.sh`), usable
+  before logging in, the same as a real one would.
+
 ## [0.1.9] - verify_cm5_runtime.sh's Server checks, exercised live for the first time
 
 ### Fixed
