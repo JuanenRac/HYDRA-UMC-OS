@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.5] - Datalake installs; bootstrap admin password removed from disk
+
+### Added
+
+- **`provisioning/install_datalake.sh`** (new) - installs
+  HYDRA-UMC-DATALAKE's real stdlib-only, sqlite3-backed time-series API
+  as a loopback-bound systemd service (`data/` is the one
+  `ReadWritePaths` exception under `ProtectSystem=strict`). Real gap
+  found auditing the ecosystem against actual CM5 hardware: genuinely
+  working, tested HTTP API that nothing ever installed anywhere.
+  Live-verified: `GET /stats` responds, and Server's own
+  `GET /api/telemetry/query` proxy reaches it successfully end to end
+  once `HYDRA_UMC_DATALAKE_URL` is uncommented in `server.env`.
+
+### Fixed
+
+- **`HYDRA_UMC_BOOTSTRAP_ADMIN_PASSWORD` stayed in `server.env` in
+  plaintext past first start** on this device, found while wiring up the
+  Datalake proxy above - the real admin account was already persisted
+  (hashed) to Server's own `data/users.json`, exactly as
+  `server.env.example`'s own comment always said this variable should be
+  removed after ("SET_LOCALLY_AND_REMOVE_AFTER_FIRST_START") - it just
+  never had been. Removed from this device's own `server.env`; not a
+  code change, a real operational gap closed on the live node.
+
 ## [0.2.4] - Real gap closed: the Industry 4.0 Gateway now installs
 
 ### Added
