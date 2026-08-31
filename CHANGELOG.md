@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.2.8] - Job-Dispatcher, Node-Healing, Telemetry-Collector, Production-Reports install
+
+### Added
+
+- **`provisioning/install_job_dispatcher.sh`** (new) - first Go service
+  installed on this CM5: provisions `golang-go` if missing and builds
+  HYDRA-UMC-JOB-DISPATCHER's real priority mission queue on-device (pure
+  Go, no cgo dependency). Loopback-only systemd unit.
+- **`provisioning/install_node_healing.sh`** (new) - builds
+  HYDRA-UMC-NODE-HEALING's real watchdog loop on-device, starts it
+  watching an intentionally empty node registry (its own
+  `nodes.example.json` targets 3 HydraNodes with no real HealthService
+  server yet - honest starting state, not a registry that would only
+  ever report every node unreachable).
+- **`provisioning/install_telemetry_collector.sh`** (new) - builds
+  HYDRA-UMC-TELEMETRY-COLLECTOR's real CAN/WebSocket ingestion pipeline
+  on-device, wired to feed HYDRA-UMC-DATALAKE via `-datalake-url`.
+- **`provisioning/install_production_reports.sh`** (new) - installs
+  HYDRA-UMC-PRODUCTION-REPORTS' real stdlib-only OEE/availability
+  reporting API (copy `src/` + `PYTHONPATH`, same shape as
+  `install_datalake.sh`), pinned loopback-only.
+- Real gap found auditing the ecosystem against actual CM5 hardware: all
+  4 already had real, tested server/daemon code and had simply never
+  been built or installed anywhere. The remaining "service"/"api"-role
+  repos audited alongside these (the 5 hardware bridges, Safety-Zones,
+  Semantic-Planner, Docs-QA, and the Orchestrator/Swarm-Sync/Twin/
+  HIL-Bridge Rust services) do NOT yet have a real running server/daemon
+  loop of their own - installing a systemd unit for those would be
+  packaging code that doesn't run persistently yet, not closing a real
+  gap. That's separate, real feature work, not addressed here.
+
 ## [0.2.7] - Vision-Streamer installs (real USB camera -> robot A1 pipeline)
 
 ### Added
