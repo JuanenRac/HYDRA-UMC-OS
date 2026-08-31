@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.2.7] - Vision-Streamer installs (real USB camera -> robot A1 pipeline)
+
+### Added
+
+- **`provisioning/install_vision_streamer.sh`** (new) - installs
+  HYDRA-UMC-VISION-STREAMER's real OpenCV-backed MJPEG capture+serve
+  (`python3-opencv`/`v4l-utils` from Debian's own repos, no venv/pip
+  needed) as a templated systemd unit, one instance per admin-assigned
+  camera slot (`hydra-umc-vision-streamer@N`, matching the `cameraId`
+  HYDRA-UMC-STUDIO's admin panel already assigns). Closes the last real
+  gap in the camera -> robot A1 pipeline audited this session:
+  HYDRA-UMC-SERVER's own `GET /api/camera/:id/stream` proxy and
+  HYDRA-UMC-STUDIO's `CameraPIP`/`CamerasView` were already real, but
+  nothing on the CM5 actually opened a physical `/dev/videoN` yet. This
+  installs the capability only - enabling a specific slot for a specific
+  physically-connected camera is a deliberate manual follow-up (see that
+  unit's own `cameras.env.example` for why an automatic guess isn't
+  attempted). Live-verified on this device: `GET /api/camera/1/stream`
+  correctly returns 503 with no slot enabled yet (no camera streamer
+  running); real hardware verification (a physically-connected USB
+  camera) is still pending.
+
 ## [0.2.6] - Anomaly-Detector installs
 
 ### Added
