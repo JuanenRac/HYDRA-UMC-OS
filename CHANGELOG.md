@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.0.16] - Kiosk display no longer freezes (X Present-extension race)
+
+### Fixed
+
+- **The kiosk display froze after `[0.0.15]`** - reported and confirmed
+  live: every kiosk process stayed alive (Xorg, Chromium, openbox all
+  still running, Server and the agent both healthy) but the screen
+  stopped updating. `Xorg.0.log` showed the real cause: thousands of
+  repeated `Present-flip: queue flip during flip on CRTC 2 failed:
+  Invalid argument` lines - Chromium's own GPU process racing X's
+  Present extension for direct-scanout page-flips with nothing to
+  arbitrate between them (openbox runs no compositing manager), so no
+  new frame ever actually reached the screen. `install_kiosk.sh` now
+  also sets `Option "Present" "false"` in the same `modesetting` device
+  section - the standard, documented mitigation for this exact
+  driver/Present race.
+
 ## [0.0.15] - Splash now covers the whole boot, not just its first ~4s
 
 ### Fixed

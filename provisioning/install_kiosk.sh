@@ -106,18 +106,30 @@ run systemctl mask plymouth-quit.service plymouth-quit-wait.service
 # v3d (3D/compute only, no display output) and card1 is vc4 (the real
 # display controller) - and modesetting's own autodetection did not
 # reliably resolve to card1 on its own. Pinning kmsdev explicitly is the
-# documented fix for this dual-node situation.
+# documented fix for this dual-node situation. (3) with both of the above
+# fixed, the display itself froze - real, live, and confirmed by the
+# operator watching the physical screen - while every kiosk process
+# stayed alive (Xorg/Chromium/openbox all still running, Server/agent
+# both healthy). Xorg.0.log showed the actual cause: thousands of
+# repeated "Present-flip: queue flip during flip on CRTC 2 failed:
+# Invalid argument" lines - Chromium's own GPU process racing X's Present
+# extension for direct-scanout page-flips with no compositor (openbox
+# runs no compositing manager) to arbitrate between them, so frames never
+# actually reached the screen even though nothing had crashed. Disabling
+# the Present extension is the standard, documented mitigation for
+# exactly this modesetting-driver/Present race.
 run install -d -m 0755 /etc/X11/xorg.conf.d
 if $APPLY; then
   cat > /etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf <<'EOF'
 Section "Device"
     Identifier "HYDRA-UMC-KMS"
     Driver "modesetting"
+    Option "Present" "false"
     Option "kmsdev" "/dev/dri/card1"
 EndSection
 EOF
 else
-  echo "[dry-run] write /etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf (pin Driver \"modesetting\", kmsdev /dev/dri/card1)"
+  echo "[dry-run] write /etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf (pin Driver \"modesetting\", Present off, kmsdev /dev/dri/card1)"
 fi
 
 run install -d -o root -g root -m 0755 "$KIOSK_DIR"
