@@ -14,6 +14,18 @@ xset s off
 xset -dpms
 xset s noblank
 
+# install_kiosk.sh masks systemd's own automatic plymouth-quit*.service so
+# the Plymouth splash stays up through this device's ENTIRE boot (agent,
+# Server, networking - all of it) instead of just its first few seconds -
+# see that script's own comment. This is the manual hand-off point: X is
+# already up at this point (startx ran it before this script), so quitting
+# Plymouth now hands the display straight to X, with only the brief real
+# gap until Chromium itself paints (never a scrolling text console).
+# "|| true": never let a kiosk boot fail outright just because plymouthd
+# already exited on its own (e.g. this script re-run manually for testing,
+# with no active Plymouth session to quit).
+sudo plymouth quit || true
+
 openbox-session &
 sleep 1
 

@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.0.15] - Splash now covers the whole boot, not just its first ~4s
+
+### Fixed
+
+- **Boot-log lines were still visible after `[0.0.14]`'s `quiet splash`
+  fix** - reported live watching this device boot again. Root cause found
+  in `journalctl`: systemd's own `plymouth-quit.service` fired only ~4s
+  into boot, long before slower units (`network-online.target`,
+  `hydra-umc-server`, `hydra-umc-agent`) finish - their own "Started ..."
+  lines kept printing to the now-uncovered text console for several more
+  seconds, before the tty1 autologin chain even got a chance to start X.
+  `install_kiosk.sh` now masks `plymouth-quit.service` and
+  `plymouth-quit-wait.service`; `kiosk-session.sh` quits Plymouth itself,
+  right before Chromium starts, once X already has the display. The
+  splash now covers this device's entire real boot, not just its first
+  few seconds.
+
 ## [0.0.14] - Quiet kiosk boot, and no more duplicate splash
 
 ### Fixed

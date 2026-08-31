@@ -82,6 +82,18 @@ else
   echo "[dry-run] ensure quiet splash logo.nologo loglevel=3 vt.global_cursor_default=0 are present in $BOOT_CMDLINE"
 fi
 
+# Real complaint, still visible after the fix above: quiet/splash stopped
+# the EARLY kernel log, but plymouth-quit.service (systemd's own default)
+# fired only ~4s into this boot - real and observed via journalctl - long
+# before the slower units (network-online.target, hydra-umc-server,
+# hydra-umc-agent) finish, so THEIR "Started ..." lines still printed to
+# the now-uncovered text console for several more seconds before the
+# tty1 autologin below even gets a chance to start X. Masking systemd's
+# automatic quit and instead quitting Plymouth ourselves, from
+# kiosk-session.sh right before Chromium starts, keeps the splash up for
+# the entire boot instead of just its first few seconds.
+run systemctl mask plymouth-quit.service plymouth-quit-wait.service
+
 # Real bugs found live on this device's first boot into the kiosk, in order:
 # (1) with both the modern KMS "modesetting" driver and the legacy "fbdev"
 # driver available (xserver-xorg-video-all, pulled in by the xserver-xorg
