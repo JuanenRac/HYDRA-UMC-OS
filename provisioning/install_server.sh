@@ -8,6 +8,12 @@ set -euo pipefail
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"; SOURCE="$ROOT/HYDRA-UMC-SERVER"; TARGET=/opt/hydra-umc/server
+# $ROOT above is deliberately the PARENT of this repo (the sibling-repos
+# checkout root, so SOURCE can reach HYDRA-UMC-SERVER next to it) - this
+# repo's OWN root (for files that live in it, like the polkit rule below)
+# is one level down from that, not $ROOT itself. Real bug found live: the
+# polkit install line below originally (wrongly) used $ROOT directly.
+OS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SERVER_USER="hydra-umc-server"
 [[ -d "$SOURCE/dist" && -d "$SOURCE/public" && -f "$SOURCE/package.json" && -f "$SOURCE/package-lock.json" && -f "$SOURCE/systemd/hydra-umc-server.service" ]] || { echo "HYDRA-UMC-SERVER build or service unit is incomplete: $SOURCE" >&2; exit 2; }
 [[ -f /etc/hydra-umc/server.env ]] || { echo "Create /etc/hydra-umc/server.env from provisioning/server.env.example first." >&2; exit 2; }
@@ -39,6 +45,6 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-server.service" /etc/systemd/system/h
 # screen (AuthGate.tsx). See the rule file's own header comment for the
 # exact, narrow scope (only those 2 actions, only this one account).
 install -d -m 0755 /etc/polkit-1/rules.d
-install -m 0644 "$ROOT/provisioning/polkit/49-hydra-umc-server-power.rules" /etc/polkit-1/rules.d/49-hydra-umc-server-power.rules
+install -m 0644 "$OS_ROOT/provisioning/polkit/49-hydra-umc-server-power.rules" /etc/polkit-1/rules.d/49-hydra-umc-server-power.rules
 systemctl daemon-reload
 echo "Server installed. Enable manually after review: systemctl enable --now hydra-umc-server"

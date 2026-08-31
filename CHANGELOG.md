@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.1] - Fixed the polkit rule install path from [0.2.0]
+
+### Fixed
+
+- **`install_server.sh` couldn't install its own new polkit rule**, found
+  running `--apply` live right after `[0.2.0]`: `$ROOT` in this script is
+  deliberately the PARENT of this repo (so `SOURCE` can reach the sibling
+  `HYDRA-UMC-SERVER` checkout next to it), not this repo's own root - the
+  polkit install line used `$ROOT` directly and looked for the rule file
+  one directory too high. Added `OS_ROOT` (one level down from `$ROOT`,
+  this repo's own real root) and pointed the polkit install line at that
+  instead.
+
 ## [0.2.0] - Kiosk power buttons: polkit grant for shutdown/restart
 
 ### Added
