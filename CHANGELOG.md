@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.2] - The 0.3.1 workspace approach was unreadable by its own service accounts
+
+### Fixed
+
+- **`provisioning/install_vision_node.sh`/`install_cognitive_node.sh`/
+  `install_vla_engine.sh`** - none of the 3 symlinked `--workspace`
+  directories were readable by their own unprivileged systemd service
+  accounts. Live-verified on this device: the real sibling-checkout root
+  ($ROOT) lives under the operator's own home directory, itself `0700`
+  (Debian's own default) - `ProtectHome=read-only` only controls whether
+  systemd *hides* `/home` from a unit, not the real underlying Unix
+  permission bits, so it never actually fixed anything. All 3 scripts
+  now copy out just the small manifest/model files each service actually
+  needs into a real `root:root 0755` tree under `/opt` instead - see
+  each repo's own CHANGELOG for the exact writeup
+  (HYDRA-UMC-VISION-NODE 0.0.6, HYDRA-UMC-COGNITIVE-NODE 0.0.8,
+  HYDRA-UMC-VLA-ENGINE 0.1.0).
+
 ## [0.3.1] - Server mode for the 5 AI-family repos that were CLI-only
 
 ### Added

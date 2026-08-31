@@ -12,11 +12,18 @@
 # stdlib HTTP API. Same simple "copy src/ + PYTHONPATH" shape as
 # install_datalake.sh, no venv/pip needed at runtime.
 #
-# GET /status needs the same sibling-checkout layout
+# GET /status checks one specific path, the same layout
 # check_engine_status() already expects (workspace/HYDRA-UMC-COGNITIVE-NODE/
-# models/) - /opt/hydra-umc/vla-engine/workspace is a symlink to $ROOT,
-# the same sibling-checkout root every install_*.sh script in this file
-# already resolves, rather than a second copy.
+# models/). Real bug found live installing HYDRA-UMC-VISION-NODE first: a
+# symlink straight to $ROOT is unreadable by this service's own
+# unprivileged account no matter how ProtectHome is set - $ROOT lives
+# under the operator's own home directory (0700, Debian's own default).
+# Instead, this script creates a real root:root 0755
+# workspace/HYDRA-UMC-COGNITIVE-NODE/models/ directly under /opt, and
+# copies in whatever real weight files that parent's own models/
+# directory actually has (there are none yet anywhere in this ecosystem,
+# so today this is an honest empty directory, not a stand-in for real
+# hardware readiness).
 set -euo pipefail
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
@@ -45,7 +52,11 @@ rm -rf "$TARGET/src"
 cp -a "$SOURCE/src" "$TARGET/"
 chown -R root:root "$TARGET/src"
 chmod -R go-w "$TARGET/src"
-ln -sfn "$ROOT" "$TARGET/workspace"
+install -d -o root -g root -m 0755 "$TARGET/workspace/HYDRA-UMC-COGNITIVE-NODE/models"
+if [[ -d "$ROOT/HYDRA-UMC-COGNITIVE-NODE/models" ]]; then
+  find "$ROOT/HYDRA-UMC-COGNITIVE-NODE/models" -maxdepth 1 -type f -exec cp -a {} "$TARGET/workspace/HYDRA-UMC-COGNITIVE-NODE/models/" \;
+  chown -R root:root "$TARGET/workspace"
+fi
 install -m 0644 "$SOURCE/systemd/hydra-umc-vla-engine.service" /etc/systemd/system/hydra-umc-vla-engine.service
 systemctl daemon-reload
 echo "VLA-Engine installed. Enable manually after review: systemctl enable --now hydra-umc-vla-engine"

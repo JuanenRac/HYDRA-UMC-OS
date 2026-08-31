@@ -13,10 +13,16 @@
 #
 # GET /family-status needs a real workspace directory containing this
 # node's real children's own hydra-umc.project.json files to report
-# anything but "all missing" - same real approach as
-# install_vision_node.sh: /opt/hydra-umc/cognitive-node/workspace is a
-# symlink to $ROOT, the same sibling-checkout root every install_*.sh
-# script in this file already resolves, rather than a second copy.
+# anything but "all missing". Real bug found live installing
+# HYDRA-UMC-VISION-NODE first: a symlink straight to $ROOT is unreadable
+# by this service's own unprivileged account no matter how ProtectHome is
+# set - $ROOT lives under the operator's own home directory, itself 0700
+# (Debian's own default), which blocks ANY other account's traversal
+# regardless of systemd sandboxing. Instead, this script (running as
+# root) copies out just the small hydra-umc.project.json file for each
+# expected child that is actually checked out there, into a real
+# root:root 0755 tree this service CAN read - a point-in-time snapshot,
+# not a live view; rerun this script to refresh it.
 set -euo pipefail
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
@@ -45,7 +51,13 @@ rm -rf "$TARGET/src"
 cp -a "$SOURCE/src" "$TARGET/"
 chown -R root:root "$TARGET/src"
 chmod -R go-w "$TARGET/src"
-ln -sfn "$ROOT" "$TARGET/workspace"
+install -d -o root -g root -m 0755 "$TARGET/workspace"
+for child in HYDRA-UMC-VLA-ENGINE HYDRA-UMC-VOICE-UI HYDRA-UMC-SEMANTIC-PLANNER HYDRA-UMC-DOCS-QA; do
+  if [[ -f "$ROOT/$child/hydra-umc.project.json" ]]; then
+    install -d -o root -g root -m 0755 "$TARGET/workspace/$child"
+    install -m 0644 "$ROOT/$child/hydra-umc.project.json" "$TARGET/workspace/$child/hydra-umc.project.json"
+  fi
+done
 install -m 0644 "$SOURCE/systemd/hydra-umc-cognitive-node.service" /etc/systemd/system/hydra-umc-cognitive-node.service
 systemctl daemon-reload
 echo "Cognitive-Node installed. Enable manually after review: systemctl enable --now hydra-umc-cognitive-node"

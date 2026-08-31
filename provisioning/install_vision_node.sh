@@ -13,14 +13,18 @@
 #
 # GET /family-status needs a real workspace directory containing this
 # node's 4 real children's own hydra-umc.project.json files to report
-# anything but "all missing" - rather than copying those repos a second
-# time, /opt/hydra-umc/vision-node/workspace is a symlink to $ROOT, the
-# same sibling-checkout root every install_*.sh script in this file
-# already resolves. Whichever of the 4 children (VISION-STREAMER,
-# DETECTION-HEF, SAFETY-ZONES, VISUAL-SERVOING-API) are actually checked
-# out there - some already are, from earlier installs this session -
-# show up as present automatically; the rest honestly report NOT FOUND
-# until they are.
+# anything but "all missing". Real bug found live on this device's first
+# install: a symlink straight to $ROOT (this script's first, wrong
+# attempt) is unreadable by this service's own unprivileged account no
+# matter how ProtectHome is set - $ROOT lives under the operator's own
+# home directory, itself 0700 (Debian's own default), which blocks ANY
+# other account's traversal regardless of systemd sandboxing. Instead,
+# this script (running as root, so real read access to $ROOT is not in
+# question here) copies out just the small hydra-umc.project.json file
+# for each of the 4 expected children that is actually checked out
+# there, into a real root:root 0755 tree this service CAN read. This is
+# a point-in-time snapshot, not a live view - rerun this script to
+# refresh it after a child's manifest changes (e.g. a maturity bump).
 set -euo pipefail
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
@@ -49,7 +53,13 @@ rm -rf "$TARGET/src"
 cp -a "$SOURCE/src" "$TARGET/"
 chown -R root:root "$TARGET/src"
 chmod -R go-w "$TARGET/src"
-ln -sfn "$ROOT" "$TARGET/workspace"
+install -d -o root -g root -m 0755 "$TARGET/workspace"
+for child in HYDRA-UMC-VISION-STREAMER HYDRA-UMC-DETECTION-HEF HYDRA-UMC-SAFETY-ZONES HYDRA-UMC-VISUAL-SERVOING-API; do
+  if [[ -f "$ROOT/$child/hydra-umc.project.json" ]]; then
+    install -d -o root -g root -m 0755 "$TARGET/workspace/$child"
+    install -m 0644 "$ROOT/$child/hydra-umc.project.json" "$TARGET/workspace/$child/hydra-umc.project.json"
+  fi
+done
 install -m 0644 "$SOURCE/systemd/hydra-umc-vision-node.service" /etc/systemd/system/hydra-umc-vision-node.service
 systemctl daemon-reload
 echo "Vision-Node installed. Enable manually after review: systemctl enable --now hydra-umc-vision-node"
