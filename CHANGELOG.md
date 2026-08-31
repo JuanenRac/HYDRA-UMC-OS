@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.0.14] - Quiet kiosk boot, and no more duplicate splash
+
+### Fixed
+
+- **The kernel/systemd boot log was visible on the HDMI display**, reported
+  live watching this device boot: `cmdline.txt` shipped with no `quiet`/
+  `splash` kernel parameter, so every boot-time log line printed straight
+  to tty1 instead of Plymouth's graphical frame ever getting a chance to
+  show. `install_kiosk.sh` now appends `quiet splash logo.nologo
+  loglevel=3 vt.global_cursor_default=0` to `cmdline.txt` (idempotent -
+  only tokens not already present are added, so it never fights an
+  operator's own customised cmdline).
+- **The splash showed twice** - `HYDRA_UMC_SPLASHSCREEN.svg` once, real
+  and animated, from the kiosk's own `splash.html`, then STUDIO's own
+  `App.tsx` showed the same artwork again (static, 10s) once the kiosk
+  handed off to it. STUDIO's existing `hideUI=true` already skipped its
+  splash, but also hides all navigation - wrong for this general-purpose
+  dashboard kiosk. STUDIO's own `App.tsx` (see that repo's `4bef0bb`) now
+  has an independent `skipSplash=true` for exactly this; the kiosk hand-off
+  URL uses it.
+
 ## [0.0.13] - Real HDMI kiosk: animated splash, then STUDIO fullscreen
 
 ### Added

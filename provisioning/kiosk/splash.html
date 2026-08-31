@@ -35,7 +35,14 @@ Chromium "connection refused" page instead of a working screen.
   // STUDIO_URL and lets that page show its own real connection error
   // instead, which is at least actionable for whoever is looking at the
   // physical screen.
-  var STUDIO_URL = "http://localhost:3000/";
+  // skipSplash=true (STUDIO's own App.tsx, added alongside this file) skips
+  // that page's own 10s splash on load, which used the same static SVG -
+  // showing it twice back to back was a real, reported duplicate. Unlike
+  // hideUI=true, skipSplash leaves STUDIO's normal navigation intact, which
+  // this general-purpose HDMI kiosk needs (it is not the single-robot
+  // embedded viewport Android's WebView uses).
+  var SERVER_ORIGIN = "http://localhost:3000";
+  var STUDIO_URL = SERVER_ORIGIN + "/?skipSplash=true";
   var MIN_MS = 3500;
   var MAX_MS = 20000;
   var start = Date.now();
@@ -54,7 +61,7 @@ Chromium "connection refused" page instead of a working screen.
     // Absolute URL, not relative: this page is loaded from file:// (see
     // kiosk-session.sh), so a relative fetch would resolve against the
     // file:// origin instead of Server's.
-    fetch(STUDIO_URL + "api/hydra-info", { cache: "no-store" }).then(function (response) {
+    fetch(SERVER_ORIGIN + "/api/hydra-info", { cache: "no-store" }).then(function (response) {
       if (response.ok && elapsed >= MIN_MS) {
         handOff();
       } else {

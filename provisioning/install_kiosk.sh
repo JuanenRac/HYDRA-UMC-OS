@@ -23,9 +23,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KIOSK_USER="${SUDO_USER:-hydra-umc}"
 KIOSK_HOME="$(getent passwd "$KIOSK_USER" | cut -d: -f6)"
 [[ -n "$KIOSK_HOME" && -d "$KIOSK_HOME" ]] || { echo "Cannot resolve a home directory for $KIOSK_USER" >&2; exit 2; }
-STUDIO_URL="${HYDRA_UMC_STUDIO_URL:-http://localhost:3000/}"
 KIOSK_DIR=/opt/hydra-umc/kiosk
 BOOT_CONFIG=/boot/firmware/config.txt
+BOOT_CMDLINE=/boot/firmware/cmdline.txt
 run() { if $APPLY; then "$@"; else printf '[dry-run] '; printf '%q ' "$@"; printf '\n'; fi; }
 
 echo " ==============================================================="
@@ -34,7 +34,7 @@ echo "  HDMI kiosk: HYDRA_UMC_SPLASHSCREEN.svg, then STUDIO fullscreen."
 echo "  Copyright (C) 2026 JuanenRac (Electro Hobby 3D)"
 echo "  <electrohobby3d@gmail.com> | GPL-3.0-or-later - see LICENSE"
 echo " ==============================================================="
-echo "kiosk user: $KIOSK_USER   studio url: $STUDIO_URL"
+echo "kiosk user: $KIOSK_USER"
 
 run apt-get update
 run apt-get install -y --no-install-recommends \
@@ -54,6 +54,32 @@ if $APPLY; then
   fi
 else
   echo "[dry-run] append gpu_mem=128 to $BOOT_CONFIG unless a gpu_mem= line already exists"
+fi
+
+# Real complaint from watching this device boot with a monitor attached:
+# with no "quiet"/"splash" kernel parameter, the kernel and every systemd
+# unit print their normal boot log straight onto tty1 - Plymouth (see
+# install_splashscreen.sh) never gets to show its graphical frame over
+# that, so the operator sees raw scrolling boot text instead of any splash
+# at all. cmdline.txt is a single line, so tokens are appended to it
+# in place rather than as new lines like config.txt above. Idempotent:
+# each token is only appended if not already present anywhere on the line,
+# so re-running this (or a cmdline.txt an operator already customised)
+# never duplicates or fights an existing choice.
+if $APPLY; then
+  if [[ -f "$BOOT_CMDLINE" ]]; then
+    cmdline="$(cat "$BOOT_CMDLINE")"
+    for token in quiet splash logo.nologo loglevel=3 vt.global_cursor_default=0; do
+      case " $cmdline " in
+        *" $token "*) ;;
+        *) cmdline="$cmdline $token" ;;
+      esac
+    done
+    printf '%s' "$cmdline" > "$BOOT_CMDLINE"
+    echo "cmdline.txt updated for a quiet graphical boot (takes effect on next reboot)"
+  fi
+else
+  echo "[dry-run] ensure quiet splash logo.nologo loglevel=3 vt.global_cursor_default=0 are present in $BOOT_CMDLINE"
 fi
 
 # Real bugs found live on this device's first boot into the kiosk, in order:
