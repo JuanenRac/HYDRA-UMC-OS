@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.0.17] - The real fix for the kiosk freeze: a compositor
+
+### Fixed
+
+- **`[0.0.16]`'s `Option "Present" "false"` did not actually fix the kiosk
+  freeze** - live-verified: Xorg.0.log kept showing the exact same
+  "Present-flip: queue flip during flip on CRTC 2 failed: Invalid
+  argument" errors after applying it and rebooting. Root cause: that
+  option name does not exist for `xf86-video-modesetting` at all - it did
+  nothing except let X's own internal "too frequent flip errors" rate
+  limiter make the *log* quieter. A second attempt, the real, documented
+  `Option "PageFlip" "false"`, also did not fix it live - that option
+  controls the driver's own internal double-buffering, a different layer
+  from the Present *extension* requests Chromium's GPU process sends as
+  an X client, so this specific race was untouched either way.
+- **What actually fixed it, live-verified** (0 Present-flip errors in
+  Xorg.0.log after, versus ~2900 before, across an otherwise-identical
+  reboot): giving X a real compositing manager. `install_kiosk.sh` now
+  installs `picom`; `kiosk-session.sh` starts it (`--backend xrender`,
+  the simpler/more compatible backend - this kiosk only ever shows one
+  fullscreen window) right after Plymouth hands off and before Chromium,
+  so Present requests have something to arbitrate through instead of
+  racing the CRTC directly. The now-inert `PageFlip` option was removed
+  from the xorg.conf.d device section; `kmsdev` (still needed, see
+  `[0.0.13]`) stays.
+
 ## [0.0.16] - Kiosk display no longer freezes (X Present-extension race)
 
 ### Fixed

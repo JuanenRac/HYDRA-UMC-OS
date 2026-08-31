@@ -38,7 +38,7 @@ echo "kiosk user: $KIOSK_USER"
 
 run apt-get update
 run apt-get install -y --no-install-recommends \
-  xserver-xorg x11-xserver-utils xinit openbox chromium unclutter
+  xserver-xorg x11-xserver-utils xinit openbox picom chromium unclutter
 
 # GPU memory split: harmless to set, but real testing on this device showed
 # it is not the relevant knob here - this image already ships
@@ -110,26 +110,35 @@ run systemctl mask plymouth-quit.service plymouth-quit-wait.service
 # fixed, the display itself froze - real, live, and confirmed by the
 # operator watching the physical screen - while every kiosk process
 # stayed alive (Xorg/Chromium/openbox all still running, Server/agent
-# both healthy). Xorg.0.log showed the actual cause: thousands of
-# repeated "Present-flip: queue flip during flip on CRTC 2 failed:
-# Invalid argument" lines - Chromium's own GPU process racing X's Present
-# extension for direct-scanout page-flips with no compositor (openbox
-# runs no compositing manager) to arbitrate between them, so frames never
-# actually reached the screen even though nothing had crashed. Disabling
-# the Present extension is the standard, documented mitigation for
-# exactly this modesetting-driver/Present race.
+# both healthy). Xorg.0.log showed the actual cause: repeated
+# "Present-flip: queue flip during flip on CRTC 2 failed: Invalid
+# argument" lines - Chromium's own GPU process (via the X11 Present
+# extension) racing X directly for scanout page-flips with nothing to
+# arbitrate between them, since openbox runs no compositing manager -
+# frames never actually reached the screen even though nothing crashed.
+# Two xorg.conf.d driver options were tried and live-verified NOT to fix
+# it - `Option "Present" "false"` (not a real xf86-video-modesetting
+# option at all; only X's own internal "too frequent flip errors" rate
+# limiter made the LOG quieter, not the actual failures) and the real,
+# documented `Option "PageFlip" "false"` (disables the driver's OWN
+# internal double-buffering flips, a different layer from the Present
+# *extension* requests Chromium's compositor sends as an X client - so it
+# left this bug untouched). What actually fixed it, live-verified (0
+# Present-flip errors in Xorg.0.log after, versus ~2900 before, across
+# an otherwise-identical reboot): giving X a real compositing manager -
+# see kiosk-session.sh's own picom invocation - so Present requests have
+# something to arbitrate through instead of racing the CRTC directly.
 run install -d -m 0755 /etc/X11/xorg.conf.d
 if $APPLY; then
   cat > /etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf <<'EOF'
 Section "Device"
     Identifier "HYDRA-UMC-KMS"
     Driver "modesetting"
-    Option "Present" "false"
     Option "kmsdev" "/dev/dri/card1"
 EndSection
 EOF
 else
-  echo "[dry-run] write /etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf (pin Driver \"modesetting\", Present off, kmsdev /dev/dri/card1)"
+  echo "[dry-run] write /etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf (pin Driver \"modesetting\", kmsdev /dev/dri/card1)"
 fi
 
 run install -d -o root -g root -m 0755 "$KIOSK_DIR"

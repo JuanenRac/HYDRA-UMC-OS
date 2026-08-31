@@ -29,6 +29,23 @@ sudo plymouth quit || true
 openbox-session &
 sleep 1
 
+# Real, live-diagnosed bug: with no compositing manager, Chromium's own
+# GPU process (an X client, via the Present extension) and X itself raced
+# directly over CRTC page-flips - Xorg.0.log showed thousands of repeated
+# "Present-flip: queue flip during flip on CRTC 2 failed: Invalid
+# argument" lines, and the screen simply stopped receiving new frames
+# even though every process (Xorg, Chromium, openbox) stayed alive. Two
+# xf86-video-modesetting driver options were tried first (see
+# install_kiosk.sh's own comment) and neither fixed it - only giving X an
+# actual compositor did: picom now arbitrates the same Present requests
+# instead of leaving them to race the CRTC directly. Live-verified: 0
+# Present-flip errors in Xorg.0.log after adding this, versus ~2900
+# before, across an otherwise-identical reboot. --backend xrender (not
+# glx) - the simpler, more compatible backend; this kiosk has exactly one
+# fullscreen window and never needs picom's fancier compositing effects.
+picom --backend xrender --vsync &
+sleep 1
+
 unclutter --timeout 1 --jitter 5 --ignore-scroll &
 
 CHROMIUM_PROFILE="$HOME/.config/hydra-umc-kiosk-chromium"
