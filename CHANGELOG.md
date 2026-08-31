@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.5] - Dashboard-AI static serving
+
+### Added
+
+- **`provisioning/install_dashboard_ai.sh`** (new) - builds and installs
+  HYDRA-UMC-DASHBOARD-AI's real static SPA (`npm run build` -> `dist/`,
+  built on-device the same way `install_server.sh` builds
+  HYDRA-UMC-SERVER) behind that repo's own new
+  `scripts/serve_static.py` (stdlib, no Node runtime needed once built).
+  Own port (8115)/service - deliberately not folded into
+  HYDRA-UMC-SERVER's own `public/` the way HYDRA-UMC-STUDIO is, since
+  this dashboard already talks straight to HYDRA-UMC-DATALAKE/
+  HYDRA-UMC-ANOMALY-DETECTOR by their own configured base URLs.
+
 ## [0.3.4] - Server mode for the 4 Rust services, closing the item-3 audit's full list
 
 ### Added
