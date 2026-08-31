@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0] - The 0.2.9 fix was still wrong: Node-Healing can't watch zero nodes
+
+### Fixed
+
+- **`provisioning/install_node_healing.sh`** - live-verified on this
+  device: `config.LoadNodes()` itself refuses an empty registry ("is
+  empty - nothing to watch"), so 0.2.9's `nodes.json` = `[]` fix
+  auto-restart-looped exactly like the permission bug it replaced, just
+  with a different error. There is genuinely no real HealthService-
+  speaking node anywhere in this ecosystem yet, so this script now
+  installs the capability only (binary + unit, matching
+  `install_vision_streamer.sh`'s own pattern) and does not create a
+  registry or enable/start the service - see the script's own printed
+  instructions for what to do once a real node exists. See
+  HYDRA-UMC-NODE-HEALING's own CHANGELOG (0.1.1) for the full writeup.
+
 ## [0.2.9] - Node-Healing permission bugfix, found live on this device
 
 ### Fixed
