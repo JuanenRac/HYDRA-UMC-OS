@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.1.8] - Kiosk boot is finally quiet: the real, complete story
+
+### Fixed
+
+- **The kiosk boot still showed text**, across many further rounds of
+  live testing on the physical HDMI display after `[0.1.7]`, each one a
+  genuinely different, unrelated source once actually read/photographed
+  rather than guessed at from a fast description:
+  - This device's real serial console (`console=serial0,115200`, kept
+    intentionally for hardware debugging) makes Plymouth fall back to
+    its own text-only "details" plugin by design, regardless of quiet/
+    splash/the theme itself. `plymouth.ignore-serial-consoles` is
+    Plymouth's own documented opt-out; it now shows this theme's real
+    static frame instead.
+  - `loglevel=3` still let real driver-probe warnings on this device
+    (dwc2/brcm-pcie regulator notices) through - lowered to `loglevel=0`.
+  - `console=tty1` routed kernel/systemd console output to the visible
+    VT; changed to `console=tty3` - a real, working text console still
+    exists (switchable from a physical keyboard), it is simply not the
+    one shown by default. `systemd.show_status=0` and `fbcon=map:10`
+    added as further defense in depth.
+  - Xorg's own startup banner writes directly to the VT device, not
+    through inherited stdout/stderr - `-verbose 0 -logverbose 0` passed
+    to X is the documented way to quiet it.
+  - The very last remaining line turned out to be `update-motd.d`'s
+    `10-uname` script (`Linux hostname kernel-version arch`), printed by
+    every login on this account regardless of agetty/Xorg/Plymouth - a
+    plain `~/.hushlogin` is the standard, one-line fix.
+  - **A genuine dead end, tried and reverted**: keeping Plymouth's splash
+    up for the device's entire boot (masking `plymouth-quit*.service`,
+    quitting it manually right before Chromium) to cover every source at
+    once - live-tested, and it deadlocked agetty's own tty1 autologin
+    outright instead (stuck as bare `(agetty)`, never reaching login).
+    Not used; Plymouth quits on its own normal ~4s schedule.
+  - `picom` (added in `[0.1.7]` for the real Present-extension freeze)
+    stays - unrelated to any of the above, still needed.
+
 ## [0.1.7] - The real fix for the kiosk freeze: a compositor
 
 ### Fixed

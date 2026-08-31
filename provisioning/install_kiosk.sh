@@ -56,20 +56,69 @@ else
   echo "[dry-run] append gpu_mem=128 to $BOOT_CONFIG unless a gpu_mem= line already exists"
 fi
 
-# Real complaint from watching this device boot with a monitor attached:
-# with no "quiet"/"splash" kernel parameter, the kernel and every systemd
-# unit print their normal boot log straight onto tty1 - Plymouth (see
-# install_splashscreen.sh) never gets to show its graphical frame over
-# that, so the operator sees raw scrolling boot text instead of any splash
-# at all. cmdline.txt is a single line, so tokens are appended to it
-# in place rather than as new lines like config.txt above. Idempotent:
-# each token is only appended if not already present anywhere on the line,
-# so re-running this (or a cmdline.txt an operator already customised)
-# never duplicates or fights an existing choice.
+# Real complaint from watching this device boot with a monitor attached,
+# tracked down across MANY rounds of live testing - each one looked like a
+# leftover "boot log" until actually read/photographed on the physical
+# screen, and turned out to be a completely different, unrelated source
+# every time:
+#
+# 1. With no "quiet"/"splash" at all, the kernel and every systemd unit
+#    print their normal boot log straight onto tty1. quiet/splash/
+#    logo.nologo/loglevel=0/vt.global_cursor_default=0 address the basics
+#    (loglevel=0, not the usual 3 - real driver-probe warnings on this
+#    device, e.g. dwc2/brcm-pcie regulator notices, still printed at
+#    loglevel=3); systemd.show_status=0 additionally silences systemd's
+#    own "[ OK ] Started ..." unit-status lines specifically.
+# 2. Even with those, boot-log-looking text was STILL visible. Root
+#    cause, found by researching real Plymouth behaviour rather than
+#    guessing further: this device also carries a real serial console
+#    (console=serial0,115200, kept intentionally for actual hardware
+#    debugging) - and Plymouth deliberately falls back to its own
+#    text-only "details" plugin whenever ANY serial console is present,
+#    by design, regardless of quiet/splash/the theme's own config.
+#    plymouth.ignore-serial-consoles is Plymouth's own, documented
+#    opt-out of that fallback; it now shows this theme's real static
+#    frame (see install_splashscreen.sh) instead.
+# 3. Text kept appearing even after (2). Genuinely tried keeping Plymouth
+#    holding the display for the device's ENTIRE boot instead (masking
+#    plymouth-quit*.service, quitting it manually right before Chromium
+#    from kiosk-session.sh) so nothing underneath could ever become
+#    visible regardless of source - live-tested, and it deadlocked
+#    agetty's own autologin on tty1 outright (stuck as bare "(agetty)",
+#    never reaching login) instead: Plymouth holding that same tty1/VT
+#    session open conflicts with agetty trying to claim it. Reverted -
+#    plymouth-quit*.service stays unmasked, Plymouth quits on its own
+#    normal ~4s schedule.
+# 4. What was actually left after (1)-(2) turned out to be TWO more
+#    separate, unrelated sources, only identified once the operator could
+#    read/photograph the exact text rather than describe a fast flash:
+#    (a) Xorg's own startup banner, which writes directly to the VT
+#    device rather than through inherited stdout/stderr - "-verbose 0
+#    -logverbose 0" passed to X itself (below) is the documented,
+#    intended way to quiet it; (b) update-motd.d's real "10-uname" script
+#    (`Linux hostname kernel-version arch`), which every login session on
+#    this account prints AFTER agetty's autologin succeeds, completely
+#    independent of agetty/Xorg/Plymouth - a plain ~/.hushlogin (see
+#    below) is the standard way to suppress it for one account.
+#
+# cmdline.txt is a single line, so tokens are appended in place rather
+# than as new lines like config.txt above; idempotent - only a token not
+# already present anywhere on the line gets added, so re-running this (or
+# a cmdline.txt an operator already customised) never duplicates or
+# fights an existing choice. console=tty1 -> console=tty3 is a real
+# substitution rather than an append: tty1 stays the visible/active VT
+# (nothing switches away from it) while kernel/systemd console output
+# routes to the otherwise-unused tty3 instead - a working text console
+# still exists for real debugging (switchable from a physical keyboard),
+# it is simply not the one shown on the display by default.
 if $APPLY; then
   if [[ -f "$BOOT_CMDLINE" ]]; then
     cmdline="$(cat "$BOOT_CMDLINE")"
-    for token in quiet splash logo.nologo loglevel=3 vt.global_cursor_default=0; do
+    case " $cmdline " in
+      *' console=tty3 '*) ;;
+      *) cmdline="$(printf '%s' "$cmdline" | sed 's/console=tty1/console=tty3/')" ;;
+    esac
+    for token in quiet splash logo.nologo loglevel=0 vt.global_cursor_default=0 systemd.show_status=0 fbcon=map:10 plymouth.ignore-serial-consoles; do
       case " $cmdline " in
         *" $token "*) ;;
         *) cmdline="$cmdline $token" ;;
@@ -79,20 +128,8 @@ if $APPLY; then
     echo "cmdline.txt updated for a quiet graphical boot (takes effect on next reboot)"
   fi
 else
-  echo "[dry-run] ensure quiet splash logo.nologo loglevel=3 vt.global_cursor_default=0 are present in $BOOT_CMDLINE"
+  echo "[dry-run] ensure console=tty3 (not tty1) and quiet splash logo.nologo loglevel=0 vt.global_cursor_default=0 systemd.show_status=0 fbcon=map:10 plymouth.ignore-serial-consoles are present in $BOOT_CMDLINE"
 fi
-
-# Real complaint, still visible after the fix above: quiet/splash stopped
-# the EARLY kernel log, but plymouth-quit.service (systemd's own default)
-# fired only ~4s into this boot - real and observed via journalctl - long
-# before the slower units (network-online.target, hydra-umc-server,
-# hydra-umc-agent) finish, so THEIR "Started ..." lines still printed to
-# the now-uncovered text console for several more seconds before the
-# tty1 autologin below even gets a chance to start X. Masking systemd's
-# automatic quit and instead quitting Plymouth ourselves, from
-# kiosk-session.sh right before Chromium starts, keeps the splash up for
-# the entire boot instead of just its first few seconds.
-run systemctl mask plymouth-quit.service plymouth-quit-wait.service
 
 # Real bugs found live on this device's first boot into the kiosk, in order:
 # (1) with both the modern KMS "modesetting" driver and the legacy "fbdev"
@@ -106,28 +143,7 @@ run systemctl mask plymouth-quit.service plymouth-quit-wait.service
 # v3d (3D/compute only, no display output) and card1 is vc4 (the real
 # display controller) - and modesetting's own autodetection did not
 # reliably resolve to card1 on its own. Pinning kmsdev explicitly is the
-# documented fix for this dual-node situation. (3) with both of the above
-# fixed, the display itself froze - real, live, and confirmed by the
-# operator watching the physical screen - while every kiosk process
-# stayed alive (Xorg/Chromium/openbox all still running, Server/agent
-# both healthy). Xorg.0.log showed the actual cause: repeated
-# "Present-flip: queue flip during flip on CRTC 2 failed: Invalid
-# argument" lines - Chromium's own GPU process (via the X11 Present
-# extension) racing X directly for scanout page-flips with nothing to
-# arbitrate between them, since openbox runs no compositing manager -
-# frames never actually reached the screen even though nothing crashed.
-# Two xorg.conf.d driver options were tried and live-verified NOT to fix
-# it - `Option "Present" "false"` (not a real xf86-video-modesetting
-# option at all; only X's own internal "too frequent flip errors" rate
-# limiter made the LOG quieter, not the actual failures) and the real,
-# documented `Option "PageFlip" "false"` (disables the driver's OWN
-# internal double-buffering flips, a different layer from the Present
-# *extension* requests Chromium's compositor sends as an X client - so it
-# left this bug untouched). What actually fixed it, live-verified (0
-# Present-flip errors in Xorg.0.log after, versus ~2900 before, across
-# an otherwise-identical reboot): giving X a real compositing manager -
-# see kiosk-session.sh's own picom invocation - so Present requests have
-# something to arbitrate through instead of racing the CRTC directly.
+# documented fix for this dual-node situation.
 run install -d -m 0755 /etc/X11/xorg.conf.d
 if $APPLY; then
   cat > /etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf <<'EOF'
@@ -148,29 +164,48 @@ run install -m 0755 "$ROOT/provisioning/kiosk/kiosk-session.sh" "$KIOSK_DIR/kios
 
 # Autologin on the physical console (tty1) - the standard, minimal way to
 # reach a graphical kiosk session on a Lite install with no display manager.
+# --noissue: suppresses /etc/issue (distro banner); the "login:" prompt
+# line itself is agetty's own separate, hardcoded output and briefly
+# shows regardless, autologin or not - real, seen live, and small enough
+# next to the other fixes above to not warrant chasing further.
 run install -d -m 0755 /etc/systemd/system/getty@tty1.service.d
 if $APPLY; then
   cat > /etc/systemd/system/getty@tty1.service.d/hydra-umc-autologin.conf <<EOF
 [Service]
 ExecStart=
-ExecStart=-/sbin/agetty --autologin $KIOSK_USER --noclear %I \$TERM
+ExecStart=-/sbin/agetty --autologin $KIOSK_USER --noclear --noissue %I \$TERM
 EOF
 else
-  echo "[dry-run] write /etc/systemd/system/getty@tty1.service.d/hydra-umc-autologin.conf (autologin: $KIOSK_USER)"
+  echo "[dry-run] write /etc/systemd/system/getty@tty1.service.d/hydra-umc-autologin.conf (autologin: $KIOSK_USER, --noissue)"
 fi
 run systemctl daemon-reload
+
+# ~/.hushlogin - see root cause 4(b) above: suppresses update-motd.d's
+# per-login "Linux <hostname> <kernel version> <arch>" banner
+# (10-uname), the one real, live-confirmed remaining line after every
+# fix above. install(1) both creates it and fixes ownership in one call.
+run install -o "$KIOSK_USER" -g "$KIOSK_USER" -m 0644 /dev/null "$KIOSK_HOME/.hushlogin"
 
 # .bash_profile starts X only for an interactive login on the physical
 # console (tty1), never for an SSH session - an SSH login has no controlling
 # tty1 and $DISPLAY stays unset there, so this never fights an
-# administrator's own SSH work on the same account.
-PROFILE_LINE='[ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && exec startx /opt/hydra-umc/kiosk/kiosk-session.sh -- -nocursor'
+# administrator's own SSH work on the same account. "&> /dev/null" is a
+# real, live-diagnosed fix: X itself (not the kernel/systemd - unaffected
+# by console=/quiet/fbcon settings) writes its own startup banner to
+# whatever's on stdout/stderr when startx launches it, and that flashed on
+# screen briefly every boot until this was redirected away.
+PROFILE_LINE='[ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && exec startx /opt/hydra-umc/kiosk/kiosk-session.sh -- -nocursor -verbose 0 -logverbose 0 &> /dev/null'
 if $APPLY; then
   touch "$KIOSK_HOME/.bash_profile"
-  grep -qxF "$PROFILE_LINE" "$KIOSK_HOME/.bash_profile" || echo "$PROFILE_LINE" >> "$KIOSK_HOME/.bash_profile"
+  # Drop any earlier version of this exact line (e.g. before the &> /dev/null
+  # above was added) before appending the current one, so re-running this
+  # script after an update never leaves two competing startx lines behind.
+  grep -v 'exec startx /opt/hydra-umc/kiosk/kiosk-session.sh' "$KIOSK_HOME/.bash_profile" > "$KIOSK_HOME/.bash_profile.tmp" || true
+  mv "$KIOSK_HOME/.bash_profile.tmp" "$KIOSK_HOME/.bash_profile"
+  echo "$PROFILE_LINE" >> "$KIOSK_HOME/.bash_profile"
   chown "$KIOSK_USER":"$KIOSK_USER" "$KIOSK_HOME/.bash_profile"
 else
-  echo "[dry-run] ensure $KIOSK_HOME/.bash_profile starts the kiosk session on tty1 only"
+  echo "[dry-run] ensure $KIOSK_HOME/.bash_profile starts the kiosk session on tty1 only, output silenced"
 fi
 
 echo "Kiosk installed. Reboot to see it on HDMI, or on this console: sudo systemctl restart getty@tty1"

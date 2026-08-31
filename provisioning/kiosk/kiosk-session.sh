@@ -14,17 +14,12 @@ xset s off
 xset -dpms
 xset s noblank
 
-# install_kiosk.sh masks systemd's own automatic plymouth-quit*.service so
-# the Plymouth splash stays up through this device's ENTIRE boot (agent,
-# Server, networking - all of it) instead of just its first few seconds -
-# see that script's own comment. This is the manual hand-off point: X is
-# already up at this point (startx ran it before this script), so quitting
-# Plymouth now hands the display straight to X, with only the brief real
-# gap until Chromium itself paints (never a scrolling text console).
-# "|| true": never let a kiosk boot fail outright just because plymouthd
-# already exited on its own (e.g. this script re-run manually for testing,
-# with no active Plymouth session to quit).
-sudo plymouth quit || true
+# Real, live-diagnosed dead end, kept as a note so it isn't retried blind:
+# masking plymouth-quit*.service to hold Plymouth's splash up through this
+# device's entire boot (instead of its normal ~4s) and quitting it
+# manually here, right before Chromium, deadlocked agetty's own tty1
+# autologin outright (see install_kiosk.sh's own comment) - not done.
+# Plymouth quits on its own normal schedule; nothing to do here for it.
 
 openbox-session &
 sleep 1
@@ -43,7 +38,11 @@ sleep 1
 # before, across an otherwise-identical reboot. --backend xrender (not
 # glx) - the simpler, more compatible backend; this kiosk has exactly one
 # fullscreen window and never needs picom's fancier compositing effects.
-picom --backend xrender --vsync &
+# --vsync deliberately omitted - a known real picom gotcha on some
+# GPU/driver combinations is --vsync itself causing exactly this kind of
+# stall after the first frame; live-tested both ways on this device and
+# 0-Present-flip-error runs held with it off.
+picom --backend xrender &
 sleep 1
 
 unclutter --timeout 1 --jitter 5 --ignore-scroll &
