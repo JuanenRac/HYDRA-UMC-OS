@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.3.3] - Server mode for 3 more CLI-only repos found in the item-3 audit
+
+### Added
+
+- **`provisioning/install_safety_zones.sh`** (new) - installs the real
+  zone-breach/E-STOP-request API (POST /check). Never asserts an E-STOP
+  itself, only ever requests one, same as the CLI.
+- **`provisioning/install_semantic_planner.sh`** (new) - installs the
+  real goal-decomposition/recovery API (POST /decompose, POST /recover).
+- **`provisioning/install_docs_qa.sh`** (new) - installs the real
+  TF-IDF documentation-retrieval API (GET /query), index built once at
+  startup rather than per-request like the CLI - a real improvement, not
+  just a wrapper. Copies this repo's own README.md/CHANGELOG.md
+  alongside `src/` so the default corpus resolves to something real once
+  deployed.
+- These 3 close the rest of the item-3 audit's "CLI-only, no real server
+  loop yet" finding for the repos that had real, wrappable business
+  logic already written (config.py's own `load_zones`/`load_zone_set`/
+  `load_detections` in Safety-Zones needed a real, behavior-preserving
+  split into file-reading wrappers + `parse_*` functions first, so the
+  new API could take JSON directly in the request body instead of a
+  server-side file path). The remaining CLI-only repos from that same
+  audit (the 5 hardware bridges, and the 4 Rust services Orchestrator/
+  Swarm-Sync/Twin/HIL-Bridge) are not addressed here - see those repos'
+  own state for why.
+
 ## [0.3.2] - The 0.3.1 workspace approach was unreadable by its own service accounts
 
 ### Fixed
