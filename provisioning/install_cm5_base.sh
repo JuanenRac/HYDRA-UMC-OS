@@ -41,15 +41,24 @@ echo "  <electrohobby3d@gmail.com> | GPL-3.0-or-later - see LICENSE"
 echo " ==============================================================="
 
 python3 provisioning/preflight_cm5.py
+# Every sub-script below is invoked via "bash provisioning/X.sh" rather than
+# relying on the executable bit. Real bug found live on the first CM5 this
+# was ever run against from a fresh git clone: these scripts are tracked as
+# mode 100644 in git (no +x), so a direct "provisioning/X.sh" call failed
+# with "Permission denied" even though preflight itself had just passed -
+# git does not reliably preserve/apply the executable bit across every
+# clone/checkout path, so depending on it here was fragile. Matches how
+# CM5_DEPLOYMENT_SEQUENCE.md itself already invokes these scripts
+# ("sudo bash provisioning/first_boot.sh"), not by direct execution.
 if $APPLY; then
-  provisioning/first_boot.sh --apply
-  provisioning/install_local_agent.sh --apply
-  provisioning/install_wifi_provision.sh --apply
+  bash provisioning/first_boot.sh --apply
+  bash provisioning/install_local_agent.sh --apply
+  bash provisioning/install_wifi_provision.sh --apply
   if $WITH_SERVER; then
-    provisioning/install_server.sh --apply
+    bash provisioning/install_server.sh --apply
   fi
   if $WITH_VOICE_UI; then
-    provisioning/install_voice_ui.sh --apply
+    bash provisioning/install_voice_ui.sh --apply
   fi
   if $ENABLE_SERVICES; then
     systemctl enable --now hydra-umc-agent
@@ -65,10 +74,10 @@ if $APPLY; then
   fi
   echo "Installation complete. Run provisioning/verify_cm5_runtime.sh$($WITH_SERVER && printf ' --with-server')$($WITH_VOICE_UI && printf ' --with-voice-ui') next."
 else
-  provisioning/first_boot.sh
-  provisioning/install_local_agent.sh
-  provisioning/install_wifi_provision.sh
-  $WITH_SERVER && provisioning/install_server.sh
-  $WITH_VOICE_UI && provisioning/install_voice_ui.sh
+  bash provisioning/first_boot.sh
+  bash provisioning/install_local_agent.sh
+  bash provisioning/install_wifi_provision.sh
+  $WITH_SERVER && bash provisioning/install_server.sh
+  $WITH_VOICE_UI && bash provisioning/install_voice_ui.sh
   echo "Dry run complete. Re-run with --apply only after reviewing every command."
 fi

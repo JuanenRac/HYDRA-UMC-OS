@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.0.12] - install_cm5_base.sh no longer depends on git's executable bit
+
+### Fixed
+
+- **`provisioning/install_cm5_base.sh` invoked `first_boot.sh`,
+  `install_local_agent.sh`, `install_wifi_provision.sh`,
+  `install_server.sh` and `install_voice_ui.sh` by direct execution**
+  (`provisioning/X.sh --apply`), relying on their git executable bit.
+  Found live on the first real CM5 this was ever run against from a
+  fresh `git clone`: every one of these scripts was tracked as mode
+  `100644` (no `+x`) in this repository, so the very first `--apply` run
+  failed immediately with "Permission denied" right after preflight had
+  just passed. Every sub-script call is now prefixed with `bash`,
+  matching how `CM5_DEPLOYMENT_SEQUENCE.md` itself already invokes these
+  scripts - independent of git's executable-bit handling across
+  different clone/checkout paths. The executable bit itself is also now
+  set correctly in git for every `provisioning/*.sh` script and the
+  top-level `build.sh`/`run.sh`, as defense in depth for direct
+  invocation.
+
 ## [0.0.11] - Removed a real duplicate/drift risk between the two deployment docs
 
 ### Fixed
