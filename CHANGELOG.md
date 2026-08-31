@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.9] - Node-Healing permission bugfix, found live on this device
+
+### Fixed
+
+- **`provisioning/install_node_healing.sh`** - the node registry moves
+  from `/etc/hydra-umc/node-healing/nodes.json` to
+  `/etc/hydra-umc-node-healing/nodes.json`. Real bug found live on this
+  device's first `systemctl enable --now`: `/etc/hydra-umc/` is `0750
+  root:hydra-umc-agent`, so `hydra-umc-node-healing`'s own unprivileged
+  account could never traverse into it to open its `--nodes` file -
+  `permission denied` on every start, auto-restart-looping. See
+  HYDRA-UMC-NODE-HEALING's own CHANGELOG (0.1.0) for the full writeup.
+
 ## [0.2.8] - Job-Dispatcher, Node-Healing, Telemetry-Collector, Production-Reports install
 
 ### Added
