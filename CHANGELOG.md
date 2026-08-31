@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.6] - Anomaly-Detector installs
+
+### Added
+
+- **`provisioning/install_anomaly_detector.sh`** (new) - installs
+  HYDRA-UMC-ANOMALY-DETECTOR's real FFT + z-score anomaly-detection API
+  (python3-numpy from Debian's own repos, no venv/pip needed) as a
+  loopback-bound systemd service. Real gap found auditing the ecosystem
+  against actual CM5 hardware: the only one of the 8 real "AI" repos
+  that already runs as a real HTTP service (the other 7 are CLIs only)
+  had never been installed anywhere. Live-verified: `GET /stats`
+  responds.
+
 ## [0.2.5] - Datalake installs; bootstrap admin password removed from disk
 
 ### Added
