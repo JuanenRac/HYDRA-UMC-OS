@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.4] - Real gap closed: the Industry 4.0 Gateway now installs
+
+### Added
+
+- **`provisioning/install_industrial_gateway.sh`** (new) - installs Docker
+  and brings up HYDRA-UMC-GATEWAY-INDUSTRIAL's own real
+  `docker-compose.yml` (all 3 real protocol bridges - OPC-UA, MQTT,
+  MTConnect - plus the Gateway's own aggregation surface). Real gap found
+  auditing the ecosystem against actual CM5 hardware: genuinely working,
+  tested code that nothing ever installed anywhere. Live-verified on this
+  CM5: all 4 containers build and stay up, `GET /status` reports
+  `allReachable:true` for all 3 children with real measured latencies.
+
+### Fixed
+
+- **2 real Debian package-naming surprises**, found live installing this
+  for the first time: Compose v2's package is `docker-compose`, not
+  `docker-compose-v2`; `docker.io` installs `dockerd`/`docker-proxy`/
+  `docker-init` only - the actual `docker` CLI client is the separate
+  `docker-cli` package (`docker-buildx` also added, the modern build
+  backend `compose ... --build` wants). Also found and fixed, in each of
+  the 4 real child repos: their own `Dockerfile`s never installed
+  dependencies in the runtime stage (`MODULE_NOT_FOUND` on every real
+  run) - see each repo's own CHANGELOG.
+
 ## [0.2.3] - Documented Datalake/spi_bridge proxy env vars
 
 ### Added
