@@ -31,7 +31,14 @@ repository. Set the administrator password locally with `passwd hydra-umc`.
 ## Deployment sequence
 
 1. Flash the latest official Raspberry Pi OS Lite ARM64 image.
-2. Configure the local Wi-Fi with Raspberry Pi's supported first-boot method.
+2. Configure the local Wi-Fi with Raspberry Pi's supported first-boot method,
+   or - when the target network isn't known yet at flash time - enable the
+   real AP-mode fallback `install_cm5_base.sh` installs
+   (`hydra-umc-wifi-provision.service` / `provisioning/wifi_provision.py`,
+   real NetworkManager hotspot + a local HTTP form for the real target
+   SSID/password). See `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` steps 2
+   and 9 for the full real sequence, including the required real
+   per-device AP password step.
 3. Enable SSH with the administrator public key and verify a key login.
 4. Record image release, kernel, firmware and CM5 serial information.
 5. With a sibling `HYDRA-UMC-SDK` checkout available, run

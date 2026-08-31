@@ -55,6 +55,21 @@ repository - and a real, host-independent backup/rollback mechanism
 are verified without root or a CM5 - see `tools/verify_preflight_idempotent.py`
 and `tools/verify_rollback.py`.
 
+**WiFi first-contact provisioning is real too** (`provisioning/wifi_provision.py`
+/ `hydra-umc-wifi-provision.service`): a real NetworkManager AP-mode
+fallback for a headless CM5 with no known network yet - brings up a real
+hotspot (`nmcli device wifi hotspot`) an operator's phone/laptop can join
+to submit the real target SSID/password through a small local HTTP form,
+tears the AP down and joins the real network on success, restores it on
+failure so the device is never stranded. The state machine is fully
+unit-tested against a fake NetworkManager, including a real end-to-end
+HTTP round-trip over a real loopback socket - see
+`tools/verify_wifi_provision.py`. Installed by `install_cm5_base.sh` but
+deliberately not auto-enabled, since it must not start with its own
+placeholder AP password on a real, over-the-air-reachable device - see
+`provisioning/CM5_DEPLOYMENT_SEQUENCE.md` step 9 for the real password
+step required first.
+
 ## 🎯 Planned first milestone
 
 1. Build a Raspberry Pi OS ARM64 profile for CM5.
@@ -75,7 +90,7 @@ and `tools/verify_rollback.py`.
 | `image-builder/` | Official Raspberry Pi OS image-assembly boundary and reproducibility notes. |
 | `packages/` | Debian package metadata for `hydra-umc-platform-base`. |
 | `agent/` | Read-only Python device descriptor and health agent with unit tests. |
-| `systemd/` | Hardened `hydra-umc-agent.service` lifecycle unit. |
+| `systemd/` | Hardened `hydra-umc-agent.service` and `hydra-umc-wifi-provision.service` lifecycle units. |
 | `config/` | Default schemas and non-secret configuration. |
 
 Read [the architecture](docs/ARCHITECTURE.md) before implementing code.

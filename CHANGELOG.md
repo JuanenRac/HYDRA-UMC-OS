@@ -1,5 +1,50 @@
 # Changelog
 
+## [0.0.9] - Real WiFi first-contact provisioning (AP mode + client join)
+
+### Added
+
+- **`provisioning/wifi_provision.py`** (new) - the real gap
+  `CM5_DEPLOYMENT_SEQUENCE.md`'s own "Configure local Wi-Fi using the
+  Raspberry Pi supported first-boot method" was an honest pointer at, not
+  a design this repo owned any part of. Real NetworkManager (`nmcli`)
+  AP-mode fallback: when the interface has no active WiFi connection,
+  brings up a real hotspot (`nmcli device wifi hotspot`) an operator's
+  phone/laptop can join directly, and serves a small real HTTP form
+  (stdlib `http.server`, same handler-factory shape as
+  `HYDRA-UMC/src/cm5_host/spi_bridge/spi_bridge/http_service.py`) for the
+  real target SSID/password. A submitted attempt tears the AP down (a
+  single radio can't be an AP and a client at once), tries the real
+  join, and restores the AP only on failure so the operator isn't
+  stranded. Every `nmcli` call lives behind one real, injectable
+  `NetworkManagerRunner` Protocol.
+- **`systemd/hydra-umc-wifi-provision.service`** (new) - runs
+  `wifi_provision.py --apply` once at boot as `Type=oneshot`; a real
+  no-op when already connected. Runs as root (real network
+  reconfiguration needs it, unlike `hydra-umc-agent.service`'s own
+  deliberately read-only, unprivileged scope).
+- **`provisioning/install_wifi_provision.sh`** (new) - installs both to
+  `/opt/hydra-umc/wifi-provision/`, same real install-root convention as
+  `install_local_agent.sh`'s own `/opt/hydra-umc/os-agent`. Wired into
+  `install_cm5_base.sh`'s own base flow. Deliberately does not enable the
+  service - it must not start with the module's own placeholder AP
+  password on a real, over-the-air-reachable device; the real per-device
+  password step is documented in `CM5_DEPLOYMENT_SEQUENCE.md` step 9.
+- **`tools/verify_wifi_provision.py`** (new) - the real state machine
+  (`ensure_hotspot_if_disconnected`/`attempt_join`) verified against an
+  in-memory `FakeNetworkManager` implementing the real
+  `NetworkManagerRunner` Protocol, plus a real end-to-end HTTP round-trip
+  against `serve_until_joined()` over a real loopback socket (only
+  `nmcli` itself is faked) - 24 checks, no real WiFi radio, root, or
+  NetworkManager install required. Wired into `tools/build_test.py`.
+- Found and fixed while building this: a failed join attempt used to
+  restore the AP with the module's own `DEFAULT_AP_PASSWORD` placeholder
+  instead of whatever `--ap-password`/`HYDRA_UMC_AP_PASSWORD` this run
+  was actually configured with - a real deployment that set a custom
+  password would have silently fallen back to the shared, publicly-known
+  default the moment any join attempt failed. Fixed before this ever
+  shipped; covered by two new checks in `verify_wifi_provision.py`.
+
 ## [0.0.8] - Fixed the real port collision with HYDRA-UMC-JOB-DISPATCHER
 
 ### Fixed

@@ -44,6 +44,7 @@ python3 provisioning/preflight_cm5.py
 if $APPLY; then
   provisioning/first_boot.sh --apply
   provisioning/install_local_agent.sh --apply
+  provisioning/install_wifi_provision.sh --apply
   if $WITH_SERVER; then
     provisioning/install_server.sh --apply
   fi
@@ -52,6 +53,11 @@ if $APPLY; then
   fi
   if $ENABLE_SERVICES; then
     systemctl enable --now hydra-umc-agent
+    # WiFi provisioning is deliberately NOT auto-enabled even under
+    # --enable-services - see install_wifi_provision.sh's own note: it
+    # must not start with the module's own placeholder AP password on a
+    # real, over-the-air-reachable device. Set
+    # /etc/hydra-umc/wifi-provision.env first, then enable it by hand.
     # The bounded Voice UI gateway must be ready before Server accepts
     # authenticated Watch/phone voice turns that it relays locally.
     $WITH_VOICE_UI && systemctl enable --now hydra-umc-voice-ui
@@ -61,6 +67,7 @@ if $APPLY; then
 else
   provisioning/first_boot.sh
   provisioning/install_local_agent.sh
+  provisioning/install_wifi_provision.sh
   $WITH_SERVER && provisioning/install_server.sh
   $WITH_VOICE_UI && provisioning/install_voice_ui.sh
   echo "Dry run complete. Re-run with --apply only after reviewing every command."

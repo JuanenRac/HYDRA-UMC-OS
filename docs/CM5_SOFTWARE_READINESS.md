@@ -58,7 +58,12 @@ have been prepared, then repeat runtime verification with `--with-server`.
 ## Deliberately not closed without hardware
 
 - Boot splash behavior and recovery on the real CM5 boot chain.
-- Wi-Fi/SSH resilience, actual storage thresholds and thermal readings.
+- Wi-Fi/SSH resilience on real hardware. The AP-mode provisioning state
+  machine itself is real and unit-tested against a fake NetworkManager
+  (`tools/verify_wifi_provision.py`), but a real hotspot actually
+  broadcasting, a real phone joining it, and real recovery from a dropped
+  signal are all still unverified without a real WiFi radio.
+- Actual storage thresholds and thermal readings.
 - CM5-to-MCU/URTC discovery, heartbeat, timeout and safety rejection.
 - PCIe, camera, Hailo-8/Hailo-10 runtime compatibility and power/cooling.
 - Service restart behavior under real power loss and local-console recovery.

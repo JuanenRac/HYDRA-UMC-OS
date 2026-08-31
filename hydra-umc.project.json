@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC-OS",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "role": "service",
   "stack": "python",
   "technologies": [
@@ -17,7 +17,7 @@
   "family": "Platform Foundation & Contracts",
   "parent": null,
   "build": "Functional read-only CM5 platform agent, validated configuration, systemd unit and host-side tests.",
-  "notes": "A reproducible HYDRA-UMC product layer on Raspberry Pi OS, not a new Linux distribution. Provides a read-only agent, validated configuration, profiles, diagnostics, Server staging and an optional loopback Voice UI gateway. The preflight is proven idempotent and side-effect-free by a real test (two runs, byte-identical output, zero files touched), and a real, host-independent backup/rollback mechanism (provisioning/rollback.py) protects the one system file install_local_agent.sh unconditionally overwrites. CM5 validation and production image assembly remain release gates.",
+  "notes": "A reproducible HYDRA-UMC product layer on Raspberry Pi OS, not a new Linux distribution. Provides a read-only agent, validated configuration, profiles, diagnostics, Server staging and an optional loopback Voice UI gateway. The preflight is proven idempotent and side-effect-free by a real test (two runs, byte-identical output, zero files touched), and a real, host-independent backup/rollback mechanism (provisioning/rollback.py) protects the one system file install_local_agent.sh unconditionally overwrites. Real WiFi first-contact provisioning (provisioning/wifi_provision.py, hydra-umc-wifi-provision.service): a real NetworkManager AP-mode fallback + local HTTP form for a headless CM5 with no known network yet, state machine unit-tested against a fake NetworkManager including a real HTTP round-trip (tools/verify_wifi_provision.py). CM5 validation and production image assembly remain release gates.",
   "native_version": {
     "file": "CHANGELOG.md",
     "pattern": "(\\d+)\\.(\\d+)\\.(\\d+)"
