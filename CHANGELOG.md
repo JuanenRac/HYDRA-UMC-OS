@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.3] - Documented Datalake/spi_bridge proxy env vars
+
+### Added
+
+- **`provisioning/server.env.example`** now documents (commented out)
+  `HYDRA_UMC_DATALAKE_URL`/`HYDRA_UMC_DATALAKE_TIMEOUT_MS` and
+  `HYDRA_UMC_SPI_BRIDGE_URL`/`HYDRA_UMC_SPI_BRIDGE_TIMEOUT_MS` - real gap
+  found auditing the ecosystem against actual CM5 hardware: `server.ts`
+  already reads both (STUDIO's Ecosystem > Telemetry panel and the
+  Flasher/Tester's real CANOTA hardware path), but neither ever appeared
+  in the example file operators actually provision `server.env` from.
+  Left unset by default (Server already answers 503 "not configured"
+  rather than guessing a process is there) until HYDRA-UMC-DATALAKE and
+  `spi_bridge` are actually installed and running.
+
 ## [0.2.2] - The kiosk now shows a mouse cursor with a real mouse attached
 
 ### Fixed
