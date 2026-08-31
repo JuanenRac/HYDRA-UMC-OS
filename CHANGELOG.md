@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.3.1] - Server mode for the 5 AI-family repos that were CLI-only
+
+### Added
+
+- **`provisioning/install_visual_servoing_api.sh`** (new) - installs the
+  real PBVS correction/authorization API (POST /correct, POST /request).
+- **`provisioning/install_detection_hef.sh`** (new) - installs the real
+  compiled-model registry + safe-load API (GET /registry, /latest,
+  /load), config outside the shared `/etc/hydra-umc/` tree (same real
+  permission lesson from Node-Healing's own install).
+- **`provisioning/install_vision_node.sh`** (new) - installs the real
+  family/pipeline-status/frame-validation API (GET /family-status,
+  /pipeline-status, POST /validate-frame).
+- **`provisioning/install_cognitive_node.sh`** (new) - installs the real
+  family-status API (GET /family-status).
+- **`provisioning/install_vla_engine.sh`** (new) - installs the real
+  action-tokenization/trajectory/status API (POST /tokens/encode,
+  /decode, POST /trajectory/integrate, GET /status).
+- Vision-Node/Cognitive-Node/VLA-Engine's own `GET /family-status`/
+  `/status` need the real sibling-checkout layout to report anything but
+  "all missing" - each symlinks its own `workspace` to `$ROOT` (the same
+  sibling-checkout root every script in this file already resolves)
+  rather than copying those repos a second time. Real bug caught before
+  deploying any of the three: that root lives under the operator's home
+  directory, so each one's systemd unit sets `ProtectHome=read-only`,
+  not this file's usual `true` (which would make `/home/` - and each
+  symlink's real target - inaccessible outright, not just unwritable).
+- Real gap found auditing the ecosystem against actual CM5 hardware: of
+  the 8 real "AI"-family repos, only Anomaly-Detector and Vision-Streamer
+  already ran as a real HTTP service before this session; these 5 close
+  the rest (Dashboard-AI is a Vite/React UI, not a Python CLI needing
+  this same treatment - separate, different kind of work).
+
 ## [0.3.0] - The 0.2.9 fix was still wrong: Node-Healing can't watch zero nodes
 
 ### Fixed
