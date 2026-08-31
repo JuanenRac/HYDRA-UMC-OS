@@ -1,10 +1,10 @@
 # Changelog
 
-## [0.0.17] - The real fix for the kiosk freeze: a compositor
+## [0.1.7] - The real fix for the kiosk freeze: a compositor
 
 ### Fixed
 
-- **`[0.0.16]`'s `Option "Present" "false"` did not actually fix the kiosk
+- **`[0.1.6]`'s `Option "Present" "false"` did not actually fix the kiosk
   freeze** - live-verified: Xorg.0.log kept showing the exact same
   "Present-flip: queue flip during flip on CRTC 2 failed: Invalid
   argument" errors after applying it and rebooting. Root cause: that
@@ -24,13 +24,13 @@
   so Present requests have something to arbitrate through instead of
   racing the CRTC directly. The now-inert `PageFlip` option was removed
   from the xorg.conf.d device section; `kmsdev` (still needed, see
-  `[0.0.13]`) stays.
+  `[0.1.3]`) stays.
 
-## [0.0.16] - Kiosk display no longer freezes (X Present-extension race)
+## [0.1.6] - Kiosk display no longer freezes (X Present-extension race)
 
 ### Fixed
 
-- **The kiosk display froze after `[0.0.15]`** - reported and confirmed
+- **The kiosk display froze after `[0.1.5]`** - reported and confirmed
   live: every kiosk process stayed alive (Xorg, Chromium, openbox all
   still running, Server and the agent both healthy) but the screen
   stopped updating. `Xorg.0.log` showed the real cause: thousands of
@@ -43,11 +43,11 @@
   section - the standard, documented mitigation for this exact
   driver/Present race.
 
-## [0.0.15] - Splash now covers the whole boot, not just its first ~4s
+## [0.1.5] - Splash now covers the whole boot, not just its first ~4s
 
 ### Fixed
 
-- **Boot-log lines were still visible after `[0.0.14]`'s `quiet splash`
+- **Boot-log lines were still visible after `[0.1.4]`'s `quiet splash`
   fix** - reported live watching this device boot again. Root cause found
   in `journalctl`: systemd's own `plymouth-quit.service` fired only ~4s
   into boot, long before slower units (`network-online.target`,
@@ -60,7 +60,7 @@
   splash now covers this device's entire real boot, not just its first
   few seconds.
 
-## [0.0.14] - Quiet kiosk boot, and no more duplicate splash
+## [0.1.4] - Quiet kiosk boot, and no more duplicate splash
 
 ### Fixed
 
@@ -81,7 +81,7 @@
   has an independent `skipSplash=true` for exactly this; the kiosk hand-off
   URL uses it.
 
-## [0.0.13] - Real HDMI kiosk: animated splash, then STUDIO fullscreen
+## [0.1.3] - Real HDMI kiosk: animated splash, then STUDIO fullscreen
 
 ### Added
 
@@ -112,7 +112,7 @@
   `/etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf` pinning
   `Driver "modesetting"` and `Option "kmsdev" "/dev/dri/card1"`.
 
-## [0.0.12] - install_cm5_base.sh no longer depends on git's executable bit
+## [0.1.2] - install_cm5_base.sh no longer depends on git's executable bit
 
 ### Fixed
 
@@ -132,7 +132,7 @@
   top-level `build.sh`/`run.sh`, as defense in depth for direct
   invocation.
 
-## [0.0.11] - Removed a real duplicate/drift risk between the two deployment docs
+## [0.1.1] - Removed a real duplicate/drift risk between the two deployment docs
 
 ### Fixed
 
@@ -148,7 +148,7 @@
   reference (the AP password step moved to section 3 in that document's
   own gate-based rewrite) to point at the real, current location.
 
-## [0.0.10] - Real, verified CM5-from-Windows flashing procedure
+## [0.1.0] - Real, verified CM5-from-Windows flashing procedure
 
 ### Added
 
