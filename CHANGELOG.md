@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.0.10] - Real, verified CM5-from-Windows flashing procedure
+
+### Added
+
+- **`docs/CM5_WINDOWS_HOST_FLASHING.md`** (new) - the real, verified
+  procedure for getting a bare CM5 + official IO Board onto Raspberry Pi
+  OS Lite ARM64 from a Windows host, captured from an actual real-hardware
+  session rather than written speculatively. Covers the two real failure
+  modes in order: a missing Windows driver on the "BCM2712D0 Boot"
+  boot-ROM stage (fixed with Zadig + WinUSB), and - when that alone isn't
+  enough, a real, reported case for CM5 specifically - a WSL2 +
+  usbipd-win + a real compiled `raspberrypi/usbboot` `rpiboot` fallback
+  (including the two real usbipd gotchas hit while building this:
+  `usbipd`'s own PATH not refreshing in an already-open shell, and the
+  CM5's own mid-boot USB re-enumeration needing `--auto-attach`, not a
+  plain one-shot `attach`, to survive). Documents the real `custom.toml`
+  schema for anyone scripting this from a host without Windows' own UAC
+  elevation problem, and the real one-line generate-and-hash pattern that
+  sets a console password without its plaintext ever being displayed or
+  logged, honoring `CM5_PROVISIONING.md`'s own "never write it into a
+  repository, shell script, log or support ticket" policy for real.
+- Cross-referenced from `provisioning/CM5_DEPLOYMENT_SEQUENCE.md`'s own
+  step 1.
+
 ## [0.0.9] - Real WiFi first-contact provisioning (AP mode + client join)
 
 ### Added
@@ -128,6 +152,15 @@
 - Automated build version increment from 0.0.3.
 
 ## Unreleased
+
+### Documentation
+
+- Reworked the CM5 deployment sequence and first-boot checklist into explicit
+  physical and software gates: carrier/power validation, key-based SSH,
+  read-only preflight, reviewed dry run, BASE verification/reboot/recovery,
+  loopback Server and one-at-a-time hardware enablement. The procedure now
+  states the `HYDRA-UMC-TEST` / `hydra-umc-test` / `hydra-umc` identity,
+  secret-handling boundary and what host/WSL tests cannot prove.
 
 ### Added
 
