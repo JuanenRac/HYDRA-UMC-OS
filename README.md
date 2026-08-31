@@ -67,7 +67,7 @@ HTTP round-trip over a real loopback socket - see
 `tools/verify_wifi_provision.py`. Installed by `install_cm5_base.sh` but
 deliberately not auto-enabled, since it must not start with its own
 placeholder AP password on a real, over-the-air-reachable device - see
-`provisioning/CM5_DEPLOYMENT_SEQUENCE.md` step 9 for the real password
+`provisioning/CM5_DEPLOYMENT_SEQUENCE.md` section 3 for the real password
 step required first.
 
 ## 🎯 Planned first milestone

@@ -30,40 +30,14 @@ repository. Set the administrator password locally with `passwd hydra-umc`.
 
 ## Deployment sequence
 
-1. Flash the latest official Raspberry Pi OS Lite ARM64 image.
-2. Configure the local Wi-Fi with Raspberry Pi's supported first-boot method,
-   or - when the target network isn't known yet at flash time - enable the
-   real AP-mode fallback `install_cm5_base.sh` installs
-   (`hydra-umc-wifi-provision.service` / `provisioning/wifi_provision.py`,
-   real NetworkManager hotspot + a local HTTP form for the real target
-   SSID/password). See `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` steps 2
-   and 9 for the full real sequence, including the required real
-   per-device AP password step.
-3. Enable SSH with the administrator public key and verify a key login.
-4. Record image release, kernel, firmware and CM5 serial information.
-5. With a sibling `HYDRA-UMC-SDK` checkout available, run
-   `python3 provisioning/preflight_cm5.py --sdk-root ../HYDRA-UMC-SDK`. It is
-   read-only and must report `CM5_PREFLIGHT=PASS` before the CM5 is changed.
-6. Run `sudo bash provisioning/first_boot.sh`; inspect its dry-run output.
-7. Run `sudo bash provisioning/first_boot.sh --apply`.
-8. Run `sudo bash provisioning/install_local_agent.sh`, inspect it, then repeat
-   with `--apply`. Enable the service only after reviewing configuration.
-9. Run the read-only `describe` and `health` commands; archive their JSON.
-10. Optionally install local Server only after a supported ARM64 Node.js 20+
-    runtime and a locally created `/etc/hydra-umc/server.env` are present:
-    `sudo bash provisioning/install_cm5_base.sh --apply --with-server`.
-    Add `--enable-services` only after review, then verify with
-    `sudo bash provisioning/verify_cm5_runtime.sh --with-server`.
-11. To add the bounded text-only Voice UI relay, create
-    `/etc/hydra-umc/voice-ui.env` from its public template and set the same
-    long random token in both environment files. Then run
-    `sudo bash provisioning/install_cm5_base.sh --apply --with-server --with-voice-ui`.
-    Verify it with `sudo bash provisioning/verify_cm5_runtime.sh --with-server --with-voice-ui`.
-    This does not install Hailo, Whisper or neural TTS.
-12. Before optional profiles, create a restricted recovery archive with
-    `sudo bash provisioning/cm5_recovery.sh backup /root/hydra-umc-state.tar.gz --apply`.
-13. Keep `control` and `vision` profiles disabled until each interface is
-   physically validated.
+The full, gated, step-by-step procedure lives in one place only -
+[`provisioning/CM5_DEPLOYMENT_SEQUENCE.md`](../provisioning/CM5_DEPLOYMENT_SEQUENCE.md)
+- to avoid two documents describing the same real sequence at different
+granularity and drifting apart. On a Windows host, also read
+[CM5_WINDOWS_HOST_FLASHING.md](CM5_WINDOWS_HOST_FLASHING.md) first - real,
+verified driver/USB troubleshooting that document's own step 1 doesn't
+cover. Use the
+[first boot checklist](CM5_FIRST_BOOT_CHECKLIST.md) alongside it.
 
 ## SSH policy
 

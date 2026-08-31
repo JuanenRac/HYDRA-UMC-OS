@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.0.11] - Removed a real duplicate/drift risk between the two deployment docs
+
+### Fixed
+
+- **`docs/CM5_PROVISIONING.md`** - its own 13-step "Deployment sequence"
+  duplicated `provisioning/CM5_DEPLOYMENT_SEQUENCE.md`'s own real,
+  gated procedure at a different granularity - a real, found drift risk:
+  the two lists no longer even had matching step counts after
+  `CM5_DEPLOYMENT_SEQUENCE.md`'s own recent rewrite into gates. Collapsed
+  to a single pointer at the one real source of truth, keeping this
+  document focused on what's genuinely unique to it (identity table, SSH
+  policy detail, boot identity/splash, rollback/recovery summary).
+- **`README.md`** - fixed a stale `CM5_DEPLOYMENT_SEQUENCE.md` "step 9"
+  reference (the AP password step moved to section 3 in that document's
+  own gate-based rewrite) to point at the real, current location.
+
 ## [0.0.10] - Real, verified CM5-from-Windows flashing procedure
 
 ### Added
