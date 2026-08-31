@@ -183,6 +183,13 @@ Apply it only after a successful BASE reboot and recovery test. Keep the source
 SVG with the project; do not claim boot animation behaviour that has not been
 observed on the actual CM5 display path.
 
+For a node with an HDMI display attached, `provisioning/install_kiosk.sh`
+adds the real animated hand-off: a minimal X11 + Chromium kiosk session
+that plays `HYDRA_UMC_SPLASHSCREEN.svg` exactly as authored (Plymouth
+alone cannot - see that script's own header comment), then switches to
+Server's own STUDIO UI fullscreen once Server actually answers. Same
+dry-run/`--apply` review before committing to a boot-time change.
+
 **Gate 6:** branding is cosmetic, reversible and cannot block a normal boot.
 
 ## 7. Enable hardware-dependent profiles one at a time

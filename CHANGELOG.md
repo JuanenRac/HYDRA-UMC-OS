@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.0.13] - Real HDMI kiosk: animated splash, then STUDIO fullscreen
+
+### Added
+
+- **`provisioning/install_kiosk.sh`** (new) - a minimal X11 + Chromium
+  kiosk session for the CM5's HDMI output. Plymouth (`install_splashscreen.sh`)
+  can only render a static raster frame or its own tiny scripting language,
+  never `HYDRA_UMC_SPLASHSCREEN.svg`'s real `<animate>`/`<animateTransform>`
+  elements and `@keyframes` - so this instead boots a real browser that
+  shows the actual, unmodified SVG file first
+  (`provisioning/kiosk/splash.html`) and hands off to
+  HYDRA-UMC-SERVER's own STUDIO UI fullscreen once Server actually answers
+  `/api/hydra-info`, not on a fixed timer alone. Same dry-run/`--apply`
+  convention as every other provisioning script.
+
+### Fixed
+
+- **Two real, live-hardware kiosk boot failures**, found and fixed on the
+  first CM5 this was ever run against: (1) `xserver-xorg`'s bundled
+  `xserver-xorg-video-all` pulls in the legacy `fbdev` driver alongside the
+  real KMS `modesetting` driver, and X's own auto-probe died with "Cannot
+  run in framebuffer mode" instead of just using the KMS driver it had
+  already found; (2) even with `modesetting` pinned alone, X still failed
+  with "No devices detected"/"no screens found" despite a real monitor
+  confirmed connected at the kernel level - this CM5's `vc4-kms-v3d`
+  overlay exposes 2 DRM nodes (`card0`, v3d, compute-only; `card1`, vc4,
+  the real display controller), and `modesetting`'s own autodetection did
+  not reliably resolve to `card1` on its own. Both fixed with an explicit
+  `/etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf` pinning
+  `Driver "modesetting"` and `Option "kmsdev" "/dev/dri/card1"`.
+
 ## [0.0.12] - install_cm5_base.sh no longer depends on git's executable bit
 
 ### Fixed

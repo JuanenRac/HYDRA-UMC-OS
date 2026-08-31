@@ -1,0 +1,71 @@
+<!--
+HYDRA-UMC-OS - Kiosk boot splash, hands off to STUDIO once Server is up
+Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+
+Loaded first by the kiosk Chromium session (see kiosk-session.sh). Shows
+HYDRA_UMC_SPLASHSCREEN.svg exactly as authored - unmodified, referenced by
+<object> so its own <animate>/<animateTransform> elements and @keyframes
+play back for real, which Plymouth's boot splash cannot do (see
+install_kiosk.sh's own header comment). Hands off to STUDIO only once
+Server actually answers, not on a fixed timer alone - a real device reboot
+routinely has Server still starting (npm/node startup, port bind) after
+Chromium itself is already on screen, and switching away from the splash
+before Server is reachable would just trade an animated wait for a
+Chromium "connection refused" page instead of a working screen.
+-->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>HYDRA-UMC-OS</title>
+<style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #05070a; overflow: hidden; }
+  object { position: absolute; inset: 0; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<object type="image/svg+xml" data="HYDRA_UMC_SPLASHSCREEN.svg" aria-label="HYDRA-UMC-OS"></object>
+<script>
+  // Real values, not placeholders: MIN_MS keeps the animation on screen
+  // long enough to read even when Server answers instantly (roughly two
+  // loops of the SVG's own slowest element, its 4s width animate);
+  // MAX_MS is the hard ceiling so a Server that never comes up doesn't
+  // leave the kiosk stuck on the splash forever - it moves on to
+  // STUDIO_URL and lets that page show its own real connection error
+  // instead, which is at least actionable for whoever is looking at the
+  // physical screen.
+  var STUDIO_URL = "http://localhost:3000/";
+  var MIN_MS = 3500;
+  var MAX_MS = 20000;
+  var start = Date.now();
+  var handedOff = false;
+
+  function handOff() {
+    if (handedOff) return;
+    handedOff = true;
+    window.location.replace(STUDIO_URL);
+  }
+
+  function pollServer() {
+    if (handedOff) return;
+    var elapsed = Date.now() - start;
+    if (elapsed >= MAX_MS) { handOff(); return; }
+    // Absolute URL, not relative: this page is loaded from file:// (see
+    // kiosk-session.sh), so a relative fetch would resolve against the
+    // file:// origin instead of Server's.
+    fetch(STUDIO_URL + "api/hydra-info", { cache: "no-store" }).then(function (response) {
+      if (response.ok && elapsed >= MIN_MS) {
+        handOff();
+      } else {
+        setTimeout(pollServer, 400);
+      }
+    }).catch(function () {
+      setTimeout(pollServer, 400);
+    });
+  }
+
+  setTimeout(pollServer, MIN_MS);
+</script>
+</body>
+</html>
