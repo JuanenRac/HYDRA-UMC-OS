@@ -194,7 +194,7 @@ run install -o "$KIOSK_USER" -g "$KIOSK_USER" -m 0644 /dev/null "$KIOSK_HOME/.hu
 # by console=/quiet/fbcon settings) writes its own startup banner to
 # whatever's on stdout/stderr when startx launches it, and that flashed on
 # screen briefly every boot until this was redirected away.
-PROFILE_LINE='[ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && exec startx /opt/hydra-umc/kiosk/kiosk-session.sh -- -nocursor -verbose 0 -logverbose 0 &> /dev/null'
+PROFILE_LINE='[ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && exec startx /opt/hydra-umc/kiosk/kiosk-session.sh -- -verbose 0 -logverbose 0 &> /dev/null'
 if $APPLY; then
   touch "$KIOSK_HOME/.bash_profile"
   # Drop any earlier version of this exact line (e.g. before the &> /dev/null

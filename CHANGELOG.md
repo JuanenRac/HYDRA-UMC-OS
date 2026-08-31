@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.2] - The kiosk now shows a mouse cursor with a real mouse attached
+
+### Fixed
+
+- **A physical USB mouse plugged into the CM5's IO board showed no
+  pointer at all**, reported live: `-nocursor` on the kiosk's own Xorg
+  invocation unconditionally disabled cursor rendering, a reasonable
+  default when no pointing device was expected but wrong now that one is
+  attached. Removed; `unclutter` (already running) still auto-hides it
+  after a second of inactivity, so a touch-only session looks the same as
+  before while a real mouse now shows and works.
+
 ## [0.2.1] - Fixed the polkit rule install path from [0.2.0]
 
 ### Fixed
