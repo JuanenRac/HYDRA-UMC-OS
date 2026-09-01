@@ -82,7 +82,7 @@ siehe `tools/verify_preflight_idempotent.py` und
 
 Lesen Sie [die Architektur](docs/ARCHITECTURE.md), bevor Sie Code implementieren.
 
-## 🛠️ BUILD & RUN
+## 🛠️ BUILD UND AUSFÜHRUNG
 
 Verwenden Sie den Build-Check ohne Versionierung vor einem Release-Build:
 

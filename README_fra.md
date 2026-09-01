@@ -81,7 +81,7 @@ Les deux sont vérifiés sans root ni CM5 - voir
 
 Lisez [l'architecture](docs/ARCHITECTURE.md) avant d'implémenter le code.
 
-## 🛠️ BUILD & RUN
+## 🛠️ BUILD ET EXÉCUTION
 
 Utilisez la vérification de compilation sans versionnement avant une compilation de publication :
 

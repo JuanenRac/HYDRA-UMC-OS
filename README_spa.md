@@ -81,7 +81,7 @@ root ni una CM5 - consulte `tools/verify_preflight_idempotent.py` y
 
 Lea [la arquitectura](docs/ARCHITECTURE.md) antes de implementar el código.
 
-## 🛠️ BUILD & RUN
+## 🛠️ BUILD Y EJECUCIÓN
 
 Usa la comprobación de compilación sin versionado antes de una compilación de publicación:
 

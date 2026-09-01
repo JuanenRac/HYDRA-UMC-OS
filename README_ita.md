@@ -81,7 +81,7 @@ esecuzione. Entrambi sono verificati senza root o una CM5 - vedere
 
 Leggi [l'architettura](docs/ARCHITECTURE.md) prima di implementare il codice.
 
-## 🛠️ BUILD & RUN
+## 🛠️ BUILD ED ESECUZIONE
 
 Usa il controllo di compilazione senza versionamento prima di una compilazione di rilascio:
 
