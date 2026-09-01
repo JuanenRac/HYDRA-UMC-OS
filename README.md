@@ -118,7 +118,12 @@ Use the non-versioning build check before a release build:
 
 **Rest of the ecosystem:** explore the seven public layers in the [JuanenRac ecosystem dashboard](https://juanenrac.github.io/JuanenRac/).
 
-## 📜 License
+## 👤 AUTHOR
+**JuanenRac** (Electro Hobby 3D)
+📧 electrohobby3d@gmail.com
+📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+## 📜 LICENSE
 
 Code is GPL-3.0-or-later and documentation is CC BY-SA 4.0. See [LICENSE](LICENSE).
 

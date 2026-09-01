@@ -11,7 +11,7 @@ CC BY-SA 4.0 - LICENSE.md を参照
 </p>
 
 <p align="center">
-  <a href="README.md">???? English</a> |
+  <a href="README.md">🇺🇸 English</a> |
   <a href="README_spa.md">🇪🇸スペイン語</a> |
   <a href="README_fra.md">🇫🇷 フランス語</a> |
   <a href="README_ita.md">🇮🇹 イタリアーノ</a> |
@@ -27,7 +27,7 @@ CC BY-SA 4.0 - LICENSE.md を参照
   <img src="https://img.shields.io/badge/Stack-Debian%20%7C%20Python%20%7C%20Shell-blueviolet.svg" alt="スタック: Debian | Python | シェル">
 </p>
 
-# ヒドラ-UMC-OS
+# HYDRA-UMC-OS
 
 ## 🖥️ Raspberry Pi OS 用の HYDRA-UMC プラットフォーム レイヤー
 
@@ -48,11 +48,13 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 インストールのプリフライト（`provisioning/preflight_cm5.py`）は、実際のテストによって冪等性があり副作用がないことが証明されている——2回連続で実行してもバイト単位で同一の出力が得られ、このリポジトリ内のファイルには一切触れない——そして、実際のホスト非依存なバックアップ/ロールバック機構（`provisioning/rollback.py`）が、`install_local_agent.sh` が実行のたびに無条件で上書きする唯一のシステムファイルを保護する。どちらも root 権限や CM5 なしで検証されている——`tools/verify_preflight_idempotent.py` と `tools/verify_rollback.py` を参照。
 
+**WiFi 初回接続プロビジョニングも実際に動作する**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——まだ既知のネットワークを持たないヘッドレス CM5 のための、実際の NetworkManager AP モードのフォールバック。実際のホットスポット（`nmcli device wifi hotspot`）を起動し、オペレーターの携帯電話やノート PC がそれに接続して、小さなローカル HTTP フォームを通じて実際のターゲット SSID/パスワードを送信できるようにする。成功時には AP を停止して実際のネットワークに参加し、失敗時には AP を復元してデバイスが孤立しないようにする。この状態機械は、疑似的な NetworkManager に対して完全に単体テストされており、実際のループバックソケット上での実際のエンドツーエンド HTTP 往復も含まれる——`tools/verify_wifi_provision.py` を参照。`install_cm5_base.sh` によってインストールされるが、実際に無線到達可能なデバイス上でプレースホルダーの AP パスワードのまま起動してはならないため、意図的に自動有効化はされない——先に必要な実際のパスワード設定手順については `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` のセクション 3 を参照。
+
 ## 🎯 計画された最初のマイルストーン
 
 1. CM5 用の Raspberry Pi OS ARM64 プロファイルを構築します。
-2. `hydra-umc-platform-b​​ase` と `hydra-umc-agent` をインストールします。
-3. CM5 インターフェイスを検出し、「DeviceDescriptor」と「HealthReport」を報告します。
+2. `hydra-umc-platform-base` と `hydra-umc-agent` をインストールします。
+3. CM5 インターフェイスを検出し、`DeviceDescriptor` と `HealthReport` を報告します。
 4. systemd を介して有効なサービスのみを開始します。
 5. ローカルで READY、DEGRADED、INHIBITED、または FAULT を表示します。
 
@@ -65,10 +67,10 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 |パス |目的 |
 | --- | --- |
 | `docs/` |アーキテクチャ、インストール、サービス、およびアップデートの仕様。 |
-| `イメージビルダー/` |公式の Raspberry Pi OS イメージ アセンブリの境界と再現性に関するメモ。 |
-| `パッケージ/` | 「hydra-umc-platform-b​​ase」の Debian パッケージのメタデータ。 |
-| `エージェント/` |単体テストを備えた読み取り専用の Python デバイス記述子とヘルス エージェント。 |
-| `systemd/` |強化された「hydra-umc-agent.service」ライフサイクル ユニット。 |
+| `image-builder/` |公式の Raspberry Pi OS イメージアセンブリの境界と再現性に関するメモ。 |
+| `packages/` | `hydra-umc-platform-base` の Debian パッケージのメタデータ。 |
+| `agent/` |単体テストを備えた読み取り専用の Python デバイス記述子とヘルスエージェント。 |
+| `systemd/` |強化された `hydra-umc-agent.service` ライフサイクルユニット。 |
 | `config/` |デフォルトのスキーマと非シークレット構成。 |
 
 コードを実装する前に、[アーキテクチャ](docs/ARCHITECTURE.md) をお読みください。
@@ -98,6 +100,11 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 **残りのエコシステム:** [JuanenRac エコシステム ダッシュボード](https://juanenrac.github.io/JuanenRac/) で 7 つのパブリック レイヤーを調べてください。
 
-## 📜ライセンス
+## 👤 作者
+**JuanenRac** (Electro Hobby 3D)
+📧 electrohobby3d@gmail.com
+📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
 
-コードは GPL-3.0 以降、ドキュメントは CC BY-SA 4.0 です。 [ライセンス](LICENSE)を参照してください。
+## 📜 ライセンス
+
+コードは GPL-3.0 以降、ドキュメントは CC BY-SA 4.0 です。[LICENSE](LICENSE) を参照してください。

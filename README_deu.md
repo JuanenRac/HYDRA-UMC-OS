@@ -11,7 +11,7 @@ CC BY-SA 4.0 – siehe LICENSE.md
 </p>
 
 <p align="center">
-  <a href="README.md">???? English</a> |
+  <a href="README.md">🇺🇸 English</a> |
   <a href="README_spa.md">🇪🇸 Spanisch</a> |
   <a href="README_fra.md">🇫🇷 Französisch</a> |
   <a href="README_ita.md">🇮🇹 Italienisch</a> |
@@ -57,11 +57,29 @@ Systemdatei, die `install_local_agent.sh` bei jedem Lauf bedingungslos
 siehe `tools/verify_preflight_idempotent.py` und
 `tools/verify_rollback.py`.
 
+**Die WiFi-Erstkontakt-Bereitstellung ist ebenfalls real**
+(`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`):
+ein echter NetworkManager-AP-Modus-Fallback für eine kopflose CM5 ohne
+bekanntes Netzwerk - baut einen echten Hotspot auf (`nmcli device wifi
+hotspot`), dem sich das Telefon/Laptop eines Bedieners anschließen kann,
+um die echte Ziel-SSID/das Passwort über ein kleines lokales
+HTTP-Formular zu übermitteln, baut den AP bei Erfolg ab und verbindet
+sich mit dem echten Netzwerk, stellt ihn bei einem Fehler wieder her,
+damit das Gerät nie ausgesperrt bleibt. Die Zustandsmaschine ist
+vollständig unit-getestet gegen einen simulierten NetworkManager,
+einschließlich eines echten End-zu-End-HTTP-Roundtrips über einen
+echten Loopback-Socket - siehe `tools/verify_wifi_provision.py`. Wird
+von `install_cm5_base.sh` installiert, aber bewusst nicht automatisch
+aktiviert, da es nicht mit seinem eigenen Platzhalter-AP-Passwort auf
+einem echten, drahtlos erreichbaren Gerät starten darf - siehe
+`provisioning/CM5_DEPLOYMENT_SEQUENCE.md` Abschnitt 3 für den
+erforderlichen echten Passwort-Schritt.
+
 ## 🎯 Geplanter erster Meilenstein
 
 1. Erstellen Sie ein Raspberry Pi OS ARM64-Profil für CM5.
-2. Installieren Sie „hydra-umc-platform-base“ und „hydra-umc-agent“.
-3. CM5-Schnittstellen erkennen und einen „DeviceDescriptor“ und einen „HealthReport“ melden.
+2. Installieren Sie `hydra-umc-platform-base` und `hydra-umc-agent`.
+3. CM5-Schnittstellen erkennen und einen `DeviceDescriptor` und einen `HealthReport` melden.
 4. Starten Sie nur aktivierte Dienste über systemd.
 5. Zeigen Sie lokal BEREIT, DEGRADED, GESPERRT oder FEHLER an.
 
@@ -75,9 +93,9 @@ siehe `tools/verify_preflight_idempotent.py` und
 | --- | --- |
 | `docs/` | Architektur-, Installations-, Service- und Update-Spezifikationen. |
 | `image-builder/` | Offizielle Hinweise zur Bildassemblierung und Reproduzierbarkeit des Raspberry Pi OS. |
-| `Pakete/` | Metadaten des Debian-Pakets für „hydra-umc-platform-base“. |
+| `packages/` | Metadaten des Debian-Pakets für `hydra-umc-platform-base`. |
 | `agent/` | Schreibgeschützter Python-Gerätedeskriptor und Integritätsagent mit Komponententests. |
-| `systemd/` | Gehärtete Lebenszykluseinheit „hydra-umc-agent.service“. |
+| `systemd/` | Gehärtete Lebenszykluseinheit `hydra-umc-agent.service`. |
 | `config/` | Standardschemata und nicht geheime Konfiguration. |
 
 Lesen Sie [die Architektur](docs/ARCHITECTURE.md), bevor Sie Code implementieren.
@@ -107,6 +125,11 @@ Verwenden Sie den Build-Check ohne Versionierung vor einem Release-Build:
 
 **Rest des Ökosystems:** Erkunden Sie die sieben öffentlichen Ebenen im [JuanenRac-Ökosystem-Dashboard](https://juanenrac.github.io/JuanenRac/).
 
-## 📜 Lizenz
+## 👤 AUTOR
+**JuanenRac** (Electro Hobby 3D)
+📧 electrohobby3d@gmail.com
+📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+## 📜 LIZENZ
 
 Der Code ist GPL-3.0-or-later und die Dokumentation ist CC BY-SA 4.0. Siehe [LICENSE](LICENSE).

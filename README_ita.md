@@ -11,7 +11,7 @@ CC BY-SA 4.0 - vedere LICENZA.md
 </p>
 
 <p align="center">
-  <a href="README.md">???? English</a> |
+  <a href="README.md">🇺🇸 English</a> |
   <a href="README_spa.md">🇪🇸 Español</a> |
   <a href="README_fra.md">🇫🇷 Français</a> |
   <a href="README_ita.md">🇮🇹 Italiano</a> |
@@ -56,10 +56,28 @@ reale di backup/rollback indipendente dall'host
 esecuzione. Entrambi sono verificati senza root o una CM5 - vedere
 `tools/verify_preflight_idempotent.py` e `tools/verify_rollback.py`.
 
+**Anche il provisioning WiFi al primo contatto è reale**
+(`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`):
+un vero fallback in modalità AP di NetworkManager per una CM5 headless
+senza ancora una rete nota - attiva un vero hotspot (`nmcli device wifi
+hotspot`) a cui il telefono/laptop di un operatore può connettersi per
+inviare il vero SSID/password di destinazione tramite un piccolo modulo
+HTTP locale, disattiva l'AP e si unisce alla rete reale in caso di
+successo, lo ripristina in caso di errore così il dispositivo non resta
+mai isolato. La macchina a stati è completamente testata con unit test
+contro un NetworkManager fittizio, incluso un vero round-trip HTTP
+end-to-end su un vero socket di loopback - vedere
+`tools/verify_wifi_provision.py`. Installato da `install_cm5_base.sh`
+ma deliberatamente non abilitato automaticamente, poiché non deve
+avviarsi con la propria password AP segnaposto su un dispositivo reale
+raggiungibile via etere - vedere la sezione 3 di
+`provisioning/CM5_DEPLOYMENT_SEQUENCE.md` per il passaggio della
+password reale richiesto prima.
+
 ## 🎯 Primo traguardo previsto
 
 1. Crea un profilo ARM64 del sistema operativo Raspberry Pi per CM5.
-2. Installa "hydra-umc-platform-base" e "hydra-umc-agent".
+2. Installa `hydra-umc-platform-base` e `hydra-umc-agent`.
 3. Rileva le interfacce CM5 e segnala un `DeviceDescriptor` e un `HealthReport`.
 4. Avvia solo i servizi abilitati tramite systemd.
 5. Visualizzare localmente PRONTO, DEGRADATO, INIBITO o GUASTO.
@@ -72,11 +90,11 @@ esecuzione. Entrambi sono verificati senza root o una CM5 - vedere
 
 | Percorso | Scopo |
 | --- | --- |
-| `documenti/` | Specifiche di architettura, installazione, servizio e aggiornamento. |
-| `costruttore di immagini/` | Note ufficiali sui limiti di assemblaggio delle immagini e sulla riproducibilità del sistema operativo Raspberry Pi. |
-| `pacchetti/` | Metadati del pacchetto Debian per `hydra-umc-platform-base`. |
-| "agente/" | Descrittore del dispositivo Python di sola lettura e agente di integrità con test unitari. |
-| `systemd/` | Unità del ciclo di vita "hydra-umc-agent.service" rafforzata. |
+| `docs/` | Specifiche di architettura, installazione, servizio e aggiornamento. |
+| `image-builder/` | Note ufficiali sui limiti di assemblaggio delle immagini e sulla riproducibilità del sistema operativo Raspberry Pi. |
+| `packages/` | Metadati del pacchetto Debian per `hydra-umc-platform-base`. |
+| `agent/` | Descrittore del dispositivo Python di sola lettura e agente di integrità con test unitari. |
+| `systemd/` | Unità del ciclo di vita `hydra-umc-agent.service` rafforzata. |
 | `config/` | Schemi predefiniti e configurazione non segreta. |
 
 Leggi [l'architettura](docs/ARCHITECTURE.md) prima di implementare il codice.
@@ -106,6 +124,11 @@ Usa il controllo di compilazione senza versionamento prima di una compilazione d
 
 **Resto dell'ecosistema:** esplora i sette livelli pubblici nella [dashboard dell'ecosistema JuanenRac](https://juanenrac.github.io/JuanenRac/).
 
-## 📜 Licenza
+## 👤 AUTORE
+**JuanenRac** (Electro Hobby 3D)
+📧 electrohobby3d@gmail.com
+📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+## 📜 LICENZA
 
 Il codice è GPL-3.0 o successivo e la documentazione è CC BY-SA 4.0. Vedere [LICENZA](LICENSE).
