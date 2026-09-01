@@ -81,6 +81,17 @@ root ni una CM5 - consulte `tools/verify_preflight_idempotent.py` y
 
 Lea [la arquitectura](docs/ARCHITECTURE.md) antes de implementar el código.
 
+## 🛠️ BUILD & RUN
+
+Usa la comprobación de compilación sin versionado antes de una compilación de publicación:
+
+| Acción | Windows | Linux / macOS |
+|---|---|---|
+| Comprobación de compilación (sin cambiar versión ni CHANGELOG) | `build-test.bat` | `./build-test.sh` |
+| Ejecución / desarrollo (cuando exista) | `run*.bat` o `dev*.bat` | `./run*.sh` o `./dev*.sh` |
+
+`build-test.bat` y `build-test.sh` compilan o validan el stack del proyecto sin incrementar `hydra-umc.project.json` ni modificar `CHANGELOG.md`. Solo pueden crear salidas normales del compilador. Los scripts existentes `build*.bat`, `build*.sh`, `run*` y `dev*` conservan su comportamiento específico de versión o ejecución; úsalos cuando necesites ese comportamiento.
+
 ## 🔗 Proyectos relacionados
 
 > Mapa canónico de relaciones entre ecosistemas públicos.
@@ -98,14 +109,3 @@ Lea [la arquitectura](docs/ARCHITECTURE.md) antes de implementar el código.
 ## 📜 Licencia
 
 El código es GPL-3.0 o posterior y la documentación es CC BY-SA 4.0. Consulte [LICENCIA](LICENSE).
-
-## 🛠️ BUILD & RUN
-
-Usa la comprobación de compilación sin versionado antes de una compilación de publicación:
-
-| Acción | Windows | Linux / macOS |
-|---|---|---|
-| Comprobación de compilación (sin cambiar versión ni CHANGELOG) | `build-test.bat` | `./build-test.sh` |
-| Ejecución / desarrollo (cuando exista) | `run*.bat` o `dev*.bat` | `./run*.sh` o `./dev*.sh` |
-
-`build-test.bat` y `build-test.sh` compilan o validan el stack del proyecto sin incrementar `hydra-umc.project.json` ni modificar `CHANGELOG.md`. Solo pueden crear salidas normales del compilador. Los scripts existentes `build*.bat`, `build*.sh`, `run*` y `dev*` conservan su comportamiento específico de versión o ejecución; úsalos cuando necesites ese comportamiento.
