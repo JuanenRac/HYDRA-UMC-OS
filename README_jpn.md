@@ -73,7 +73,7 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 コードを実装する前に、[アーキテクチャ](docs/ARCHITECTURE.md) をお読みください。
 
-## 🛠️ BUILD & RUN
+## 🛠️ ビルドと実行
 
 リリースビルドの前に、バージョンを変更しないビルドチェックを使用してください。
 
