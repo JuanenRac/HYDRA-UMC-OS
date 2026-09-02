@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.6] - Polkit-scoped service control for hydra-umc-server
+
+### Added
+
+- **`provisioning/polkit/50-hydra-umc-server-service-control.rules`**
+  (new), installed by `install_server.sh` alongside the existing
+  reboot/poweroff rule - grants the unprivileged `hydra-umc-server`
+  account start/stop/restart via systemd's own polkit-gated D-Bus API,
+  scoped to exactly the `hydra-umc-*.service` namespace (never this
+  server's own unit, never anything outside this ecosystem's own
+  units). Backs HYDRA-UMC-SERVER's own `POST /api/ecosystem/service/
+  :unit/:action` (admin-only) - see that repo's own 0.3.7 changelog
+  entry for the server-side half of this feature. Verified installed
+  and present on the real CM5 (`sudo ls /etc/polkit-1/rules.d/`).
+
 ## [0.3.5] - Dashboard-AI static serving
 
 ### Added
