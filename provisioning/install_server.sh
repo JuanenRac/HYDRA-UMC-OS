@@ -46,5 +46,12 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-server.service" /etc/systemd/system/h
 # exact, narrow scope (only those 2 actions, only this one account).
 install -d -m 0755 /etc/polkit-1/rules.d
 install -m 0644 "$OS_ROOT/provisioning/polkit/49-hydra-umc-server-power.rules" /etc/polkit-1/rules.d/49-hydra-umc-server-power.rules
+# Lets $SERVER_USER start/stop/restart OTHER hydra-umc-*.service units
+# via systemd's own polkit-gated D-Bus API - server.ts's own
+# POST /api/ecosystem/service/:unit/:action, admin-only, backs the
+# Ecosystem > Services panel's per-project controls. See the rule file's
+# own header comment for the exact, narrow scope (never this server's
+# own unit, never anything outside the hydra-umc- namespace).
+install -m 0644 "$OS_ROOT/provisioning/polkit/50-hydra-umc-server-service-control.rules" /etc/polkit-1/rules.d/50-hydra-umc-server-service-control.rules
 systemctl daemon-reload
 echo "Server installed. Enable manually after review: systemctl enable --now hydra-umc-server"
