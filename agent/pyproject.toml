@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hydra-umc-os-agent"
-version = "0.0.6"
+version = "0.3.6"
 description = "Read-only node diagnostics and lifecycle agent for HYDRA-UMC-OS"
 requires-python = ">=3.11"
 license = {text = "GPL-3.0-or-later"}
