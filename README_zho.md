@@ -36,8 +36,8 @@ HYDRA-UMC-OS 是 HYDRA-UMC CM5 节点的可安装平台层。
 Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 其职责是提供可重复的 HYDRA-UMC 设备配置文件：
-配置、服务生命周期、本地身份、诊断、视觉
-HYDRA-UMC 组件的品牌和协调更新。
+配置、服务生命周期、本地身份、诊断、视觉品牌
+以及 HYDRA-UMC 组件的协调更新。
 
 ## 🚧 状态
 
@@ -70,7 +70,7 @@ HYDRA-UMC 组件的品牌和协调更新。
 | `image-builder/` |官方 Raspberry Pi OS 镜像组装边界和可复现性说明。 |
 | `packages/` | `hydra-umc-platform-base` 的 Debian 软件包元数据。 |
 | `agent/` |只读的 Python 设备描述符与健康状态代理，含单元测试。 |
-| `systemd/` |强化的 `hydra-umc-agent.service` 生命周期单元。 |
+| `systemd/` |强化的 `hydra-umc-agent.service` 和 `hydra-umc-wifi-provision.service` 生命周期单元。 |
 | `config/` |默认模式和非秘密配置。 |
 
 在实现代码之前阅读[架构](docs/ARCHITECTURE.md)。
@@ -92,7 +92,7 @@ HYDRA-UMC 组件的品牌和协调更新。
 
 |项目|与 HYDRA-UMC-OS 的关系 |
 | ---| ---|
-| [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK) |设备代理使用的版本化合同、瘦客户端和一致性固定装置。 |
+| [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK) |设备代理使用的版本化合约、瘦客户端和一致性 fixture。 |
 | [HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER) |节点托管集成的经过身份验证的服务边界。 |
 | [HYDRA-UMC-UPDATER](https://github.com/JuanenRac/HYDRA-UMC-UPDATER) |工件注册表、兼容性元数据和协调的更新工作流程。 |
 | [HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC) | OS层配置和管理的CM5/MCU硬件和固件平台。 |

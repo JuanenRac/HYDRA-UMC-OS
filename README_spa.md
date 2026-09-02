@@ -33,18 +33,18 @@ CC BY-SA 4.0 - ver LICENCIA.md
 
 HYDRA-UMC-OS es la capa de plataforma instalable para un nodo HYDRA-UMC CM5.
 Está construido sobre Raspberry Pi OS ARM64; no reemplaza a Linux, el
-Kernel de Raspberry Pi, systemd, NetworkManager, libcamera o SDK de proveedores.
+kernel de Raspberry Pi, systemd, NetworkManager, libcamera o SDK de proveedores.
 
 Su responsabilidad es proporcionar un perfil de dispositivo HYDRA-UMC reproducible:
-configuración, ciclo de vida del servicio, identidad local, diagnóstico, visual
-marca y actualizaciones coordinadas para los componentes de HYDRA-UMC.
+configuración, ciclo de vida del servicio, identidad local, diagnóstico,
+marca visual y actualizaciones coordinadas para los componentes de HYDRA-UMC.
 
 ## 🚧 Estado
 
-El agente base, su configuración no secreta validada, un sistema reforzado
-Se implementan pruebas de unidad y del lado del host. El agente es deliberadamente
+El agente base, su configuración no secreta validada, una unidad systemd
+reforzada y pruebas del lado del host están implementados. El agente es deliberadamente
 solo lectura: el ensamblaje de la imagen de producción y la validación del hardware CM5 permanecen
-puertas de liberación separadas.
+como puertas de liberación separadas.
 
 La instalación preflight (`provisioning/preflight_cm5.py`) ha demostrado ser
 idempotente y libre de efectos secundarios mediante una prueba real - dos
@@ -88,13 +88,13 @@ contraseña real requerido primero.
   <img src="images/REPOSITORY_LAYOUT.svg" alt="Mapa visual del diseño del repositorio de HYDRA-UMC-OS" width="100%">
 </p>
 
-| Camino | Propósito |
+| Ruta | Propósito |
 | --- | --- |
 | `docs/` | Arquitectura, instalación, servicio y actualización de especificaciones. |
 | `image-builder/` | Notas oficiales de reproducibilidad y límites del ensamblaje de imágenes del sistema operativo Raspberry Pi. |
 | `packages/` | Metadatos del paquete Debian para `hydra-umc-platform-base`. |
 | `agent/` | Descriptor de dispositivo Python de solo lectura y agente de salud con pruebas unitarias. |
-| `systemd/` | Unidad de ciclo de vida reforzada `hydra-umc-agent.service`. |
+| `systemd/` | Unidades de ciclo de vida reforzadas `hydra-umc-agent.service` y `hydra-umc-wifi-provision.service`. |
 | `config/` | Esquemas predeterminados y configuración no secreta. |
 
 Lea [la arquitectura](docs/ARCHITECTURE.md) antes de implementar el código.
@@ -116,7 +116,7 @@ Usa la comprobación de compilación sin versionado antes de una compilación de
 
 | Proyecto | Relación con HYDRA-UMC-OS |
 | --- | --- |
-| [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK) | Contratos versionados, clientes ligeros y dispositivos de conformidad utilizados por el agente del dispositivo. |
+| [HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK) | Contratos versionados, clientes ligeros y fixtures de conformidad utilizados por el agente del dispositivo. |
 | [HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER) | Límite de servicio autenticado para las integraciones administradas del nodo. |
 | [HYDRA-UMC-UPDATER](https://github.com/JuanenRac/HYDRA-UMC-UPDATER) | Registro de artefactos, metadatos de compatibilidad y flujo de trabajo de actualización coordinado. |
 | [HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC) | Plataforma de hardware y firmware CM5/MCU que la capa del sistema operativo configura y supervisa. |

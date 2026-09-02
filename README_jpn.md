@@ -70,7 +70,7 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 | `image-builder/` |公式の Raspberry Pi OS イメージアセンブリの境界と再現性に関するメモ。 |
 | `packages/` | `hydra-umc-platform-base` の Debian パッケージのメタデータ。 |
 | `agent/` |単体テストを備えた読み取り専用の Python デバイス記述子とヘルスエージェント。 |
-| `systemd/` |強化された `hydra-umc-agent.service` ライフサイクルユニット。 |
+| `systemd/` |強化された `hydra-umc-agent.service` と `hydra-umc-wifi-provision.service` のライフサイクルユニット。 |
 | `config/` |デフォルトのスキーマと非シークレット構成。 |
 
 コードを実装する前に、[アーキテクチャ](docs/ARCHITECTURE.md) をお読みください。
