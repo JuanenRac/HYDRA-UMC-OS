@@ -75,6 +75,23 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 在实现代码之前阅读[架构](docs/ARCHITECTURE.md)。
 
+## 📖 更多文档
+
+- **[`docs/AGENT_REFERENCE.md`](docs/AGENT_REFERENCE.md)** —— 只读诊断 CLI `hydra-umc-agent` 的真实命令/输出参考。
+- **[`docs/INSTALLATION.md`](docs/INSTALLATION.md)** —— 安装设计:目标平台与预期的安装流程。
+- **[`docs/CM5_PROVISIONING.md`](docs/CM5_PROVISIONING.md)** —— 将 Raspberry Pi OS Lite 转变为 HYDRA-UMC-OS 的完整指南。
+- **[`docs/CM5_WINDOWS_HOST_FLASHING.md`](docs/CM5_WINDOWS_HOST_FLASHING.md)** —— 从 Windows 主机烧录 CM5 的已验证流程。
+- **[`docs/CM5_FIRST_BOOT_CHECKLIST.md`](docs/CM5_FIRST_BOOT_CHECKLIST.md)** —— CM5 首次启动的 BASE 平台检查清单。
+- **[`docs/CM5_PACKAGE_MANIFEST.md`](docs/CM5_PACKAGE_MANIFEST.md)** —— 按部署阶段划分的真实软件包清单。
+- **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** —— 在 CM5 上分阶段部署生态系统其余部分的计划，每个阶段均可独立回滚。
+- **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** —— 在没有物理 CM5 硬件的情况下已验证的内容，以及验证止步之处。
+- **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** —— HYDRA-UMC 服务的运行方式：专用用户、配置路径、依赖/就绪顺序。
+- **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** —— 操作系统、HYDRA-UMC 软件包、Hailo 运行时与 MCU/URTC 固件各自独立的更新通道。
+- **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** —— 本仓库如何在不内嵌 HYDRA-UMC-SDK 源码的情况下使用其已发布的契约。
+- **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** —— 开发规则：优先使用 Raspberry Pi OS 原生接口，以及必须遵循的测试顺序。
+- **[`docs/HEADER_CONVENTION.md`](docs/HEADER_CONVENTION.md)** —— 新源码/文档文件的版权与许可证头部约定。
+- **[`provisioning/ssh_hardening.md`](provisioning/ssh_hardening.md)** —— CM5 真实的 SSH 加固步骤（在禁用密码认证前先确认密钥登录可用）。
+
 ## 🛠️ 构建与运行
 
 请在发布构建前使用不改动版本的构建检查：
@@ -176,6 +193,7 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— 本社区所期望的行为准则。
 - **[SECURITY.md](SECURITY.md)** —— 如何报告漏洞，以及本项目真实的安全关注重点。
 - **[SUPPORT.md](SUPPORT.md)** —— 在哪里提问和报告缺陷。
+- **[LICENSE.md](LICENSE.md)** —— 本项目自身的许可证。
 
 ## 👤 作者
 **JuanenRac** (Electro Hobby 3D)

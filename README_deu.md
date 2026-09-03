@@ -100,6 +100,23 @@ erforderlichen echten Passwort-Schritt.
 
 Lesen Sie [die Architektur](docs/ARCHITECTURE.md), bevor Sie Code implementieren.
 
+## 📖 Weitere Dokumentation
+
+- **[`docs/AGENT_REFERENCE.md`](docs/AGENT_REFERENCE.md)** — echte Befehls-/Ausgabereferenz für `hydra-umc-agent`, die schreibgeschützte Diagnose-CLI.
+- **[`docs/INSTALLATION.md`](docs/INSTALLATION.md)** — Installationsdesign: Zielplattform und vorgesehene Installationssequenz.
+- **[`docs/CM5_PROVISIONING.md`](docs/CM5_PROVISIONING.md)** — die vollständige Anleitung, um aus Raspberry Pi OS Lite HYDRA-UMC-OS zu machen.
+- **[`docs/CM5_WINDOWS_HOST_FLASHING.md`](docs/CM5_WINDOWS_HOST_FLASHING.md)** — das verifizierte Verfahren zum Flashen einer CM5 von einem Windows-Host aus.
+- **[`docs/CM5_FIRST_BOOT_CHECKLIST.md`](docs/CM5_FIRST_BOOT_CHECKLIST.md)** — eine BASE-Plattform-Checkliste für den ersten Start einer CM5.
+- **[`docs/CM5_PACKAGE_MANIFEST.md`](docs/CM5_PACKAGE_MANIFEST.md)** — die echte Paketliste je Deployment-Phase.
+- **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** — der phasenweise, jeweils unabhängig rückrollbare Rollout-Plan für den Rest des Ökosystems auf einer CM5.
+- **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** — was ohne physische CM5-Hardware verifiziert wurde, und wo diese Verifikation endet.
+- **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** — wie HYDRA-UMC-Dienste laufen: dedizierte Benutzer, Konfigurationspfade, Abhängigkeits-/Bereitschaftsreihenfolge.
+- **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** — die getrennten Update-Kanäle für das OS, HYDRA-UMC-Pakete, Hailo-Runtimes und MCU/URTC-Firmware.
+- **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** — wie dieses Repo den veröffentlichten Vertrag von HYDRA-UMC-SDK nutzt, ohne ihn zu vendoren.
+- **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** — Entwicklungsregeln: native Raspberry-Pi-OS-Schnittstellen zuerst, die vorgeschriebene Testreihenfolge.
+- **[`docs/HEADER_CONVENTION.md`](docs/HEADER_CONVENTION.md)** — die Copyright-/Lizenz-Header-Konvention für neue Quell- und Dokumentationsdateien.
+- **[`provisioning/ssh_hardening.md`](provisioning/ssh_hardening.md)** — die echten SSH-Hardening-Schritte für eine CM5 (Key-Login verifizieren, bevor die Passwort-Authentifizierung deaktiviert wird).
+
 ## 🛠️ BUILD UND AUSFÜHRUNG
 
 Verwenden Sie den Build-Check ohne Versionierung vor einem Release-Build:
@@ -201,6 +218,7 @@ Dieses Projekt ist Teil des HYDRA-UMC-Robotik-Ökosystems desselben Autors (Juan
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — die in dieser Community erwarteten Verhaltensstandards.
 - **[SECURITY.md](SECURITY.md)** — wie man eine Schwachstelle meldet, und die echten Sicherheitsschwerpunkte dieses Projekts.
 - **[SUPPORT.md](SUPPORT.md)** — wo man Fragen stellt und Fehler meldet.
+- **[LICENSE.md](LICENSE.md)** — die eigene Lizenz dieses Projekts.
 
 ## 👤 AUTOR
 **JuanenRac** (Electro Hobby 3D)

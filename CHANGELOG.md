@@ -758,13 +758,13 @@
   agent. Linked from `docs/SERVICE_MODEL.md`. Documentation-only - no
   code changed, no version bump.
 
-## [0.0.3] - 2026-08-26
+## [0.0.3]
 
 ### Changed
 
 - Automated build version increment from 0.0.2.
 
-## [0.0.2] - 2026-08-26
+## [0.0.2]
 
 ### Added
 
@@ -780,7 +780,7 @@
 - No production image is built or distributed by this repository yet.
 - This release does not command the MCU, CAN, URTC, motion, or updates.
 
-## [0.0.1] - 2026-08-26
+## [0.0.1]
 
 ### Added
 
