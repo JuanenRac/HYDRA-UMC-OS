@@ -168,6 +168,15 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 - **[URTC-SMART-RACK](https://github.com/JuanenRac/URTC-SMART-RACK)** — 実際の工具 ID デコードと Smart Idle 予熱ロジックを備えた、基板搭載ラック用ファームウェア。
 - **[URTC-VISION-TOOL](https://github.com/JuanenRac/URTC-VISION-TOOL)** — サーマル/RGB 検査ツールヘッド向けの、ファームウェアと実際の Python ビジョンコンパニオン。
 
+---
+
+## 📚 ドキュメント & コミュニティ
+
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** —— プルリクエストのための技術スタックとコーディング指針。
+- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— このコミュニティで期待される行動規範。
+- **[SECURITY.md](SECURITY.md)** —— 脆弱性の報告方法と、このプロジェクトの実際のセキュリティ重点領域。
+- **[SUPPORT.md](SUPPORT.md)** —— 質問の投稿先とバグの報告先。
+
 ## 👤 作者
 **JuanenRac** (Electro Hobby 3D)
 📧 electrohobby3d@gmail.com

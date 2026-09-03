@@ -168,6 +168,15 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 - **[URTC-SMART-RACK](https://github.com/JuanenRac/URTC-SMART-RACK)** —— 面向板卡安装机架的固件,具备真实的工具 ID 解码与 Smart Idle 预热逻辑。
 - **[URTC-VISION-TOOL](https://github.com/JuanenRac/URTC-VISION-TOOL)** —— 面向热成像/RGB 检测工具头的固件及真实 Python 视觉伴侣程序。
 
+---
+
+## 📚 文档与社区
+
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** —— 提交 Pull Request 所需的技术栈和编码规范。
+- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— 本社区所期望的行为准则。
+- **[SECURITY.md](SECURITY.md)** —— 如何报告漏洞，以及本项目真实的安全关注重点。
+- **[SUPPORT.md](SUPPORT.md)** —— 在哪里提问和报告缺陷。
+
 ## 👤 作者
 **JuanenRac** (Electro Hobby 3D)
 📧 electrohobby3d@gmail.com
