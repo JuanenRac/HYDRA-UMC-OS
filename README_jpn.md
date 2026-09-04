@@ -109,6 +109,7 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 **子プロジェクト**
 - **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** — すべてのブリッジが自身のコマンドを検証する共有 JSON-Schema 契約と安全ゲートの境界。本 OS 自身のデバイスエージェントが使用する、バージョン管理された契約・シンクライアント・適合性フィクスチャ。
+- **[HYDRA-UMC-OS-REBUILDER](https://github.com/JuanenRac/HYDRA-UMC-OS-REBUILDER)** — エコシステムの最新バージョンをプリロードし、Raspberry Pi Imager方式の初回起動設定を備えた、CM5向けの書き込み可能なこのOSのイメージを構築するWindows/Linuxデスクトップツール。
 
 **直接関連**
 - **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** — 実際のロボットアームのマザーボード——CM5 ホスト + デュアルコア STM32H745、CAN-OTA/SPI-OTA 経由で最大 8 本のツールアームを統括。本 OS 層が設定・監督する CM5/MCU ハードウェア・ファームウェアプラットフォーム。

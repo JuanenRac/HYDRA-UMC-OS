@@ -109,6 +109,7 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 **子项目**
 - **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** —— 每个桥接都据此校验自身指令的共享 JSON-Schema 契约与安全门限边界;本操作系统自身的设备代理所使用的、经过版本管理的契约、轻量客户端与合规性测试夹具。
+- **[HYDRA-UMC-OS-REBUILDER](https://github.com/JuanenRac/HYDRA-UMC-OS-REBUILDER)** —— 为 CM5 构建本操作系统即刻可烧录镜像的 Windows/Linux 桌面工具，预装生态系统最新版本，并提供 Raspberry Pi Imager 风格的首次启动配置。
 
 **直接相关**
 - **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** —— 机器人手臂的真实主板——CM5 主机 + 双核 STM32H745,通过 CAN-OTA/SPI-OTA 协调最多 8 条工具臂;本操作系统层所配置和监管的 CM5/MCU 硬件与固件平台。

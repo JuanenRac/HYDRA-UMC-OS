@@ -127,6 +127,7 @@ This project is part of the HYDRA-UMC robotics ecosystem by the same author (Jua
 
 **Child Projects**
 - **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** — the shared JSON-Schema contract and safety-gate boundary every bridge validates its commands against; versioned contracts, thin clients, and conformance fixtures used by this OS's own device agent.
+- **[HYDRA-UMC-OS-REBUILDER](https://github.com/JuanenRac/HYDRA-UMC-OS-REBUILDER)** — Windows/Linux desktop tool that builds a ready-to-flash image of this OS for the CM5, pre-loaded with the ecosystem's most current versions and Raspberry-Pi-Imager-style first-boot configuration.
 
 **Directly Related**
 - **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** — the physical robot-arm motherboard: CM5 host + dual-core STM32H745, orchestrating up to 8 tool arms over CAN-OTA/SPI-OTA; the CM5/MCU hardware and firmware platform this OS layer configures and supervises.
