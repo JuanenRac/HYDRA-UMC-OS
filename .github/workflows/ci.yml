@@ -38,6 +38,32 @@ jobs:
               py_compile.compile(str(path), doraise=True)
           print(f"PYTHON_SYNTAX=PASS files={len(files)}")
           PY
+      - name: Validate provisioning shell scripts
+        # Found in an ecosystem-wide software-improvements audit: CI
+        # validated Python/Node syntax and tests but never checked the
+        # ~30 provisioning/install_*.sh scripts that are this repo's
+        # actual deliverable - a shell syntax error only ever surfaced by
+        # running it on a real CM5. `bash -n` (syntax-only, no execution)
+        # is the cheap, zero-false-positive half of that fix; shellcheck
+        # itself would also lint style/quoting and is worth a real,
+        # separate pass once its own findings across ~30 scripts have
+        # been triaged, not bundled in here unreviewed.
+        if: ${{ hashFiles('provisioning/**/*.sh') != '' }}
+        shell: bash
+        run: |
+          fail=0
+          count=0
+          while IFS= read -r -d '' script; do
+            count=$((count + 1))
+            if ! bash -n "$script"; then
+              echo "SHELL_SYNTAX=FAIL $script"
+              fail=1
+            fi
+          done < <(find provisioning -name '*.sh' -print0)
+          if [ "$fail" -ne 0 ]; then
+            exit 1
+          fi
+          echo "SHELL_SYNTAX=PASS files=$count"
       - name: Test HYDRA-UMC-OS agent deployment contract
         if: ${{ hashFiles('agent/tests/test_agent.py') != '' }}
         env:

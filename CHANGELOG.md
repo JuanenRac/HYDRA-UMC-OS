@@ -1,5 +1,19 @@
 # Changelog
 
+## [Unreleased] - CI now checks provisioning shell script syntax
+
+### Fixed
+
+- **`.github/workflows/ci.yml`** - a new `bash -n` (syntax-only) pass over
+  every `provisioning/**/*.sh` script - found in an ecosystem-wide
+  software-improvements audit: CI already validated Python/Node syntax
+  and tests but never checked the ~30 `install_*.sh` scripts that are
+  this repo's actual deliverable, so a shell syntax error only ever
+  surfaced by running it on a real CM5. CI-only fix, no runtime script
+  changed, no version bump. shellcheck itself (style/quoting, not just
+  syntax) is a real, separate follow-up once its own findings across
+  ~30 scripts have been triaged.
+
 ## [0.3.6] - Polkit-scoped service control for hydra-umc-server
 
 ### Added
