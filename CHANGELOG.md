@@ -14,6 +14,15 @@
   syntax) is a real, separate follow-up once its own findings across
   ~30 scripts have been triaged.
 
+### Added
+
+- **`provisioning/install_datalake.sh`** now also installs
+  HYDRA-UMC-DATALAKE's own new `hydra-umc-datalake-retention.service`/
+  `.timer` (real daily retention-apply schedule) - found in the same
+  ecosystem-wide software-improvements audit as the CI fix above. Both
+  units are optional, left for the operator to enable after review, same
+  policy the main service already follows.
+
 ## [0.3.6] - Polkit-scoped service control for hydra-umc-server
 
 ### Added

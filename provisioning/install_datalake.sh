@@ -43,6 +43,18 @@ chmod -R go-w "$TARGET/src"
 # (see the unit's own [Service] block) leaves writable for this account.
 install -d -o "$DATALAKE_USER" -g "$DATALAKE_USER" -m 0750 "$TARGET/data"
 install -m 0644 "$SOURCE/systemd/hydra-umc-datalake.service" /etc/systemd/system/hydra-umc-datalake.service
+# Real gap found in an ecosystem-wide software-improvements audit:
+# apply_retention() was real and tested but only ever fired via a manual
+# POST /retention/apply - no scheduler called it, so a configured
+# retention policy never actually applied itself. These two units are
+# optional (a deployment with no retention policies configured at all
+# has nothing for this timer to do) - installed alongside the main
+# service, left for the operator to enable after review, same policy as
+# the main service itself just above.
+install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-retention.service" /etc/systemd/system/hydra-umc-datalake-retention.service
+install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-retention.timer" /etc/systemd/system/hydra-umc-datalake-retention.timer
 systemctl daemon-reload
 echo "Datalake installed. Enable manually after review: systemctl enable --now hydra-umc-datalake"
 echo "Then point Server at it: uncomment HYDRA_UMC_DATALAKE_URL in /etc/hydra-umc/server.env and restart hydra-umc-server."
+echo "Optional: if any series has a real retention policy configured, also enable the daily apply timer:"
+echo "  systemctl enable --now hydra-umc-datalake-retention.timer"
