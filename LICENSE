@@ -1,0 +1,11 @@
+# HYDRA-UMC-OS License and Copyright Notice
+
+Copyright (C) 2026 JuanenRac (Electro Hobby 3D).
+
+HYDRA-UMC-OS source code is licensed under GNU GPL v3.0 or later. Repository
+documentation is licensed under CC BY-SA 4.0. Third-party software such as
+Raspberry Pi OS, Debian packages, kernel components, and vendor SDKs retain
+their own licenses and are not relicensed by this repository.
+
+See https://www.gnu.org/licenses/gpl-3.0.html and
+https://creativecommons.org/licenses/by-sa/4.0/.

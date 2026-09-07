@@ -1,0 +1,1 @@
+{"schema_version":"1.0","profile":"control","enabled_services":["hydra-umc-agent"],"requires":["cm5_mcu_adapter"]}

@@ -1,0 +1,32 @@
+// HYDRA-UMC-OS - Grant hydra-umc-server start/stop/restart of OTHER
+// hydra-umc-*.service units only, nothing else
+// Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+// GPL-3.0-or-later - see LICENSE
+//
+// HYDRA-UMC-SERVER's Ecosystem > Services panel offers real start/stop/
+// restart per project (admin-only, see server.ts's own
+// POST /api/ecosystem/service/:unit/:action) - like the reboot/poweroff
+// rule alongside this one, the unprivileged hydra-umc-server account
+// (systemd's NoNewPrivileges, see hydra-umc-server.service) needs a real
+// polkit grant, since systemd's own D-Bus interface refuses unit
+// start/stop/restart for a non-root caller without one.
+//
+// Real, tight boundary, not a blanket grant:
+// - action.id must be exactly org.freedesktop.systemd1.manage-units -
+//   the one polkit action systemd uses for start/stop/restart/reload
+//   together; there is no narrower per-verb action to request instead.
+// - action.lookup("unit") (systemd passes the real unit name as a
+//   polkit action detail) must match hydra-umc-<name>.service - never
+//   sshd, networking, or anything outside this ecosystem's own units.
+// - hydra-umc-server.service itself is explicitly excluded - a
+//   self-restart already has its own, more controlled path
+//   (POST /api/admin/restart), not this generic one.
+polkit.addRule(function (action, subject) {
+  if (action.id !== "org.freedesktop.systemd1.manage-units") return;
+  if (subject.user !== "hydra-umc-server") return;
+  var unit = action.lookup("unit");
+  if (!unit || unit === "hydra-umc-server.service") return;
+  if (/^hydra-umc-[a-z0-9-]+\.service$/.test(unit)) {
+    return polkit.Result.YES;
+  }
+});

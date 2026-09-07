@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="690" viewBox="0 0 1600 690" role="img" aria-labelledby="title desc">
+  <title id="title">HYDRA-UMC-OS repository layout</title>
+  <desc id="desc">A visual map of the HYDRA-UMC-OS repository directories.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#07101c"/><stop offset="1" stop-color="#102945"/></linearGradient>
+    <linearGradient id="root" x1="0" x2="1"><stop stop-color="#00c6a9"/><stop offset="1" stop-color="#3e87ff"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity=".28"/></filter>
+    <style>.t{font-family:Segoe UI,Arial,sans-serif;fill:#ecf5ff}.s{font-family:Segoe UI,Arial,sans-serif;fill:#a9bfd4;font-size:20px}.n{font-family:Consolas,monospace;fill:#effaff;font-size:25px;font-weight:700}.l{stroke:#4e749b;stroke-width:3;fill:none}.c{fill:#10253b;stroke:#315878;stroke-width:2}</style>
+  </defs>
+  <rect width="1600" height="690" rx="34" fill="url(#bg)"/>
+  <circle cx="1450" cy="70" r="250" fill="#00c6a9" opacity=".06"/><circle cx="80" cy="680" r="310" fill="#3e87ff" opacity=".08"/>
+  <text x="70" y="86" class="t" font-family="Segoe UI,Arial,sans-serif" font-size="36" font-weight="700">HYDRA-UMC-OS · Repository layout</text>
+  <text x="70" y="123" class="s">Raspberry Pi OS platform layer · reproducible CM5 node profile</text>
+  <rect x="595" y="168" width="410" height="100" rx="20" fill="url(#root)" filter="url(#shadow)"/>
+  <text x="642" y="210" class="n">▣ HYDRA-UMC-OS/</text><text x="642" y="244" class="s" fill="#e8ffff">platform composition root</text>
+  <path class="l" d="M800 268V310M215 310H1385M215 310V350M610 310V350M1000 310V350M1385 310V350M410 310V520M800 310V520M1190 310V520"/>
+  <g filter="url(#shadow)"><rect class="c" x="60" y="350" width="310" height="128" rx="18"/><text x="88" y="395" class="n">▰ docs/</text><text x="88" y="430" class="s">architecture · installation</text><text x="88" y="457" class="s">services · update specs</text></g>
+  <g filter="url(#shadow)"><rect class="c" x="455" y="350" width="310" height="128" rx="18"/><text x="483" y="395" class="n">▰ image-builder/</text><text x="483" y="430" class="s">reproducible image tooling</text><text x="483" y="457" class="s">implementation pending</text></g>
+  <g filter="url(#shadow)"><rect class="c" x="845" y="350" width="310" height="128" rx="18"/><text x="873" y="395" class="n">▰ packages/</text><text x="873" y="430" class="s">Debian definitions</text><text x="873" y="457" class="s">and device profiles</text></g>
+  <g filter="url(#shadow)"><rect class="c" x="1230" y="350" width="310" height="128" rx="18"/><text x="1258" y="395" class="n">▰ agent/</text><text x="1258" y="430" class="s">local identity · diagnostics</text><text x="1258" y="457" class="s">device integration</text></g>
+  <g filter="url(#shadow)"><rect class="c" x="255" y="520" width="310" height="128" rx="18"/><text x="283" y="565" class="n">▰ systemd/</text><text x="283" y="600" class="s">service lifecycle</text><text x="283" y="627" class="s">and safe startup</text></g>
+  <g filter="url(#shadow)"><rect class="c" x="645" y="520" width="310" height="128" rx="18"/><text x="673" y="565" class="n">▰ config/</text><text x="673" y="600" class="s">non-secret defaults</text><text x="673" y="627" class="s">and schemas</text></g>
+  <g filter="url(#shadow)"><rect class="c" x="1035" y="520" width="310" height="128" rx="18"/><text x="1063" y="565" class="n">◆ contracts</text><text x="1063" y="600" class="s">via HYDRA-UMC-SDK</text><text x="1063" y="627" class="s">versioned boundaries</text></g>
+</svg>

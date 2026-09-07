@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# =============================================================================
+# HYDRA-UMC-OS - Read-only installed CM5 runtime verification
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Inspects an installed node; it never starts/stops services or writes files.
+set -euo pipefail
+
+WITH_SERVER=false
+WITH_VOICE_UI=false
+for argument in "$@"; do
+  case "$argument" in
+    --with-server) WITH_SERVER=true ;;
+    --with-voice-ui) WITH_VOICE_UI=true ;;
+    *) echo "Usage: $0 [--with-server] [--with-voice-ui]" >&2; exit 2 ;;
+  esac
+done
+$WITH_VOICE_UI && ! $WITH_SERVER && { echo "--with-voice-ui requires --with-server." >&2; exit 2; }
+failures=0
+check() { if "$@"; then echo "RUNTIME_CHECK=PASS $*"; else echo "RUNTIME_CHECK=FAIL $*" >&2; failures=$((failures + 1)); fi; }
+check_test() { if eval "$1"; then echo "RUNTIME_CHECK=PASS $2"; else echo "RUNTIME_CHECK=FAIL $2" >&2; failures=$((failures + 1)); fi; }
+
+echo " ==============================================================="
+echo "  HYDRA-UMC-OS - verify_cm5_runtime.sh"
+echo "  Read-only service, permission and local API verification."
+echo "  Copyright (C) 2026 JuanenRac (Electro Hobby 3D)"
+echo "  <electrohobby3d@gmail.com> | GPL-3.0-or-later - see LICENSE"
+echo " ==============================================================="
+check id hydra-umc-agent
+check_test 'test "$(getent passwd hydra-umc-agent | cut -d: -f7)" = /usr/sbin/nologin' 'agent is non-login'
+check_test 'test "$(stat -c %U:%G:%a /etc/hydra-umc/config.json 2>/dev/null)" = root:hydra-umc-agent:640' 'restricted agent configuration ownership'
+check systemctl is-active --quiet hydra-umc-agent
+if agent_json=$(/usr/local/bin/hydra-umc-agent --config /etc/hydra-umc/config.json health 2>/dev/null); then
+  if python3 -c 'import json,sys; report=json.load(sys.stdin); sys.exit(0 if report.get("state") in {"READY", "DEGRADED"} else 1)' <<<"$agent_json"; then
+    echo "RUNTIME_CHECK=PASS agent health is READY or DEGRADED"
+  else
+    echo "RUNTIME_CHECK=FAIL agent health is FAULT or malformed" >&2; failures=$((failures + 1))
+  fi
+else
+  echo "RUNTIME_CHECK=FAIL agent health command" >&2; failures=$((failures + 1))
+fi
+
+if $WITH_VOICE_UI; then
+  check id hydra-umc-voice-ui
+  check systemctl is-active --quiet hydra-umc-voice-ui
+  check_test 'test "$(stat -c %U:%G:%a /etc/hydra-umc/voice-ui.env 2>/dev/null)" = root:hydra-umc-voice-ui:640' 'restricted Voice UI environment ownership'
+  if voice_json=$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:8091/health); then
+    if python3 -c 'import json,sys; value=json.load(sys.stdin); sys.exit(0 if value.get("product") == "HYDRA-UMC-VOICE-UI" and value.get("voiceTurnEndpoint") == "/v1/voice/turn" else 1)' <<<"$voice_json"; then
+      echo "RUNTIME_CHECK=PASS local Voice UI health endpoint"
+    else
+      echo "RUNTIME_CHECK=FAIL local Voice UI health payload" >&2; failures=$((failures + 1))
+    fi
+  else
+    echo "RUNTIME_CHECK=FAIL local Voice UI health endpoint" >&2; failures=$((failures + 1))
+  fi
+fi
+
+if $WITH_SERVER; then
+  check id hydra-umc-server
+  check systemctl is-active --quiet hydra-umc-server
+  check_test 'test "$(stat -c %U:%G:%a /etc/hydra-umc/server.env 2>/dev/null)" = root:hydra-umc-server:640' 'restricted server environment ownership'
+  if server_json=$(curl --fail --silent --show-error --max-time 5 http://127.0.0.1:3000/api/hydra-info); then
+    # Real bug found live against a real Server instance: "product" is
+    # never the literal string "server" - HYDRA-UMC-SERVER's own
+    # /api/hydra-info (src/server.ts) documents and returns it as a
+    # human-readable, operator-customisable server name (settings'
+    # serverName, defaulting to "HYDRA-UMC STUDIO") - this check could
+    # never have passed as originally written. A non-empty string is
+    # what the real contract actually guarantees.
+    if python3 -c 'import json,sys; value=json.load(sys.stdin); sys.exit(0 if isinstance(value.get("product"), str) and value.get("product") and value.get("remoteApiVersion", 0) >= 1 else 1)' <<<"$server_json"; then
+      echo "RUNTIME_CHECK=PASS local Server discovery endpoint"
+    else
+      echo "RUNTIME_CHECK=FAIL local Server discovery payload" >&2; failures=$((failures + 1))
+    fi
+  else
+    echo "RUNTIME_CHECK=FAIL local Server discovery endpoint" >&2; failures=$((failures + 1))
+  fi
+fi
+
+if (( failures > 0 )); then
+  echo "CM5_RUNTIME=FAIL failures=$failures" >&2
+  exit 1
+fi
+echo "CM5_RUNTIME=PASS profile=$($WITH_SERVER && printf control || printf base) voice_ui=$WITH_VOICE_UI changes=none"

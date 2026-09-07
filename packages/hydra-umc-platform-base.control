@@ -1,0 +1,15 @@
+# =============================================================================
+# HYDRA-UMC-OS - Debian package metadata for the platform base
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+
+Package: hydra-umc-platform-base
+Version: 0.0.2
+Section: admin
+Priority: optional
+Architecture: all
+Maintainer: JuanenRac
+Depends: python3 (>= 3.11), systemd
+Description: HYDRA-UMC CM5 platform base
+ Read-only diagnostics agent, default configuration and systemd lifecycle unit.
