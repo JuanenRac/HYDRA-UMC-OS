@@ -6,4 +6,4 @@
 
 """HYDRA-UMC-OS read-only device agent."""
 
-__version__ = "0.3.9"
+__version__ = "0.4.0"

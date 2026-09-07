@@ -35,6 +35,13 @@ install -d -o "$SERVER_USER" -g "$SERVER_USER" -m 0750 "$TARGET/data"
 # $SERVER_USER's own group is guaranteed to exist (useradd above).
 chown root:"$SERVER_USER" /etc/hydra-umc/server.env
 chmod 0640 /etc/hydra-umc/server.env
+# Real gap found live: a plain cp -a over an existing $TARGET/dist or
+# $TARGET/public never removes a file that the new SOURCE build renamed
+# or dropped (e.g. LumenPnP's old z_carriage_n1/n2 meshes stayed served
+# indefinitely after STUDIO replaced them with z_carriage_left/right) -
+# clear both first, same pattern install_dashboard_ai.sh's own dist copy
+# already uses.
+rm -rf "$TARGET/dist" "$TARGET/public"
 cp -a "$SOURCE/dist" "$SOURCE/public" "$SOURCE/package.json" "$SOURCE/package-lock.json" "$TARGET/"
 cd "$TARGET"; npm ci --omit=dev
 install -m 0644 "$SOURCE/systemd/hydra-umc-server.service" /etc/systemd/system/hydra-umc-server.service
