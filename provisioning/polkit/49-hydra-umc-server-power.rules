@@ -1,0 +1,24 @@
+// HYDRA-UMC-OS - Grant hydra-umc-server reboot/power-off, nothing else
+// Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+// GPL-3.0-or-later - see LICENSE
+//
+// HYDRA-UMC-SERVER's own POST /api/system/reboot and /api/system/shutdown
+// (loopback-only, see server.ts's own requireLoopbackCaller comment) run
+// as the unprivileged hydra-umc-server user (systemd's NoNewPrivileges,
+// see hydra-umc-server.service) and call plain "systemctl reboot"/
+// "poweroff" - without this rule, systemd-logind's own polkit check
+// refuses those actions for a non-root, non-interactive-session caller.
+// Scoped to exactly the 2 actions this account needs, nothing broader
+// (no "org.freedesktop.login1.*" wildcard) - it cannot suspend, manage
+// other users' sessions, or anything else logind exposes.
+polkit.addRule(function (action, subject) {
+  var HYDRA_UMC_POWER_ACTIONS = [
+    "org.freedesktop.login1.reboot",
+    "org.freedesktop.login1.reboot-multiple-sessions",
+    "org.freedesktop.login1.power-off",
+    "org.freedesktop.login1.power-off-multiple-sessions",
+  ];
+  if (HYDRA_UMC_POWER_ACTIONS.indexOf(action.id) !== -1 && subject.user === "hydra-umc-server") {
+    return polkit.Result.YES;
+  }
+});

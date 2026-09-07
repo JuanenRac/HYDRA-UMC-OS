@@ -1,0 +1,47 @@
+# =============================================================================
+# HYDRA-UMC-OS - Real WiFi first-contact provisioning systemd unit
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Runs provisioning/wifi_provision.py --apply once at boot, after
+# NetworkManager itself is up. If the interface already has a real WiFi
+# connection, the script exits almost immediately (ensure_hotspot_if_
+# disconnected() is a real no-op in that case) - Type=oneshot with
+# RemainAfterExit=no reflects that real "runs once per boot, then done"
+# shape, not a long-lived daemon.
+#
+# Runs as root: real NetworkManager connection profile management
+# (nmcli device wifi hotspot/connect, connection down/delete) needs it -
+# unlike hydra-umc-agent.service's own deliberately read-only, unprivileged
+# scope (see that unit's own header), this unit's whole job is a real,
+# privileged network reconfiguration action.
+# =============================================================================
+
+[Unit]
+Description=HYDRA-UMC first-contact WiFi provisioning (AP mode + client join)
+Documentation=https://github.com/JuanenRac/HYDRA-UMC-OS
+After=NetworkManager.service network-pre.target
+Wants=NetworkManager.service
+Before=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+ExecStart=/usr/bin/python3 /opt/hydra-umc/wifi-provision/wifi_provision.py --apply --ifname wlan0 --ap-ssid HYDRA-UMC-SETUP
+# Real AP password MUST be overridden per-deployment via this drop-in
+# environment file - see docs/CM5_PROVISIONING.md's own "WiFi
+# provisioning" section for how to generate and place it. The module's
+# own DEFAULT_AP_PASSWORD is a known, shared placeholder, not something
+# to leave on a real device reachable over the air.
+EnvironmentFile=-/etc/hydra-umc/wifi-provision.env
+Restart=on-failure
+RestartSec=15
+TimeoutStartSec=0
+NoNewPrivileges=false
+ProtectHome=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

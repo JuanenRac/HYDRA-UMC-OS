@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=HYDRA-UMC-OS
+Description=HYDRA-UMC-OS boot identity
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/hydra-umc-os
+ScriptFile=/usr/share/plymouth/themes/hydra-umc-os/hydra-umc-os.script
