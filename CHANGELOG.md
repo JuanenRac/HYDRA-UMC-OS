@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0] - install_server.sh no longer leaves stale public/dist files behind
+
+### Fixed
+
+- **`provisioning/install_server.sh`** - a plain `cp -a` over an existing
+  `$TARGET/dist`/`$TARGET/public` never removed a file the new SOURCE
+  build had renamed or dropped. Found live on this repo's own test CM5
+  node: after HYDRA-UMC-SERVER pulled in HYDRA-UMC-STUDIO's LumenPnP fix
+  (`z_carriage_n1`/`z_carriage_n2` replaced by `z_carriage_left`/`right`
+  + `nozzle_left`/`right`), the old, now-unused mesh files stayed served
+  from `/opt/hydra-umc/server/public/` indefinitely. Now clears both
+  directories before copying, same pattern `install_dashboard_ai.sh`'s
+  own `dist` copy already used.
+
 ## [0.3.9] - OS-01: real pre-validation before any rollback mutation
 
 ### Fixed
