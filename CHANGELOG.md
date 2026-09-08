@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.4.1] - C14: a real --apply install + a real backup/wipe/restore cycle, not just bash -n
+
+### Added
+
+- **`provisioning/verify_install_and_recovery.sh`** - CI (and any real,
+  disposable systemd-based Debian/Ubuntu machine) only ever ran `bash -n`
+  (syntax-only) against `provisioning/*.sh` - a real `--apply` install and
+  a real backup/wipe/restore cycle had never been exercised anywhere
+  except by hand, directly on a real CM5. This script runs
+  `install_cm5_base.sh --apply` for real, verifies every real bit of
+  state it claims to create (the `hydra-umc-agent` user, `/etc/hydra-umc`/
+  `/var/lib/hydra-umc`/`/opt/hydra-umc`, the agent's own systemd unit, the
+  real hostname change), then runs a real `cm5_recovery.sh` backup,
+  wipes the real state, restores it, and verifies the restored content
+  AND ownership match exactly (`--numeric-owner` round-tripped for real).
+  Wired into CI (`.github/workflows/ci.yml`, real `ubuntu-latest` - a
+  genuinely disposable VM per run, safe to actually mutate) with a real
+  sibling `HYDRA-UMC-SDK` checkout, the same real dependency
+  `preflight_cm5.py`'s own `SDK_OS_CONTRACT` check already requires.
+  Manually verified first against a real, disposable WSL Ubuntu 24.04
+  instance before being wired into CI.
+
 ## [0.4.0] - install_server.sh no longer leaves stale public/dist files behind
 
 ### Fixed
