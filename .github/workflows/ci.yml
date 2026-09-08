@@ -64,6 +64,29 @@ jobs:
             exit 1
           fi
           echo "SHELL_SYNTAX=PASS files=$count"
+      - name: Check out HYDRA-UMC-SDK as a real sibling checkout
+        # provisioning/verify_install_and_recovery.sh below needs a real
+        # sibling HYDRA-UMC-SDK checkout - the same real dependency
+        # preflight_cm5.py's own SDK_OS_CONTRACT check already requires
+        # for a non-degraded pass, same convention every other cross-repo
+        # tool in this ecosystem already uses.
+        if: ${{ hashFiles('provisioning/verify_install_and_recovery.sh') != '' }}
+        uses: actions/checkout@v5
+        with:
+          repository: JuanenRac/HYDRA-UMC-SDK
+          path: ../HYDRA-UMC-SDK
+      - name: Real --apply install + a real backup/wipe/restore cycle
+        # Found in the same pass verify_install_and_recovery.sh's own
+        # header comment documents: CI only ever ran `bash -n` against
+        # these scripts (the step above) - a real --apply run and a real
+        # backup/wipe/restore cycle had never been exercised anywhere
+        # except by hand, directly on a real CM5. `ubuntu-latest` is a
+        # real, disposable systemd-based VM per run - safe to genuinely
+        # mutate (real users/directories/systemd units), unlike a real
+        # CM5 or a developer's own workstation.
+        if: ${{ hashFiles('provisioning/verify_install_and_recovery.sh') != '' }}
+        shell: bash
+        run: sudo bash provisioning/verify_install_and_recovery.sh
       - name: Test HYDRA-UMC-OS agent deployment contract
         if: ${{ hashFiles('agent/tests/test_agent.py') != '' }}
         env:
