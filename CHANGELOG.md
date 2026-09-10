@@ -40,8 +40,7 @@
 
 ### Fixed
 
-- **`provisioning/rollback.py`'s `restore_all()`** (found in an
-  ecosystem-wide software-improvements audit, P1): used to validate one
+- **`provisioning/rollback.py`'s `restore_all()`**: used to validate one
   manifest entry, mutate it, validate the next, mutate that one, and so
   on - a bad entry (missing backup) discovered partway through left every
   entry processed before it already restored/deleted, a real, ambiguous
@@ -111,8 +110,7 @@
 ### Fixed
 
 - **`.github/workflows/ci.yml`** - a new `bash -n` (syntax-only) pass over
-  every `provisioning/**/*.sh` script - found in an ecosystem-wide
-  software-improvements audit: CI already validated Python/Node syntax
+  every `provisioning/**/*.sh` script: CI already validated Python/Node syntax
   and tests but never checked the ~30 `install_*.sh` scripts that are
   this repo's actual deliverable, so a shell syntax error only ever
   surfaced by running it on a real CM5. CI-only fix, no runtime script
@@ -124,10 +122,9 @@
 
 - **`provisioning/install_datalake.sh`** now also installs
   HYDRA-UMC-DATALAKE's own new `hydra-umc-datalake-retention.service`/
-  `.timer` (real daily retention-apply schedule) - found in the same
-  ecosystem-wide software-improvements audit as the CI fix above. Both
-  units are optional, left for the operator to enable after review, same
-  policy the main service already follows.
+  `.timer` (real daily retention-apply schedule), alongside the CI fix
+  above. Both units are optional, left for the operator to enable after
+  review, same policy the main service already follows.
 
 ## [0.3.6] - Polkit-scoped service control for hydra-umc-server
 
@@ -158,7 +155,7 @@
   this dashboard already talks straight to HYDRA-UMC-DATALAKE/
   HYDRA-UMC-ANOMALY-DETECTOR by their own configured base URLs.
 
-## [0.3.4] - Server mode for the 4 Rust services, closing the item-3 audit's full list
+## [0.3.4] - Server mode for the 4 Rust services, closing the CLI-only-services list
 
 ### Added
 
@@ -180,13 +177,13 @@
 - All 4 compile as release binaries on-device (unlike the Go services,
   which build from source with the same `cargo build --release`
   pattern `install_twin.sh` established first).
-- This closes the item-3 audit's full "CLI-only, no real server loop
-  yet" finding for every repo that had real, wrappable logic already
+- This closes the full "CLI-only, no real server loop
+  yet" gap for every repo that had real, wrappable logic already
   written. The 5 hardware bridges (CNC, Laser, OpenPnP, Printer3D, ROS2)
   remain the one category left untouched - real physical actuators, a
   network transport decision that stays deliberately not invented here.
 
-## [0.3.3] - Server mode for 3 more CLI-only repos found in the item-3 audit
+## [0.3.3] - Server mode for 3 more CLI-only repos
 
 ### Added
 
@@ -201,14 +198,14 @@
   just a wrapper. Copies this repo's own README.md/CHANGELOG.md
   alongside `src/` so the default corpus resolves to something real once
   deployed.
-- These 3 close the rest of the item-3 audit's "CLI-only, no real server
-  loop yet" finding for the repos that had real, wrappable business
+- These 3 close the rest of the "CLI-only, no real server
+  loop yet" gap for the repos that had real, wrappable business
   logic already written (config.py's own `load_zones`/`load_zone_set`/
   `load_detections` in Safety-Zones needed a real, behavior-preserving
   split into file-reading wrappers + `parse_*` functions first, so the
   new API could take JSON directly in the request body instead of a
-  server-side file path). The remaining CLI-only repos from that same
-  audit (the 5 hardware bridges, and the 4 Rust services Orchestrator/
+  server-side file path). The remaining CLI-only repos
+  (the 5 hardware bridges, and the 4 Rust services Orchestrator/
   Swarm-Sync/Twin/HIL-Bridge) are not addressed here - see those repos'
   own state for why.
 
@@ -770,7 +767,7 @@
   contract, not a claim that rollback has been exercised on a real CM5
   yet. Documentation-only - no code changed.
 
-## [0.0.6] - Fixed after a live ecosystem bug audit
+## [0.0.6] - Fixed after an ecosystem-wide bug sweep
 
 ### Fixed (additional, same version)
 
