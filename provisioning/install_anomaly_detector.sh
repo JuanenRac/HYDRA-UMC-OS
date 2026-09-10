@@ -6,7 +6,7 @@
 # =============================================================================
 # Real gap found auditing the ecosystem against actual CM5 hardware: this
 # is the only one of the 8 real "AI" repos that already runs as a real
-# HTTP service (the other 7 are CLIs only, see this session's own audit) -
+# HTTP service (the other 7 are CLIs only) -
 # real FFT + z-score anomaly detection, tested against a labeled synthetic
 # fixture - never installed anywhere. Unlike install_datalake.sh/
 # install_voice_ui.sh, this one real dependency (numpy) means "copy src/ +

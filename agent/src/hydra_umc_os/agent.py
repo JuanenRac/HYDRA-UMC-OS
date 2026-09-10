@@ -175,7 +175,7 @@ def health(
             "maximum_celsius": maximum_temperature,
         },
     }
-    # Real bug fixed after a live audit: this used to only fold *network*
+    # Real bug fixed while auditing the code: this used to only fold *network*
     # WARN into the overall DEGRADED state - an unreadable temperature
     # sensor (temperature_state == "WARN" above, e.g. a flaky/missing
     # thermal_zone0 on real hardware) left every other check PASS and was

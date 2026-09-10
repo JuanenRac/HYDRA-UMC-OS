@@ -42,8 +42,8 @@ fi
 install -d -o root -g root -m 0755 "$TARGET"
 # Real, durable per-node CRDT state lives here - the one path
 # ProtectSystem=strict (see the unit's own [Service] block) leaves
-# writable for this account. Found in an ecosystem-wide software-
-# improvements audit: POST /reconcile used to be fully stateless, so
+# writable for this account. Found while auditing the code: POST
+# /reconcile used to be fully stateless, so
 # there was nothing durable to create a directory for until now.
 install -d -o "$SYNC_USER" -g "$SYNC_USER" -m 0750 "$TARGET/data"
 ( cd "$SOURCE" && cargo build --release )
