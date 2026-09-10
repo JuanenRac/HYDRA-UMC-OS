@@ -43,7 +43,7 @@ chmod -R go-w "$TARGET/src"
 # (see the unit's own [Service] block) leaves writable for this account.
 install -d -o "$DATALAKE_USER" -g "$DATALAKE_USER" -m 0750 "$TARGET/data"
 install -m 0644 "$SOURCE/systemd/hydra-umc-datalake.service" /etc/systemd/system/hydra-umc-datalake.service
-# Real gap found in an ecosystem-wide software-improvements audit:
+# Real gap found while auditing the code:
 # apply_retention() was real and tested but only ever fired via a manual
 # POST /retention/apply - no scheduler called it, so a configured
 # retention policy never actually applied itself. These two units are

@@ -34,7 +34,7 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(report.state, "DEGRADED")
 
     def test_degraded_when_the_temperature_sensor_is_unreadable(self):
-        # Real gap closed after a live audit: an unreadable sensor (no
+        # Real gap closed while auditing the code: an unreadable sensor (no
         # thermal_zone0, a permission error, garbage contents - anything
         # read_temperature_celsius() turns into None) used to leave the
         # temperature check at WARN but the *overall* state at READY,

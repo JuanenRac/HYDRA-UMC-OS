@@ -4,7 +4,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 #
-# Real bug fixed after a live ecosystem audit: this used to import a static
+# Real bug fixed while auditing the code: this used to import a static
 # `PROJECTS` list from hydra_umc_updater.registry that no longer exists -
 # discovery moved to reading each repository's own hydra-umc.project.json
 # (see HYDRA-UMC-UPDATER's own detect.py) and the static catalog was
