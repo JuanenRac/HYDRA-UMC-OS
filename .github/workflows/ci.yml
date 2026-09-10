@@ -39,7 +39,7 @@ jobs:
           print(f"PYTHON_SYNTAX=PASS files={len(files)}")
           PY
       - name: Validate provisioning shell scripts
-        # Found in an ecosystem-wide software-improvements audit: CI
+        # Found while auditing the code: CI
         # validated Python/Node syntax and tests but never checked the
         # ~30 provisioning/install_*.sh scripts that are this repo's
         # actual deliverable - a shell syntax error only ever surfaced by
