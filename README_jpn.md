@@ -39,6 +39,8 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 構成、サービス ライフサイクル、ローカル ID、診断、ビジュアル
 ブランド化、および HYDRA-UMC コンポーネントの更新の調整。
 
+**正直な現状確認 - 実際に今動くもの:** 読み取り専用のデバイスエージェント（`agent/src/hydra_umc_os/agent.py`: `DeviceDescriptor`/`HealthReport`、温度・ストレージ・ネットワークのチェック、設定プロファイルの読み込み）は本物であり、テスト済みです（13件のユニットテスト、`agent/tests/test_agent.py`、`python -m unittest discover`）。`provisioning/preflight_cm5.py` は、2回実行して出力を比較する実際のテスト（`tools/verify_preflight_idempotent.py`）により冪等かつ副作用がないことが検証されており、さらに4件の実際のネガティブパスチェック（`tools/verify_preflight_negative.py`）もあります。`provisioning/rollback.py` のバックアップ/復元メカニズムは、実際の部分的失敗シナリオを含む8件の実際のチェックで検証されています（`tools/verify_rollback.py`）。`provisioning/wifi_provision.py` のAPモード・フォールバック状態機械は、偽のNetworkManagerに対する24件の実際のチェックで検証されており、その中には実際のループバックソケット上での本物のエンドツーエンドHTTPラウンドトリップも含まれます（`tools/verify_wifi_provision.py`）- これら3つはいずれも検証にroot権限や物理的なCM5を必要としません。これまでに検証されていないもの: 実機のCM5ハードウェアそのものです。`image-builder/` は現時点ではドキュメントのみです（再現性に関するメモのREADMEで、まだイメージ組み立てコードはありません）。`packages/` には実際のDebianパッケージメタデータ（`control`/`rules`）が含まれていますが、この環境ではまだ実際の `.deb` としてビルドされていません。これまでに実際に出荷されたものの詳細は `CHANGELOG.md` を、ここで検証済みのものと物理ハードウェアが依然として必要なものとの正確な境界線は `docs/CM5_SOFTWARE_READINESS.md` を参照してください。
+
 ## 🚧 ステータス
 
 基本エージェント、検証済みの非機密構成、強化された systemd
