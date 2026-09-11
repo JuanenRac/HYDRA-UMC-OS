@@ -5,7 +5,7 @@
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
 # Real, --apply-mode verification of install_cm5_base.sh and
-# cm5_recovery.sh - closes a real gap found in a software-preparation pass:
+# cm5_recovery.sh - closes a real gap found while auditing the code:
 # CI only ever ran `bash -n` (syntax-only) against these scripts, and a
 # real --apply run + a real backup/wipe/restore cycle had never been
 # exercised anywhere except by hand, directly on a real CM5. This script
