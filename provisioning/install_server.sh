@@ -60,5 +60,14 @@ install -m 0644 "$OS_ROOT/provisioning/polkit/49-hydra-umc-server-power.rules" /
 # own header comment for the exact, narrow scope (never this server's
 # own unit, never anything outside the hydra-umc- namespace).
 install -m 0644 "$OS_ROOT/provisioning/polkit/50-hydra-umc-server-service-control.rules" /etc/polkit-1/rules.d/50-hydra-umc-server-service-control.rules
+# Real bug found live: every install_*.sh here updated the deployed
+# build/binary but never this project's OWN hydra-umc.project.json -
+# GET /api/ecosystem/status (STUDIO's own Services/AI Family panels)
+# reads THIS file for name/version/maturity/family, so every one of
+# them kept reporting whatever version happened to be here from the
+# very first install, forever, no matter how many real updates
+# followed. Copied last, right before the reload, so it always
+# reflects the exact SOURCE that was actually just installed.
+install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Server installed. Enable manually after review: systemctl enable --now hydra-umc-server"

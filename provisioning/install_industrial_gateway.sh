@@ -58,3 +58,19 @@ if $APPLY; then
 else
   echo "[dry-run] cd $GATEWAY_DIR && docker compose up -d --build"
 fi
+
+# Real gap found live, distinct from every other install_*.sh's own
+# missing-manifest bug: GET /api/ecosystem/status (STUDIO's own Services/
+# AI Family panels) only ever looks under /opt/hydra-umc/<name>/ for a
+# real hydra-umc.project.json - a project running purely as a Docker
+# container (this whole stack) has no such directory at all, so these 4
+# would stay invisible there forever even once the stack above is
+# genuinely up and healthy. Drops each one's own real manifest at the
+# same real host path every other project's own install script uses, so
+# the exact same discovery path picks these up too - the container
+# itself never needs to know this directory exists.
+for project in HYDRA-UMC-GATEWAY-INDUSTRIAL HYDRA-UMC-OPCUA-SERVER HYDRA-UMC-MQTT-BROKER HYDRA-UMC-MTCONNECT-ADAPTER; do
+  target_dir="/opt/hydra-umc/$(echo "$project" | sed 's/^HYDRA-UMC-//' | tr '[:upper:]_' '[:lower:]-')"
+  run install -d -o root -g root -m 0755 "$target_dir"
+  run install -m 0644 "$ROOT/$project/hydra-umc.project.json" "$target_dir/hydra-umc.project.json"
+done

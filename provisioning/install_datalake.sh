@@ -53,6 +53,15 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-datalake.service" /etc/systemd/system
 # the main service itself just above.
 install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-retention.service" /etc/systemd/system/hydra-umc-datalake-retention.service
 install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-retention.timer" /etc/systemd/system/hydra-umc-datalake-retention.timer
+# Real bug found live: every install_*.sh here updated the deployed
+# build/binary but never this project's OWN hydra-umc.project.json -
+# GET /api/ecosystem/status (STUDIO's own Services/AI Family panels)
+# reads THIS file for name/version/maturity/family, so every one of
+# them kept reporting whatever version happened to be here from the
+# very first install, forever, no matter how many real updates
+# followed. Copied last, right before the reload, so it always
+# reflects the exact SOURCE that was actually just installed.
+install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Datalake installed. Enable manually after review: systemctl enable --now hydra-umc-datalake"
 echo "Then point Server at it: uncomment HYDRA_UMC_DATALAKE_URL in /etc/hydra-umc/server.env and restart hydra-umc-server."

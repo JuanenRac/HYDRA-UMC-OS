@@ -26,6 +26,15 @@ run chmod -R go-w "$TARGET/hydra_umc_os"
 run python3 "$ROOT/provisioning/rollback.py" backup /etc/systemd/system/hydra-umc-agent.service \
   --backup-dir /var/lib/hydra-umc/rollback --manifest /var/lib/hydra-umc/rollback/manifest.json
 run install -m 0644 "$ROOT/systemd/hydra-umc-agent.service" /etc/systemd/system/hydra-umc-agent.service
+# Real bug found live: every install_*.sh here updated the deployed
+# build/binary but never this project's OWN hydra-umc.project.json -
+# GET /api/ecosystem/status (STUDIO's own Services/AI Family panels)
+# reads THIS file for name/version/maturity/family, so every one of
+# them kept reporting whatever version happened to be here from the
+# very first install, forever, no matter how many real updates
+# followed. $ROOT here is HYDRA-UMC-OS's own checkout root (this repo
+# installs its own agent, no separate sibling $SOURCE to read from).
+run install -m 0644 "$ROOT/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 if $APPLY && [[ ! -f /etc/hydra-umc/config.json ]]; then
   install -m 0640 -o root -g "$SERVICE_USER" "$ROOT/config/hydra-umc-os.example.json" /etc/hydra-umc/config.json
 fi

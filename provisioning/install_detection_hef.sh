@@ -51,6 +51,15 @@ install -d -o root -g root -m 0755 /etc/hydra-umc-detection-hef
 [[ -f /etc/hydra-umc-detection-hef/registry.json ]] || echo "[]" > /etc/hydra-umc-detection-hef/registry.json
 chmod 0644 /etc/hydra-umc-detection-hef/registry.json
 install -m 0644 "$SOURCE/systemd/hydra-umc-detection-hef.service" /etc/systemd/system/hydra-umc-detection-hef.service
+# Real bug found live: every install_*.sh here updated the deployed
+# build/binary but never this project's OWN hydra-umc.project.json -
+# GET /api/ecosystem/status (STUDIO's own Services/AI Family panels)
+# reads THIS file for name/version/maturity/family, so every one of
+# them kept reporting whatever version happened to be here from the
+# very first install, forever, no matter how many real updates
+# followed. Copied last, right before the reload, so it always
+# reflects the exact SOURCE that was actually just installed.
+install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Detection-HEF installed, serving an empty registry. Enable manually after review: systemctl enable --now hydra-umc-detection-hef"
 echo "Add real entries to /etc/hydra-umc-detection-hef/registry.json and .hef files to $TARGET/models as they exist."

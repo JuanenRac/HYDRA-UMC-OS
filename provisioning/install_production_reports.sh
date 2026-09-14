@@ -40,5 +40,14 @@ cp -a "$SOURCE/src" "$TARGET/"
 chown -R root:root "$TARGET/src"
 chmod -R go-w "$TARGET/src"
 install -m 0644 "$SOURCE/systemd/hydra-umc-production-reports.service" /etc/systemd/system/hydra-umc-production-reports.service
+# Real bug found live: every install_*.sh here updated the deployed
+# build/binary but never this project's OWN hydra-umc.project.json -
+# GET /api/ecosystem/status (STUDIO's own Services/AI Family panels)
+# reads THIS file for name/version/maturity/family, so every one of
+# them kept reporting whatever version happened to be here from the
+# very first install, forever, no matter how many real updates
+# followed. Copied last, right before the reload, so it always
+# reflects the exact SOURCE that was actually just installed.
+install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Production-Reports installed. Enable manually after review: systemctl enable --now hydra-umc-production-reports"
