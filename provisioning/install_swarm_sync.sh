@@ -49,5 +49,14 @@ install -d -o "$SYNC_USER" -g "$SYNC_USER" -m 0750 "$TARGET/data"
 ( cd "$SOURCE" && cargo build --release )
 install -m 0755 -o root -g root "$SOURCE/target/release/hydra-umc-swarm-sync" "$TARGET/hydra-umc-swarm-sync"
 install -m 0644 "$SOURCE/systemd/hydra-umc-swarm-sync.service" /etc/systemd/system/hydra-umc-swarm-sync.service
+# Real bug found live: every install_*.sh here updated the deployed
+# build/binary but never this project's OWN hydra-umc.project.json -
+# GET /api/ecosystem/status (STUDIO's own Services/AI Family panels)
+# reads THIS file for name/version/maturity/family, so every one of
+# them kept reporting whatever version happened to be here from the
+# very first install, forever, no matter how many real updates
+# followed. Copied last, right before the reload, so it always
+# reflects the exact SOURCE that was actually just installed.
+install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Swarm-Sync installed. Enable manually after review: systemctl enable --now hydra-umc-swarm-sync"

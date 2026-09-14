@@ -63,6 +63,15 @@ chown root:root "$TARGET/hydra-umc-node-healing"
 chmod 0755 "$TARGET/hydra-umc-node-healing"
 install -d -o root -g root -m 0755 /etc/hydra-umc-node-healing
 install -m 0644 "$SOURCE/systemd/hydra-umc-node-healing.service" /etc/systemd/system/hydra-umc-node-healing.service
+# Real bug found live: every install_*.sh here updated the deployed
+# build/binary but never this project's OWN hydra-umc.project.json -
+# GET /api/ecosystem/status (STUDIO's own Services/AI Family panels)
+# reads THIS file for name/version/maturity/family, so every one of
+# them kept reporting whatever version happened to be here from the
+# very first install, forever, no matter how many real updates
+# followed. Copied last, right before the reload, so it always
+# reflects the exact SOURCE that was actually just installed.
+install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Node-Healing capability installed (not enabled - see this script's own header)."
 echo "This binary refuses to run with zero nodes to watch, and no real"

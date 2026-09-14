@@ -1,5 +1,46 @@
 # Changelog
 
+## [0.4.4] - Real bug found live: every install_*.sh deployed a build that never updated its own manifest
+
+Live report: STUDIO's own Services and AI Family panels showed every
+CM5 project stuck on ancient version numbers no matter how many real
+updates had actually been installed since. Root cause, confirmed
+against the real device: every `provisioning/install_*.sh` here copies
+a project's built artifacts (its compiled binary, its `dist/`, its
+`package.json`) into `/opt/hydra-umc/<name>/` on every real re-install,
+but never that same project's own `hydra-umc.project.json` - the one
+file `GET /api/ecosystem/status` (HYDRA-UMC-SERVER) actually reads for
+name/version/maturity/family. Whatever manifest happened to land there
+on the very first install (by hand, once) stayed frozen forever after,
+completely decoupled from the real, current code sitting right next to
+it - confirmed live: `/opt/hydra-umc/server/package.json` (updated
+2026-09-14) reported a different, newer version than its own sibling
+`hydra-umc.project.json` (untouched since 2026-09-04).
+
+Fixed in all 22 project-deploying scripts that were missing it (every
+`install_*.sh` except `install_cm5_base.sh`/`install_kiosk.sh`/
+`install_splashscreen.sh`/`install_wifi_provision.sh`, which install
+OS-level components with no sibling GitHub project/manifest of their
+own): each now copies its own `hydra-umc.project.json` into its real
+`/opt/hydra-umc/<name>/` target as the last real step before
+`systemctl daemon-reload`, so a re-run always leaves the manifest
+reporting exactly the source that was actually just installed.
+
+`install_industrial_gateway.sh` needed a different real fix, not just
+the same copy: its whole stack (HYDRA-UMC-GATEWAY-INDUSTRIAL/
+OPCUA-SERVER/MQTT-BROKER/MTCONNECT-ADAPTER) runs as Docker containers,
+so none of the 4 ever had an `/opt/hydra-umc/<name>/` directory for a
+manifest to live in at all - genuinely invisible to
+`getEcosystemStatus()`'s discovery, not just stale. Now drops each of
+the 4 real manifests at the same real host path every other project's
+manifest lives at, so the same discovery path picks these up too
+without the container itself needing to know that directory exists.
+
+Verified: `tools/build_test.py` (agent tests, all 6 verify_*.py
+scripts, `preflight_cm5.py --skip-sdk`) and `tools/ci_validate.py` both
+pass; every touched script re-checked with `bash -n` (real syntax
+check, all 24 clean).
+
 ## [0.4.3] - Real CI bugs fixed: a sibling checkout that always failed, and an agent that couldn't load standalone once it did
 
 Found and fixed while auditing GitHub Actions runs across the

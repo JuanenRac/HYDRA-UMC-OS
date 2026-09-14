@@ -45,6 +45,15 @@ install -d -o root -g root -m 0755 "$TARGET"
 chown root:root "$TARGET/telemetry-collector"
 chmod 0755 "$TARGET/telemetry-collector"
 install -m 0644 "$SOURCE/systemd/hydra-umc-telemetry-collector.service" /etc/systemd/system/hydra-umc-telemetry-collector.service
+# Real bug found live: every install_*.sh here updated the deployed
+# build/binary but never this project's OWN hydra-umc.project.json -
+# GET /api/ecosystem/status (STUDIO's own Services/AI Family panels)
+# reads THIS file for name/version/maturity/family, so every one of
+# them kept reporting whatever version happened to be here from the
+# very first install, forever, no matter how many real updates
+# followed. Copied last, right before the reload, so it always
+# reflects the exact SOURCE that was actually just installed.
+install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Telemetry-Collector installed. Enable manually after review: systemctl enable --now hydra-umc-telemetry-collector"
 echo "Depends on HYDRA-UMC-DATALAKE already running for -datalake-url to actually deliver samples."
