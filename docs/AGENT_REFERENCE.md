@@ -50,7 +50,9 @@ Prints a `HealthReport` - a point-in-time, non-invasive health snapshot:
     "network": {"state": "PASS", "interfaces": ["eth0", "wlan0"]},
     "runtime": {"state": "PASS", "python": "3.11.2", "pid": 1842},
     "temperature": {"state": "PASS", "celsius": 47.3, "maximum_celsius": 80.0}
-  }
+  },
+  "agent_version": "0.4.0",
+  "boot_session_id": "3f6a9e2c-8b1d-4a5e-9c7f-1d2e3f4a5b6c"
 }
 ```
 
@@ -58,7 +60,9 @@ Prints a `HealthReport` - a point-in-time, non-invasive health snapshot:
 - `checks.network` - `WARN` if no non-loopback interface is up; otherwise `PASS`.
 - `checks.runtime` - always `PASS`; reports the running Python version and this process's PID.
 - `checks.temperature` - reads `/sys/class/thermal/thermal_zone0/temp` (millidegrees C, converted to degrees). It is `FAIL` at or above `diagnostics.maximum_temperature_celsius` (default `80.0`); `WARN` with `celsius: null` when that file doesn't exist or isn't readable (e.g. non-Linux, or a Pi without that thermal zone) - never fabricated. A missing thermal zone alone does not degrade the node state.
-- `state` - `"FAULT"` if storage or temperature failed, else `"DEGRADED"` if network warned, else `"READY"`.
+- `state` - `"FAULT"` if any check above failed, else `"DEGRADED"` if any check warned, else `"READY"` (corrected here - `state` reacts to every check, not only storage/temperature/network specifically).
+- `agent_version` - this installed package's own `hydra_umc_os.__version__` (`pyproject.toml`'s `version`), so a caller can tell whether an unexpected state change came with an agent upgrade.
+- `boot_session_id` - a random id generated once when this agent process starts, unchanged for every `health`/`serve` report it produces afterward. Lets a caller polling health over time (HYDRA-UMC-UPDATER, a dashboard, ...) tell "continuously healthy since boot" apart from "the process just restarted and happens to report READY again" - two different real situations that used to look identical.
 
 ## `serve`
 

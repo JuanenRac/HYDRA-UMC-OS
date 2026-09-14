@@ -10,7 +10,8 @@ import unittest
 import unittest.mock
 from pathlib import Path
 
-from hydra_umc_os.agent import DEFAULT_CONFIG, describe, health, load_config, load_profile, main, read_temperature_celsius
+from hydra_umc_os import __version__
+from hydra_umc_os.agent import BOOT_SESSION_ID, DEFAULT_CONFIG, describe, health, load_config, load_profile, main, read_temperature_celsius
 
 
 class AgentTests(unittest.TestCase):
@@ -32,6 +33,24 @@ class AgentTests(unittest.TestCase):
     def test_degraded_without_a_network_interface(self):
         report = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=[], temperature_celsius=40.0)
         self.assertEqual(report.state, "DEGRADED")
+
+    # I11: health() used to carry no link to the running agent's own
+    # package version or process instance - see agent.py's own
+    # BOOT_SESSION_ID header comment for the real gap this closes.
+    def test_health_reports_the_real_installed_agent_version(self):
+        report = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=["eth0"], temperature_celsius=40.0)
+        self.assertEqual(report.agent_version, __version__)
+
+    def test_health_reports_a_boot_session_id_stable_across_calls_in_the_same_process(self):
+        first = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=["eth0"], temperature_celsius=40.0)
+        second = health(DEFAULT_CONFIG, free_bytes=1, interfaces=[], temperature_celsius=99.0)
+        self.assertTrue(first.boot_session_id)
+        self.assertEqual(first.boot_session_id, BOOT_SESSION_ID)
+        self.assertEqual(
+            first.boot_session_id,
+            second.boot_session_id,
+            "the same running process must report the same boot_session_id regardless of state",
+        )
 
     def test_degraded_when_the_temperature_sensor_is_unreadable(self):
         # Real gap closed while auditing the code: an unreadable sensor (no

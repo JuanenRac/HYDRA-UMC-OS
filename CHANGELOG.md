@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.2] - I11: health() links a real agent version and boot session id
+
+- **`agent/src/hydra_umc_os/agent.py`** - `HealthReport` used to carry no
+  link to which agent build produced it, nor to which running process
+  instance. A caller polling `health()`/`serve` over time (HYDRA-UMC-
+  UPDATER, a dashboard, ...) had no way to tell "continuously healthy
+  since boot" apart from "the process just restarted and happens to
+  report READY again" - two different real situations that looked
+  identical. Two new fields: `agent_version` (this installed package's
+  own `hydra_umc_os.__version__`) and `boot_session_id` (a random id
+  generated once when the process starts, stable across every
+  `health()` call from the same `serve` loop). Additive only - existing
+  fields/shape unchanged. `docs/AGENT_REFERENCE.md`'s own `health`
+  example and field list updated to match (also corrects a stale
+  description there: `state` reacts to ANY check failing/warning, not
+  only storage/temperature/network specifically). 2 new tests.
+
 ## [0.4.1] - C14: a real --apply install + a real backup/wipe/restore cycle, not just bash -n
 
 ### Added
