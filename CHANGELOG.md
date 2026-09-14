@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.4.3] - Real CI bugs fixed: a sibling checkout that always failed, and an agent that couldn't load standalone once it did
+
+Found and fixed while auditing GitHub Actions runs across the
+ecosystem:
+
+- **The "Check out HYDRA-UMC-SDK as a real sibling checkout" CI step**
+  used `actions/checkout@v5` with `path: ../HYDRA-UMC-SDK` - outside
+  `$GITHUB_WORKSPACE`, which the action itself refuses to resolve to (a
+  deliberate security boundary), so this step failed on every run since
+  it was introduced. Replaced with a plain `git clone` via `run:`,
+  which has no such restriction and reaches the exact same real sibling
+  layout `provisioning/verify_install_and_recovery.sh` and
+  `preflight_cm5.py` already expect.
+- **A real regression from I11 (0.4.2), only now exposed:** `agent.py`'s
+  new `from . import __version__` needs a real parent package context
+  to resolve against - `provisioning/preflight_cm5.py`'s own
+  `import_agent()` loaded it as a standalone file with no package
+  identity at all, and `tools/verify_sdk_contracts.py` runs it as a
+  bare script (`python agent.py describe`/`health`), which has no
+  package context either. Both raised a real `ImportError` - never
+  caught before because the checkout bug above meant
+  `install_cm5_base.sh` (and therefore `preflight_cm5.py`) was never
+  actually exercised by CI until now. Fixed at the root: `agent.py`
+  falls back to importing `hydra_umc_os` the ordinary way (its own
+  parent directory on `sys.path`) when the relative import has no
+  package to resolve against; `preflight_cm5.py`'s `import_agent()`
+  now imports the module normally instead of loading it standalone.
+- **A real, pre-existing manifest/native-version desync found in the
+  same pass:** `hydra-umc.project.json` had already drifted ahead of
+  `agent/pyproject.toml`/`agent/src/hydra_umc_os/__init__.py` (0.4.1
+  vs. 0.4.0, predating I11, which then continued the same pattern
+  bumping the manifest by hand to 0.4.2 without touching the native
+  sources) - exactly the class of gap a prior audit already flagged
+  this repo as prone to repeating. Synced before this build's own
+  version increment.
+
 ## [0.4.2] - I11: health() links a real agent version and boot session id
 
 - **`agent/src/hydra_umc_os/agent.py`** - `HealthReport` used to carry no

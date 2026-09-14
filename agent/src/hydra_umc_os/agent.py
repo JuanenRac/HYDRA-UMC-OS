@@ -26,7 +26,24 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from . import __version__
+try:
+    from . import __version__
+except ImportError:
+    # Real bug found while auditing CI: this module has always been run
+    # two different ways - as a real installed package
+    # (`from hydra_umc_os.agent import ...`, agent/src on sys.path/
+    # PYTHONPATH - test_agent.py's own way) AND as a bare standalone
+    # script (`python agent.py describe`/`health`, tools/
+    # verify_sdk_contracts.py's own real way of invoking it, and
+    # provisioning/preflight_cm5.py's own dynamic load). `from . import`
+    # needs a real parent package context to resolve against, which
+    # neither of those standalone-execution forms has - `__package__` is
+    # `None`/empty there, not the "hydra_umc_os" this needs. Falls back
+    # to making the package importable the ordinary way (its own parent
+    # directory on sys.path) instead of assuming package context that
+    # only the first form actually has.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from hydra_umc_os import __version__
 
 # I11: a stable identifier for THIS running agent process, generated once at
 # import time - every health() call from the same "serve" loop reports the
