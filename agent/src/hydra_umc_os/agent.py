@@ -21,9 +21,22 @@ import shutil
 import socket
 import sys
 import time
+import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
+
+from . import __version__
+
+# I11: a stable identifier for THIS running agent process, generated once at
+# import time - every health() call from the same "serve" loop reports the
+# same boot_session_id, and it changes only when the process itself
+# restarts. Without this, a caller polling health() over time (HYDRA-UMC-
+# UPDATER, a dashboard, ...) had no way to distinguish "the agent has been
+# continuously healthy since boot" from "the agent just restarted and
+# happens to report READY again" - two very different real situations that
+# used to look identical.
+BOOT_SESSION_ID = str(uuid.uuid4())
 
 
 DEFAULT_CONFIG: dict[str, Any] = {
@@ -54,6 +67,14 @@ class HealthReport:
     state: str
     timestamp_utc: str
     checks: dict[str, dict[str, Any]]
+    # I11: previously a HealthReport carried no link to which agent build
+    # produced it, nor to which running process instance - a caller
+    # polling health() over time (HYDRA-UMC-UPDATER, a dashboard, ...) had
+    # no way to distinguish "continuously healthy since boot" from "just
+    # restarted and happens to report READY again", or to tell whether an
+    # unexpected state change came with an agent upgrade.
+    agent_version: str
+    boot_session_id: str
 
 
 def load_config(path: Path | None) -> dict[str, Any]:
@@ -192,6 +213,8 @@ def health(
         state=state,
         timestamp_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         checks=checks,
+        agent_version=__version__,
+        boot_session_id=BOOT_SESSION_ID,
     )
 
 
