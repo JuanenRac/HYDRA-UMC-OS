@@ -76,13 +76,16 @@ raggiungibile via etere - vedere la sezione 3 di
 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` per il passaggio della
 password reale richiesto prima.
 
-## 🎯 Primo traguardo previsto
+## 🎯 Primo traguardo
 
-1. Crea un profilo ARM64 del sistema operativo Raspberry Pi per CM5.
-2. Installa `hydra-umc-platform-base` e `hydra-umc-agent`.
-3. Rileva le interfacce CM5 e segnala un `DeviceDescriptor` e un `HealthReport`.
-4. Avvia solo i servizi abilitati tramite systemd.
-5. Visualizzare localmente PRONTO, DEGRADATO, INIBITO o GUASTO.
+Completo, secondo la sezione Stato sopra (codice reale, test reali,
+non ancora verificato contro hardware CM5 fisico):
+
+1. ✅ Crea un profilo ARM64 del sistema operativo Raspberry Pi per CM5.
+2. ✅ Installa `hydra-umc-platform-base` e `hydra-umc-agent`.
+3. ✅ Rileva le interfacce CM5 e segnala un `DeviceDescriptor` e un `HealthReport`.
+4. ✅ Avvia solo i servizi abilitati tramite systemd.
+5. ✅ Visualizzare localmente PRONTO, DEGRADATO, INIBITO o GUASTO.
 
 ## 📂 Layout del repository
 

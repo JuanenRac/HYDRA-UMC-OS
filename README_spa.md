@@ -76,13 +76,16 @@ dispositivo real accesible de forma inalámbrica - consulte la sección 3
 de `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` para el paso de la
 contraseña real requerido primero.
 
-## 🎯 Primer hito planificado
+## 🎯 Primer hito
 
-1. Cree un perfil ARM64 del sistema operativo Raspberry Pi para CM5.
-2. Instale `hydra-umc-platform-base` y `hydra-umc-agent`.
-3. Detectar interfaces CM5 e informar un `DeviceDescriptor` y un `HealthReport`.
-4. Inicie solo los servicios habilitados a través de systemd.
-5. Muestra LISTO, DEGRADADO, INHIBIDO o FALLO localmente.
+Completo, según la seccion Estado de arriba (codigo real, tests
+reales, todavia no verificado contra hardware CM5 fisico):
+
+1. ✅ Cree un perfil ARM64 del sistema operativo Raspberry Pi para CM5.
+2. ✅ Instale `hydra-umc-platform-base` y `hydra-umc-agent`.
+3. ✅ Detectar interfaces CM5 e informar un `DeviceDescriptor` y un `HealthReport`.
+4. ✅ Inicie solo los servicios habilitados a través de systemd.
+5. ✅ Muestra LISTO, DEGRADADO, INHIBIDO o FALLO localmente.
 
 ## 📂 Diseño del repositorio
 

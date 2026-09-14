@@ -52,13 +52,16 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 **WiFi 首次接触配网同样是真实的**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——为尚无已知网络的无头 CM5 提供真实的 NetworkManager AP 模式回退：启动一个真实的热点（`nmcli device wifi hotspot`），操作员的手机/笔记本电脑可以加入该热点，通过一个小型本地 HTTP 表单提交真实的目标 SSID/密码，成功后关闭 AP 并加入真实网络，失败时恢复 AP，使设备永远不会被困住。该状态机针对一个伪造的 NetworkManager 进行了完整的单元测试，包括通过真实回环套接字进行的真实端到端 HTTP 往返——参见 `tools/verify_wifi_provision.py`。由 `install_cm5_base.sh` 安装，但刻意未自动启用，因为它绝不能在真实的、可通过空口访问的设备上以自带的占位 AP 密码启动——需先完成 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` 第 3 节所述的真实密码设置步骤。
 
-## 🎯 计划的第一个里程碑
+## 🎯 第一个里程碑
 
-1. 为 CM5 构建 Raspberry Pi OS ARM64 配置文件。
-2. 安装 `hydra-umc-platform-base` 和 `hydra-umc-agent`。
-3. 检测 CM5 接口并报告 `DeviceDescriptor` 和 `HealthReport`。
-4. 仅启动通过 systemd 启用的服务。
-5. 本地显示 READY、DEGRADED、INHIBITED 或 FAULT。
+已完成，按照上方"状态"小节所述（真实代码、真实测试，尚未针对真实
+CM5 硬件验证）：
+
+1. ✅ 为 CM5 构建 Raspberry Pi OS ARM64 配置文件。
+2. ✅ 安装 `hydra-umc-platform-base` 和 `hydra-umc-agent`。
+3. ✅ 检测 CM5 接口并报告 `DeviceDescriptor` 和 `HealthReport`。
+4. ✅ 仅启动通过 systemd 启用的服务。
+5. ✅ 本地显示 READY、DEGRADED、INHIBITED 或 FAULT。
 
 ## 📂 存储库布局
 

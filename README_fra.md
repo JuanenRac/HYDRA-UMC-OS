@@ -76,13 +76,16 @@ un appareil réel accessible par voie hertzienne - voir la section 3 de
 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` pour l'étape du vrai mot de
 passe requise au préalable.
 
-## 🎯 Première étape prévue
+## 🎯 Première étape
 
-1. Créez un profil Raspberry Pi OS ARM64 pour CM5.
-2. Installez `hydra-umc-platform-base` et `hydra-umc-agent`.
-3. Détectez les interfaces CM5 et signalez un `DeviceDescriptor` et un `HealthReport`.
-4. Démarrez uniquement les services activés via systemd.
-5. Affichez localement PRÊT, DÉGRADÉ, INHIBITÉ ou DÉFAUT.
+Terminée, selon la section État ci-dessus (code réel, tests réels, pas
+encore vérifiée contre du matériel CM5 physique) :
+
+1. ✅ Créez un profil Raspberry Pi OS ARM64 pour CM5.
+2. ✅ Installez `hydra-umc-platform-base` et `hydra-umc-agent`.
+3. ✅ Détectez les interfaces CM5 et signalez un `DeviceDescriptor` et un `HealthReport`.
+4. ✅ Démarrez uniquement les services activés via systemd.
+5. ✅ Affichez localement PRÊT, DÉGRADÉ, INHIBITÉ ou DÉFAUT.
 
 ## 📂 Disposition du référentiel
 

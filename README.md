@@ -72,13 +72,17 @@ placeholder AP password on a real, over-the-air-reachable device - see
 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` section 3 for the real password
 step required first.
 
-## 🎯 Planned first milestone
+## 🎯 First milestone
 
-1. Build a Raspberry Pi OS ARM64 profile for CM5.
-2. Install `hydra-umc-platform-base` and `hydra-umc-agent`.
-3. Detect CM5 interfaces and report a `DeviceDescriptor` and `HealthReport`.
-4. Start only enabled services through systemd.
-5. Display READY, DEGRADED, INHIBITED, or FAULT locally.
+Complete, per the Status section above (real code, real tests, not yet
+verified against physical CM5 hardware):
+
+1. ✅ Build a Raspberry Pi OS ARM64 profile for CM5 (`install_cm5_base.sh`
+   and the rest of `provisioning/`).
+2. ✅ Install `hydra-umc-platform-base` and `hydra-umc-agent`.
+3. ✅ Detect CM5 interfaces and report a `DeviceDescriptor` and `HealthReport`.
+4. ✅ Start only enabled services through systemd.
+5. ✅ Display READY, DEGRADED, INHIBITED, or FAULT locally.
 
 ## 📂 Repository layout
 
