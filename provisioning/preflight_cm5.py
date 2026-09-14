@@ -15,7 +15,7 @@ contract. It never installs software, creates users or invokes systemd.
 from __future__ import annotations
 
 import argparse
-import importlib.util
+import importlib
 import json
 import re
 import subprocess
@@ -50,14 +50,26 @@ def run_check(label: str, command: list[str]) -> None:
 
 
 def import_agent() -> Any:
-    spec = importlib.util.spec_from_file_location(
-        "hydra_umc_os_agent_preflight", AGENT_SOURCE / "hydra_umc_os" / "agent.py"
-    )
-    if spec is None or spec.loader is None:
-        fail("cannot load local HYDRA-UMC-OS agent")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
+    # Real bug found while auditing CI: loading agent.py by bare file path
+    # via spec_from_file_location (the original approach here) executes it
+    # as a STANDALONE module with no parent package at all - agent.py's own
+    # `from . import __version__` (added by I11, health()'s real
+    # agent_version field) needs a real package context to resolve a
+    # relative import against, and raised a real ImportError under exactly
+    # that loading mechanism. This never surfaced before: the "Check out
+    # HYDRA-UMC-SDK" CI step failed on every run, so this repo's own
+    # install_cm5_base.sh (and therefore this function) was never actually
+    # exercised in CI at all until that checkout bug was fixed - the first
+    # real run reached this and failed immediately. Fixed by putting
+    # AGENT_SOURCE on sys.path and importing hydra_umc_os.agent normally,
+    # the same real package-relative way agent/tests/test_agent.py already
+    # does, instead of a standalone file load with no package identity.
+    if str(AGENT_SOURCE) not in sys.path:
+        sys.path.insert(0, str(AGENT_SOURCE))
+    try:
+        module = importlib.import_module("hydra_umc_os.agent")
+    except ImportError as exc:
+        fail(f"cannot load local HYDRA-UMC-OS agent: {exc}")
     return module
 
 
