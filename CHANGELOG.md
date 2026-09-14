@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.6] - install_local_technician.sh real bug: configs/ isn't a real, versioned directory
+
+Found running the new script for real against a fresh clone: `configs/`
+is genuinely empty and untracked in HYDRA-UMC-LOCAL-TECHNICIAN's own
+repository (its own `.gitignore` deliberately keeps real config out of
+version control) - `cp -a "$SOURCE/configs" ...` only ever worked by
+accident on a dev checkout that happened to have a local, uncommitted
+`configs/` directory lying around, and failed outright on the real CM5
+against a genuine fresh clone. Dropped; only `src/` and `contracts/`
+(both real, tracked directories) are installed.
+
 ## [0.4.5] - HYDRA-UMC-LOCAL-TECHNICIAN: installable on the CM5 for the first time
 
 New `provisioning/install_local_technician.sh`. HYDRA-UMC-LOCAL-TECHNICIAN
@@ -9,11 +20,11 @@ anywhere on this device - genuinely invisible in STUDIO's own AI Family
 panel, not stale. Unlike every other project this repo installs, it
 declares no `service` block and has no systemd unit yet (Fase 0 of six -
 a bounded, policy-gated CLI, not a standing daemon, see its own README
-Roadmap): this script only drops its real source/contracts/configs and
-its own manifest at the same real `/opt/hydra-umc/<name>/` host path
-every other project's manifest lives at, so `GET /api/ecosystem/status`
-picks it up and reports it honestly as "not a service" (`live: null`),
-the same convention every other CLI/library-shaped project already gets.
+Roadmap): this script only drops its real source/contracts and its own
+manifest at the same real `/opt/hydra-umc/<name>/` host path every other
+project's manifest lives at, so `GET /api/ecosystem/status` picks it up
+and reports it honestly as "not a service" (`live: null`), the same
+convention every other CLI/library-shaped project already gets.
 
 ## [0.4.4] - Real bug found live: every install_*.sh deployed a build that never updated its own manifest
 
