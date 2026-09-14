@@ -52,13 +52,16 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 **WiFi 初回接続プロビジョニングも実際に動作する**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——まだ既知のネットワークを持たないヘッドレス CM5 のための、実際の NetworkManager AP モードのフォールバック。実際のホットスポット（`nmcli device wifi hotspot`）を起動し、オペレーターの携帯電話やノート PC がそれに接続して、小さなローカル HTTP フォームを通じて実際のターゲット SSID/パスワードを送信できるようにする。成功時には AP を停止して実際のネットワークに参加し、失敗時には AP を復元してデバイスが孤立しないようにする。この状態機械は、疑似的な NetworkManager に対して完全に単体テストされており、実際のループバックソケット上での実際のエンドツーエンド HTTP 往復も含まれる——`tools/verify_wifi_provision.py` を参照。`install_cm5_base.sh` によってインストールされるが、実際に無線到達可能なデバイス上でプレースホルダーの AP パスワードのまま起動してはならないため、意図的に自動有効化はされない——先に必要な実際のパスワード設定手順については `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` のセクション 3 を参照。
 
-## 🎯 計画された最初のマイルストーン
+## 🎯 最初のマイルストーン
 
-1. CM5 用の Raspberry Pi OS ARM64 プロファイルを構築します。
-2. `hydra-umc-platform-base` と `hydra-umc-agent` をインストールします。
-3. CM5 インターフェイスを検出し、`DeviceDescriptor` と `HealthReport` を報告します。
-4. systemd を介して有効なサービスのみを開始します。
-5. ローカルで READY、DEGRADED、INHIBITED、または FAULT を表示します。
+完了済み。上記のステータスセクションの通り(実際のコード、実際の
+テスト、実機の CM5 ハードウェアに対してはまだ検証されていない):
+
+1. ✅ CM5 用の Raspberry Pi OS ARM64 プロファイルを構築します。
+2. ✅ `hydra-umc-platform-base` と `hydra-umc-agent` をインストールします。
+3. ✅ CM5 インターフェイスを検出し、`DeviceDescriptor` と `HealthReport` を報告します。
+4. ✅ systemd を介して有効なサービスのみを開始します。
+5. ✅ ローカルで READY、DEGRADED、INHIBITED、または FAULT を表示します。
 
 ## 📂 リポジトリのレイアウト
 

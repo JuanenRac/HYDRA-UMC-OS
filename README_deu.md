@@ -77,13 +77,16 @@ einem echten, drahtlos erreichbaren Gerät starten darf - siehe
 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` Abschnitt 3 für den
 erforderlichen echten Passwort-Schritt.
 
-## 🎯 Geplanter erster Meilenstein
+## 🎯 Erster Meilenstein
 
-1. Erstellen Sie ein Raspberry Pi OS ARM64-Profil für CM5.
-2. Installieren Sie `hydra-umc-platform-base` und `hydra-umc-agent`.
-3. CM5-Schnittstellen erkennen und einen `DeviceDescriptor` und einen `HealthReport` melden.
-4. Starten Sie nur aktivierte Dienste über systemd.
-5. Zeigen Sie lokal BEREIT, DEGRADED, GESPERRT oder FEHLER an.
+Abgeschlossen, gemäß dem Status-Abschnitt oben (echter Code, echte
+Tests, noch nicht gegen echte CM5-Hardware verifiziert):
+
+1. ✅ Erstellen Sie ein Raspberry Pi OS ARM64-Profil für CM5.
+2. ✅ Installieren Sie `hydra-umc-platform-base` und `hydra-umc-agent`.
+3. ✅ CM5-Schnittstellen erkennen und einen `DeviceDescriptor` und einen `HealthReport` melden.
+4. ✅ Starten Sie nur aktivierte Dienste über systemd.
+5. ✅ Zeigen Sie lokal BEREIT, DEGRADED, GESPERRT oder FEHLER an.
 
 ## 📂 Repository-Layout
 
