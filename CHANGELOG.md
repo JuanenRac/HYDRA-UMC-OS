@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.5] - HYDRA-UMC-LOCAL-TECHNICIAN: installable on the CM5 for the first time
+
+New `provisioning/install_local_technician.sh`. HYDRA-UMC-LOCAL-TECHNICIAN
+(family "Cognitive AI Node", parent HYDRA-UMC-COGNITIVE-NODE) has a real,
+tested CLI (`hydra-umc-local-technician`) but had never been installed
+anywhere on this device - genuinely invisible in STUDIO's own AI Family
+panel, not stale. Unlike every other project this repo installs, it
+declares no `service` block and has no systemd unit yet (Fase 0 of six -
+a bounded, policy-gated CLI, not a standing daemon, see its own README
+Roadmap): this script only drops its real source/contracts/configs and
+its own manifest at the same real `/opt/hydra-umc/<name>/` host path
+every other project's manifest lives at, so `GET /api/ecosystem/status`
+picks it up and reports it honestly as "not a service" (`live: null`),
+the same convention every other CLI/library-shaped project already gets.
+
 ## [0.4.4] - Real bug found live: every install_*.sh deployed a build that never updated its own manifest
 
 Live report: STUDIO's own Services and AI Family panels showed every
