@@ -40,12 +40,11 @@ echo " ==============================================================="
 command -v python3 >/dev/null || { echo "HYDRA-UMC-LOCAL-TECHNICIAN requires python3." >&2; exit 2; }
 
 install -d -o root -g root -m 0755 "$TARGET"
-rm -rf "$TARGET/src" "$TARGET/contracts" "$TARGET/configs"
+rm -rf "$TARGET/src" "$TARGET/contracts"
 cp -a "$SOURCE/src" "$TARGET/"
 cp -a "$SOURCE/contracts" "$TARGET/"
-cp -a "$SOURCE/configs" "$TARGET/"
-chown -R root:root "$TARGET/src" "$TARGET/contracts" "$TARGET/configs"
-chmod -R go-w "$TARGET/src" "$TARGET/contracts" "$TARGET/configs"
+chown -R root:root "$TARGET/src" "$TARGET/contracts"
+chmod -R go-w "$TARGET/src" "$TARGET/contracts"
 cat >/usr/local/bin/hydra-umc-local-technician <<'EOF'
 #!/usr/bin/env sh
 export PYTHONPATH=/opt/hydra-umc/local-technician/src
