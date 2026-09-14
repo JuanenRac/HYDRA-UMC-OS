@@ -70,11 +70,22 @@ jobs:
         # preflight_cm5.py's own SDK_OS_CONTRACT check already requires
         # for a non-degraded pass, same convention every other cross-repo
         # tool in this ecosystem already uses.
+        #
+        # Real CI bug found and fixed here: actions/checkout@v5's own
+        # `path` input refuses to resolve outside `$GITHUB_WORKSPACE` (a
+        # deliberate security boundary in the action itself) - this step
+        # had been failing on EVERY real run since it was introduced,
+        # because `../HYDRA-UMC-SDK` is, by construction, one level
+        # above the workspace. A plain `git clone` via `run:` has no
+        # such restriction (it's an ordinary shell command against an
+        # ordinary writable directory on the runner - the workspace's
+        # own parent, not some root-owned system path), so it reaches
+        # the exact same real sibling layout this repo's own scripts
+        # already expect, without inventing a different path convention
+        # just to satisfy the Action's own boundary check.
         if: ${{ hashFiles('provisioning/verify_install_and_recovery.sh') != '' }}
-        uses: actions/checkout@v5
-        with:
-          repository: JuanenRac/HYDRA-UMC-SDK
-          path: ../HYDRA-UMC-SDK
+        shell: bash
+        run: git clone --depth 1 https://github.com/JuanenRac/HYDRA-UMC-SDK.git ../HYDRA-UMC-SDK
       - name: Real --apply install + a real backup/wipe/restore cycle
         # Found in the same pass verify_install_and_recovery.sh's own
         # header comment documents: CI only ever ran `bash -n` against
