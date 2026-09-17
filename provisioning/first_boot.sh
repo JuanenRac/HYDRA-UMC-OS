@@ -28,6 +28,31 @@ echo "HYDRA-UMC-OS first boot: hostname=$HOSTNAME admin=$ADMIN_USER mode=$($APPL
 run apt-get update
 run apt-get install -y --no-install-recommends python3 python3-venv ca-certificates
 run hostnamectl set-hostname "$HOSTNAME"
+
+# Real bug found live pairing a Bluetooth gamepad directly to a CM5:
+# BlueZ's own default ClassicBondedOnly=true (profiles/input/device.c)
+# refuses the HID connection for any device that bonds over LE rather
+# than classic BR/EDR on this hardware (Raspberry Pi's own BCM4345C0),
+# even after `bluetoothctl pair`/`trust` genuinely succeed - the device
+# is left stuck at Paired=yes/Bonded=no forever, and never shows up as a
+# real /dev/input js*/event* device. See
+# HYDRA-UMC-SERVER's own POST /api/system/bluetooth/pair (Config >
+# Bluetooth in STUDIO) for the real pairing flow this setting unblocks.
+if [[ -f /etc/bluetooth/input.conf ]]; then
+  if $APPLY; then
+    cp -n /etc/bluetooth/input.conf /etc/bluetooth/input.conf.orig 2>/dev/null || true
+    if grep -q '^ClassicBondedOnly=' /etc/bluetooth/input.conf; then
+      sed -i 's/^ClassicBondedOnly=.*/ClassicBondedOnly=false/' /etc/bluetooth/input.conf
+    elif grep -q '^#ClassicBondedOnly=true' /etc/bluetooth/input.conf; then
+      sed -i 's/^#ClassicBondedOnly=true/ClassicBondedOnly=false/' /etc/bluetooth/input.conf
+    else
+      printf '\nClassicBondedOnly=false\n' >> /etc/bluetooth/input.conf
+    fi
+    systemctl restart bluetooth 2>/dev/null || true
+  else
+    echo "[dry-run] set ClassicBondedOnly=false in /etc/bluetooth/input.conf, restart bluetooth"
+  fi
+fi
 if $APPLY && ! id -u "$ADMIN_USER" >/dev/null 2>&1; then
   useradd --create-home --shell /bin/bash --groups sudo "$ADMIN_USER"
 elif ! $APPLY; then
