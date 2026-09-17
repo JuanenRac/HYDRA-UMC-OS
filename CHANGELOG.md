@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.7] - first_boot.sh: real fix for Bluetooth devices that pair but never bond
+
+Found live pairing a physical Xbox controller directly to a CM5: BlueZ's own default
+`ClassicBondedOnly=true` (`/etc/bluetooth/input.conf`) refuses the HID connection for any device that
+bonds over LE rather than classic BR/EDR on this hardware (Raspberry Pi's own Broadcom BCM4345C0) -
+`bluetoothctl pair`/`trust` both genuinely succeed, but the device is stuck at Paired=yes/Bonded=no
+forever and never becomes a real `/dev/input` device. `first_boot.sh` now sets
+`ClassicBondedOnly=false` and restarts `bluetooth` as part of base provisioning, idempotently and with
+the same dry-run/apply convention as every other step in this script. Unblocks HYDRA-UMC-SERVER's own
+new `POST /api/system/bluetooth/pair` (Config > Bluetooth in STUDIO).
+
 ## [0.4.6] - install_local_technician.sh real bug: configs/ isn't a real, versioned directory
 
 Found running the new script for real against a fresh clone: `configs/`
