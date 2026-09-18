@@ -236,28 +236,7 @@ ecosystem:
   (HYDRA-UMC-BRIDGE-CNC/LASER/OPENPNP/PRINTER3D/ROS2) that all copied the
   same template.
 
-## [Unreleased] - CI now checks provisioning shell script syntax
-
-### Fixed
-
-- **`.github/workflows/ci.yml`** - a new `bash -n` (syntax-only) pass over
-  every `provisioning/**/*.sh` script: CI already validated Python/Node syntax
-  and tests but never checked the ~30 `install_*.sh` scripts that are
-  this repo's actual deliverable, so a shell syntax error only ever
-  surfaced by running it on a real CM5. CI-only fix, no runtime script
-  changed, no version bump. shellcheck itself (style/quoting, not just
-  syntax) is a real, separate follow-up once its own findings across
-  ~30 scripts have been triaged.
-
-### Added
-
-- **`provisioning/install_datalake.sh`** now also installs
-  HYDRA-UMC-DATALAKE's own new `hydra-umc-datalake-retention.service`/
-  `.timer` (real daily retention-apply schedule), alongside the CI fix
-  above. Both units are optional, left for the operator to enable after
-  review, same policy the main service already follows.
-
-## [0.3.6] - Polkit-scoped service control for hydra-umc-server
+## [0.3.6] - Polkit-scoped service control for hydra-umc-server, CI shell syntax checks
 
 ### Added
 
@@ -271,6 +250,22 @@ ecosystem:
   :unit/:action` (admin-only) - see that repo's own 0.3.7 changelog
   entry for the server-side half of this feature. Verified installed
   and present on the real CM5 (`sudo ls /etc/polkit-1/rules.d/`).
+- **`provisioning/install_datalake.sh`** now also installs
+  HYDRA-UMC-DATALAKE's own new `hydra-umc-datalake-retention.service`/
+  `.timer` (real daily retention-apply schedule). Both units are
+  optional, left for the operator to enable after review, same policy
+  the main service already follows.
+
+### Fixed
+
+- **`.github/workflows/ci.yml`** - a new `bash -n` (syntax-only) pass over
+  every `provisioning/**/*.sh` script: CI already validated Python/Node syntax
+  and tests but never checked the ~30 `install_*.sh` scripts that are
+  this repo's actual deliverable, so a shell syntax error only ever
+  surfaced by running it on a real CM5. CI-only fix, no runtime script
+  changed. shellcheck itself (style/quoting, not just syntax) is a real,
+  separate follow-up once its own findings across ~30 scripts have been
+  triaged.
 
 ## [0.3.5] - Dashboard-AI static serving
 
@@ -950,7 +945,7 @@ ecosystem:
 
 - Automated build version increment from 0.0.3.
 
-## Unreleased
+## [0.0.4] - Reworked CM5 deployment sequence, per-service accounts, real preflight gate
 
 ### Documentation
 
@@ -1004,9 +999,7 @@ ecosystem:
   and CI, to keep first boot, installer and systemd identity/path/permissions
   aligned.
 
-## Documentation
-
-### Added
+### Documentation
 
 - `docs/AGENT_REFERENCE.md` - full CLI/JSON reference for
   `hydra-umc-agent` (`describe`/`health`/`serve`), documenting every real
