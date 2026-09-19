@@ -91,7 +91,7 @@ ecosystem:
   which has no such restriction and reaches the exact same real sibling
   layout `provisioning/verify_install_and_recovery.sh` and
   `preflight_cm5.py` already expect.
-- **A real regression from I11 (0.4.2), only now exposed:** `agent.py`'s
+- **A real regression from 0.4.2, only now exposed:** `agent.py`'s
   new `from . import __version__` needs a real parent package context
   to resolve against - `provisioning/preflight_cm5.py`'s own
   `import_agent()` loaded it as a standalone file with no package
@@ -108,13 +108,13 @@ ecosystem:
 - **A real, pre-existing manifest/native-version desync found in the
   same pass:** `hydra-umc.project.json` had already drifted ahead of
   `agent/pyproject.toml`/`agent/src/hydra_umc_os/__init__.py` (0.4.1
-  vs. 0.4.0, predating I11, which then continued the same pattern
+  vs. 0.4.0, predating that regression, which then continued the same pattern
   bumping the manifest by hand to 0.4.2 without touching the native
   sources) - exactly the class of gap a prior audit already flagged
   this repo as prone to repeating. Synced before this build's own
   version increment.
 
-## [0.4.2] - I11: health() links a real agent version and boot session id
+## [0.4.2] - health() links a real agent version and boot session id
 
 - **`agent/src/hydra_umc_os/agent.py`** - `HealthReport` used to carry no
   link to which agent build produced it, nor to which running process
@@ -131,7 +131,7 @@ ecosystem:
   description there: `state` reacts to ANY check failing/warning, not
   only storage/temperature/network specifically). 2 new tests.
 
-## [0.4.1] - C14: a real --apply install + a real backup/wipe/restore cycle, not just bash -n
+## [0.4.1] - a real --apply install + a real backup/wipe/restore cycle, not just bash -n
 
 ### Added
 
