@@ -34,7 +34,7 @@ class RollbackError(Exception):
 
 
 class PartialRestoreError(RollbackError):
-    """OS-01 (P1): raised when a real I/O failure interrupts restore_all() AFTER
+    """raised when a real I/O failure interrupts restore_all AFTER
     its own pre-validation pass already confirmed every recorded backup
     exists - a genuine runtime failure (disk full, permission revoked, a
     backup file deleted out from under this process between validation
@@ -107,7 +107,7 @@ def restore_all(manifest_path: Path) -> list[str]:
     a real no-op the second time (the file is already back in its
     pre-install state), never an error - safe to re-run.
 
-    OS-01 (P1):
+    (P1):
     this used to validate one entry, mutate it, validate the next,
     mutate that one, and so on - a bad entry discovered partway through
     left every entry processed before it already restored/deleted: a

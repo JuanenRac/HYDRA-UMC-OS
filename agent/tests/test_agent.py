@@ -34,7 +34,7 @@ class AgentTests(unittest.TestCase):
         report = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=[], temperature_celsius=40.0)
         self.assertEqual(report.state, "DEGRADED")
 
-    # I11: health() used to carry no link to the running agent's own
+    # health used to carry no link to the running agent's own
     # package version or process instance - see agent.py's own
     # BOOT_SESSION_ID header comment for the real gap this closes.
     def test_health_reports_the_real_installed_agent_version(self):

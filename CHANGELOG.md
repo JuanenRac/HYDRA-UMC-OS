@@ -167,7 +167,7 @@ ecosystem:
   directories before copying, same pattern `install_dashboard_ai.sh`'s
   own `dist` copy already used.
 
-## [0.3.9] - OS-01: real pre-validation before any rollback mutation
+## [0.3.9] - real pre-validation before any rollback mutation
 
 ### Fixed
 

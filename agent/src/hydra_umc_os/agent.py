@@ -45,7 +45,7 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from hydra_umc_os import __version__
 
-# I11: a stable identifier for THIS running agent process, generated once at
+# a stable identifier for THIS running agent process, generated once at
 # import time - every health() call from the same "serve" loop reports the
 # same boot_session_id, and it changes only when the process itself
 # restarts. Without this, a caller polling health() over time (HYDRA-UMC-
@@ -84,7 +84,7 @@ class HealthReport:
     state: str
     timestamp_utc: str
     checks: dict[str, dict[str, Any]]
-    # I11: previously a HealthReport carried no link to which agent build
+    # previously a HealthReport carried no link to which agent build
     # produced it, nor to which running process instance - a caller
     # polling health() over time (HYDRA-UMC-UPDATER, a dashboard, ...) had
     # no way to distinguish "continuously healthy since boot" from "just

@@ -53,7 +53,7 @@ def import_agent() -> Any:
     # Real bug found while auditing CI: loading agent.py by bare file path
     # via spec_from_file_location (the original approach here) executes it
     # as a STANDALONE module with no parent package at all - agent.py's own
-    # `from . import __version__` (added by I11, health()'s real
+    # `from . import __version__` (added by, health's real
     # agent_version field) needs a real package context to resolve a
     # relative import against, and raised a real ImportError under exactly
     # that loading mechanism. This never surfaced before: the "Check out

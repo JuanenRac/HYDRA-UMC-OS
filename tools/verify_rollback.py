@@ -85,7 +85,7 @@ def main() -> int:
         # failure - never a silent no-op that could hide a real mistake.
         expect_fail("restore-missing-manifest", run("restore", "--manifest", str(root / "does-not-exist.json")))
 
-        # Case 5 (OS-01): a manifest whose LAST-restored entry has a real
+        # Case 5: a manifest whose LAST-restored entry has a real
         # missing backup must abort with ZERO mutations - not restore
         # every earlier entry first and only then discover the problem.
         missing_backup_manifest = root / "missing-backup-manifest.json"
@@ -115,7 +115,7 @@ def main() -> int:
             )
         print("ROLLBACK_VERIFY=PASS restore-aborts-with-zero-mutations-on-a-missing-backup")
 
-        # Case 6 (OS-01): a real I/O failure that only surfaces DURING the
+        # Case 6: a real I/O failure that only surfaces DURING the
         # mutating pass (pre-validation cannot catch it - here, a target's
         # own parent path is occupied by a real file, not a directory)
         # must report a real PartialRestoreError naming exactly what was
