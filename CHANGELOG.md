@@ -51,8 +51,8 @@ name/version/maturity/family. Whatever manifest happened to land there
 on the very first install (by hand, once) stayed frozen forever after,
 completely decoupled from the real, current code sitting right next to
 it - confirmed live: `/opt/hydra-umc/server/package.json` (updated
-2026-09-14) reported a different, newer version than its own sibling
-`hydra-umc.project.json` (untouched since 2026-09-04).
+more recently) reported a different, newer version than its own sibling
+`hydra-umc.project.json` (left untouched for much longer).
 
 Fixed in all 22 project-deploying scripts that were missing it (every
 `install_*.sh` except `install_cm5_base.sh`/`install_kiosk.sh`/
