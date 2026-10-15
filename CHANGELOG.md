@@ -80,7 +80,7 @@ check, all 24 clean).
 
 ## [0.4.3] - Real CI bugs fixed: a sibling checkout that always failed, and an agent that couldn't load standalone once it did
 
-Found and fixed while auditing GitHub Actions runs across the
+found and fixed on review of the GitHub Actions runs across the
 ecosystem:
 
 - **The "Check out HYDRA-UMC-SDK as a real sibling checkout" CI step**
@@ -110,7 +110,7 @@ ecosystem:
   `agent/pyproject.toml`/`agent/src/hydra_umc_os/__init__.py` (0.4.1
   vs. 0.4.0, predating that regression, which then continued the same pattern
   bumping the manifest by hand to 0.4.2 without touching the native
-  sources) - exactly the class of gap a prior audit already flagged
+  sources) - exactly the class of gap an earlier review already flagged
   this repo as prone to repeating. Synced before this build's own
   version increment.
 
@@ -380,7 +380,7 @@ ecosystem:
   directory, so each one's systemd unit sets `ProtectHome=read-only`,
   not this file's usual `true` (which would make `/home/` - and each
   symlink's real target - inaccessible outright, not just unwritable).
-- Real gap found auditing the ecosystem against actual CM5 hardware: of
+- Real gap found checking the ecosystem against actual CM5 hardware: of
   the 8 real "AI"-family repos, only Anomaly-Detector and Vision-Streamer
   already ran as a real HTTP service before this session; these 5 close
   the rest (Dashboard-AI is a Vite/React UI, not a Python CLI needing
@@ -436,10 +436,10 @@ ecosystem:
   HYDRA-UMC-PRODUCTION-REPORTS' real stdlib-only OEE/availability
   reporting API (copy `src/` + `PYTHONPATH`, same shape as
   `install_datalake.sh`), pinned loopback-only.
-- Real gap found auditing the ecosystem against actual CM5 hardware: all
+- Real gap found checking the ecosystem against actual CM5 hardware: all
   4 already had real, tested server/daemon code and had simply never
   been built or installed anywhere. The remaining "service"/"api"-role
-  repos audited alongside these (the 5 hardware bridges, Safety-Zones,
+  repos reviewed alongside these (the 5 hardware bridges, Safety-Zones,
   Semantic-Planner, Docs-QA, and the Orchestrator/Swarm-Sync/Twin/
   HIL-Bridge Rust services) do NOT yet have a real running server/daemon
   loop of their own - installing a systemd unit for those would be
@@ -456,7 +456,7 @@ ecosystem:
   needed) as a templated systemd unit, one instance per admin-assigned
   camera slot (`hydra-umc-vision-streamer@N`, matching the `cameraId`
   HYDRA-UMC-STUDIO's admin panel already assigns). Closes the last real
-  gap in the camera -> robot A1 pipeline audited this session:
+  gap in the camera -> robot A1 pipeline reviewed:
   HYDRA-UMC-SERVER's own `GET /api/camera/:id/stream` proxy and
   HYDRA-UMC-STUDIO's `CameraPIP`/`CamerasView` were already real, but
   nothing on the CM5 actually opened a physical `/dev/videoN` yet. This
@@ -475,8 +475,7 @@ ecosystem:
 - **`provisioning/install_anomaly_detector.sh`** (new) - installs
   HYDRA-UMC-ANOMALY-DETECTOR's real FFT + z-score anomaly-detection API
   (python3-numpy from Debian's own repos, no venv/pip needed) as a
-  loopback-bound systemd service. Real gap found auditing the ecosystem
-  against actual CM5 hardware: the only one of the 8 real "AI" repos
+  loopback-bound systemd service. Real gap found checking the ecosystem against actual CM5 hardware: the only one of the 8 real "AI" repos
   that already runs as a real HTTP service (the other 7 are CLIs only)
   had never been installed anywhere. Live-verified: `GET /stats`
   responds.
@@ -489,7 +488,7 @@ ecosystem:
   HYDRA-UMC-DATALAKE's real stdlib-only, sqlite3-backed time-series API
   as a loopback-bound systemd service (`data/` is the one
   `ReadWritePaths` exception under `ProtectSystem=strict`). Real gap
-  found auditing the ecosystem against actual CM5 hardware: genuinely
+  found checking the ecosystem against actual CM5 hardware: genuinely
   working, tested HTTP API that nothing ever installed anywhere.
   Live-verified: `GET /stats` responds, and Server's own
   `GET /api/telemetry/query` proxy reaches it successfully end to end
@@ -513,8 +512,7 @@ ecosystem:
 - **`provisioning/install_industrial_gateway.sh`** (new) - installs Docker
   and brings up HYDRA-UMC-GATEWAY-INDUSTRIAL's own real
   `docker-compose.yml` (all 3 real protocol bridges - OPC-UA, MQTT,
-  MTConnect - plus the Gateway's own aggregation surface). Real gap found
-  auditing the ecosystem against actual CM5 hardware: genuinely working,
+  MTConnect - plus the Gateway's own aggregation surface). Real gap found checking the ecosystem against actual CM5 hardware: genuinely working,
   tested code that nothing ever installed anywhere. Live-verified on this
   CM5: all 4 containers build and stay up, `GET /status` reports
   `allReachable:true` for all 3 children with real measured latencies.
@@ -538,7 +536,7 @@ ecosystem:
 - **`provisioning/server.env.example`** now documents (commented out)
   `HYDRA_UMC_DATALAKE_URL`/`HYDRA_UMC_DATALAKE_TIMEOUT_MS` and
   `HYDRA_UMC_SPI_BRIDGE_URL`/`HYDRA_UMC_SPI_BRIDGE_TIMEOUT_MS` - real gap
-  found auditing the ecosystem against actual CM5 hardware: `server.ts`
+  found checking the ecosystem against actual CM5 hardware: `server.ts`
   already reads both (STUDIO's Ecosystem > Telemetry panel and the
   Flasher/Tester's real CANOTA hardware path), but neither ever appeared
   in the example file operators actually provision `server.env` from.
