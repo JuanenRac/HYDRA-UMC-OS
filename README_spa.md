@@ -232,7 +232,6 @@ Este proyecto es parte del ecosistema de robótica HYDRA-UMC del mismo autor (Ju
 - **[SECURITY.md](SECURITY.md)** — cómo reportar una vulnerabilidad, y las áreas reales de enfoque en seguridad de este proyecto.
 - **[SUPPORT.md](SUPPORT.md)** — dónde hacer preguntas y reportar errores.
 - **[LICENSE.md](LICENSE.md)** — la licencia propia de este proyecto.
-- **[LICENSE.md](LICENSE.md)** — la licencia propia de este proyecto.
 
 ## 👤 AUTOR
 **JuanenRac** (Electro Hobby 3D)
