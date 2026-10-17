@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import importlib.util
 import json
 import re
 import subprocess
@@ -89,6 +90,30 @@ def load_identity(path: Path) -> dict[str, str]:
     return identity
 
 
+def check_env_secrets(env_dir: Path) -> None:
+    """No /etc/hydra-umc/*.env may still carry an example value of a deployment template, or a secret that is too short (a directory that does not exist is a development host: nothing to check)."""
+    if not env_dir.is_dir():
+        print(f"ENV_SECRETS=SKIPPED {env_dir} does not exist")
+        return
+    spec = importlib.util.spec_from_file_location("hydra_umc_os_generate_secrets", ROOT / "provisioning" / "generate_secrets.py")
+    if spec is None or spec.loader is None:
+        fail("cannot load provisioning/generate_secrets.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    found = []
+    files = sorted(env_dir.glob("*.env"))
+    for path in files:
+        try:
+            for item in module.problems(path.read_text(encoding="utf-8")):
+                found.append(f"{path.name}: {item}")
+        except OSError as exc:
+            fail(f"cannot read {path}: {exc}")
+    if found:
+        fail("example or weak secrets in " + str(env_dir) + ": " + "; ".join(found))
+    print(f"ENV_SECRETS=PASS files={len(files)}")
+
+
 def validate_server_contract(server_root: Path) -> None:
     try:
         installer = (ROOT / "provisioning" / "install_server.sh").read_text(encoding="utf-8")
@@ -117,6 +142,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sdk-root", type=Path, default=DEFAULT_SDK_ROOT)
     parser.add_argument("--server-root", type=Path, default=DEFAULT_SERVER_ROOT)
     parser.add_argument("--skip-sdk", action="store_true", help="skip sibling SDK integration verification")
+    parser.add_argument("--env-dir", type=Path, default=Path("/etc/hydra-umc"), help="where the deployment env files live (checked for example values)")
     args = parser.parse_args(argv)
 
     agent = import_agent()
@@ -136,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
             "SDK_OS_CONTRACT",
             [sys.executable, str(SDK_CONTRACT), "--sdk-root", str(args.sdk_root.resolve())],
         )
+    check_env_secrets(args.env_dir)
     if profile["profile"] == "control":
         validate_server_contract(args.server_root)
     print(f"CM5_PREFLIGHT=PASS profile={profile['profile']} changes=none")

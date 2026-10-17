@@ -200,8 +200,81 @@ except (urllib.error.URLError, OSError) as exc:
     print(f"FAIL HTTP round-trip against the real local server: {exc}")
     failures += 1
 
+# --- the credentials of THIS device (no password in the source, a one-time code in the form) ---------------------------
+
+import json as _json2
+import tempfile
+
+check("the publicly known default AP password is refused", wp.ap_password_problem(wp.DEFAULT_AP_PASSWORD) is not None, True)
+check("a short AP password is refused", wp.ap_password_problem("short") is not None, True)
+check("a long AP password is acceptable", wp.ap_password_problem("a-long-enough-pass"), None)
+
+with tempfile.TemporaryDirectory() as _state:
+    _first = wp.resolve_ap_credentials(Path(_state))
+    check("a device without a password generates its own (16 characters)", len(_first[0]), 16)
+    check("...and an 8-digit setup code", (len(_first[1]), _first[1].isdigit()), (8, True))
+    check("...and says it generated them", _first[2], True)
+    _again = wp.resolve_ap_credentials(Path(_state))
+    check("a restart keeps the same password and code", (_again[0], _again[1], _again[2]), (_first[0], _first[1], False))
+    check("the credentials file holds them", _json2.loads((Path(_state) / "credentials.json").read_text(encoding="utf-8")), {"password": _first[0], "code": _first[1]})
+    _refused = wp.resolve_ap_credentials(Path(_state) / "other", wp.DEFAULT_AP_PASSWORD)
+    check("the old default is never used, even when it is asked for", _refused[0] != wp.DEFAULT_AP_PASSWORD, True)
+    _explicit = wp.resolve_ap_credentials(Path(_state) / "explicit", "an-explicit-password")
+    check("an acceptable explicit password is used as given", _explicit[0], "an-explicit-password")
+
+# --- the setup form with a one-time code, a body limit and a window ---------------------------------------------
+
+coded_fake = FakeNetworkManager(known_good_password="setup-secret")
+coded_thread = threading.Thread(
+    target=wp.serve_until_joined,
+    args=(coded_fake, "wlan0", "HYDRA-UMC-SETUP", "setup-pass"),
+    kwargs={"host": "127.0.0.1", "port": 18766, "poll_interval_s": 0.2, "setup_code": "12345678"},
+    daemon=True,
+)
+coded_thread.start()
+
+
+def _post(url: str, body: bytes):
+    try:
+        return urllib.request.urlopen(urllib.request.Request(url, data=body, method="POST"), timeout=5).status
+    except urllib.error.HTTPError as error:
+        return error.code
+
+
+try:
+    check("the form asks for the setup code", b'name="code"' in urllib.request.urlopen("http://127.0.0.1:18766/", timeout=5).read(), True)
+    check("a wrong code is refused (403)", _post("http://127.0.0.1:18766/wifi", b"ssid=HomeNetwork&password=setup-secret&code=00000000"), 403)
+    check("a missing code is refused (403)", _post("http://127.0.0.1:18766/wifi", b"ssid=HomeNetwork&password=setup-secret"), 403)
+    check("nothing was joined with a wrong code", coded_fake.active_wifi_connection("wlan0"), None)
+    check("a body over the limit is refused (413)", _post("http://127.0.0.1:18766/wifi", b"ssid=" + b"a" * (wp.MAX_BODY_BYTES + 10)), 413)
+    check("the right code joins", _post("http://127.0.0.1:18766/wifi", b"ssid=HomeNetwork&password=setup-secret&code=12345678"), 200)
+    coded_thread.join(timeout=5)
+    check("the loop ends after the join", coded_thread.is_alive(), False)
+except (urllib.error.URLError, OSError) as exc:
+    print(f"FAIL HTTP round-trip against the coded server: {exc}")
+    failures += 1
+
+lockout_fake = FakeNetworkManager()
+lockout_thread = threading.Thread(
+    target=wp.serve_until_joined,
+    args=(lockout_fake, "wlan0", "HYDRA-UMC-SETUP", "setup-pass"),
+    kwargs={"host": "127.0.0.1", "port": 18767, "poll_interval_s": 0.2, "setup_code": "12345678", "window_s": 3},
+    daemon=True,
+)
+lockout_thread.start()
+try:
+    statuses = [_post("http://127.0.0.1:18767/wifi", b"ssid=HomeNetwork&password=x&code=11111111") for _ in range(wp.MAX_CODE_FAILURES)]
+    check("five wrong codes in a row are refused", statuses, [403] * wp.MAX_CODE_FAILURES)
+    check("the sixth try is locked out (429), even with the right code", _post("http://127.0.0.1:18767/wifi", b"ssid=HomeNetwork&password=x&code=12345678"), 429)
+except (urllib.error.URLError, OSError) as exc:
+    print(f"FAIL HTTP round-trip against the lockout server: {exc}")
+    failures += 1
+lockout_thread.join(timeout=10)
+check("nobody set the device up within the window: the loop ends", lockout_thread.is_alive(), False)
+check("...and the setup network is switched off", lockout_fake._hotspot_active, False)
+
 print()
 if failures:
     print(f"WIFI_PROVISION_VERIFY=FAIL {failures} mismatches")
     sys.exit(1)
-print("WIFI_PROVISION_VERIFY=PASS checks=24")
+print("WIFI_PROVISION_VERIFY=PASS checks=46")

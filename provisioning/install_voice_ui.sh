@@ -26,9 +26,12 @@ echo " ==============================================================="
 [[ -d "$SOURCE/src/hydra_umc_voice_ui" && -f "$SOURCE/systemd/hydra-umc-voice-ui.service" ]] || {
   echo "HYDRA-UMC-VOICE-UI source or systemd unit is incomplete: $SOURCE" >&2; exit 2;
 }
-[[ -f "$ENV_FILE" ]] || {
-  echo "Create $ENV_FILE from HYDRA-UMC-VOICE-UI/deploy/voice-ui.env.example first." >&2; exit 2;
-}
+# Created from the example when missing, with a random token of this device (or the one HYDRA-UMC-SERVER's
+# server.env already has: both files must carry the same value). No example value is accepted.
+OS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+install -d -o root -g root -m 0750 /etc/hydra-umc
+python3 "$OS_ROOT/provisioning/generate_secrets.py" "$ENV_FILE" --create-from "$SOURCE/deploy/voice-ui.env.example" --apply --adopt "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/server.env:HYDRA_UMC_VOICE_UI_TOKEN"
+python3 "$OS_ROOT/provisioning/generate_secrets.py" "$ENV_FILE" --check || { echo "Fix $ENV_FILE (no example value) and rerun." >&2; exit 2; }
 command -v python3 >/dev/null || { echo "HYDRA-UMC-VOICE-UI requires python3." >&2; exit 2; }
 if ! id -u "$VOICE_USER" >/dev/null 2>&1; then
   useradd --system --home "$TARGET" --no-create-home --shell /usr/sbin/nologin "$VOICE_USER"

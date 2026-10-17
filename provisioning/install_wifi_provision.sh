@@ -10,8 +10,8 @@
 # Does NOT enable/start it - same "review config, then enable manually"
 # posture install_local_agent.sh already uses, doubly warranted here
 # since this unit can bring up a real, over-the-air-reachable access
-# point with the module's own placeholder password unless
-# /etc/hydra-umc/wifi-provision.env is created first (see below).
+# point: its password and a one-time setup code are generated per device on the first
+# start (see the notes printed at the end), never taken from the source code.
 set -euo pipefail
 
 APPLY=false
@@ -30,7 +30,10 @@ run install -m 0644 "$ROOT/systemd/hydra-umc-wifi-provision.service" /etc/system
 run systemctl daemon-reload
 
 echo "WiFi provisioning installed."
-echo "Before enabling it for real, set a real AP password:"
-echo "  install -m 0600 -o root -g root /dev/null /etc/hydra-umc/wifi-provision.env"
-echo "  echo 'HYDRA_UMC_AP_PASSWORD=<a real, per-device password>' >> /etc/hydra-umc/wifi-provision.env"
+echo "The setup network's password and a one-time setup code are generated for THIS device on its first start"
+echo "(nothing is taken from the source code). Read them once, to write on the device label:"
+echo "  journalctl -u hydra-umc-wifi-provision | grep WIFI_PROVISION=CREDENTIALS"
+echo "They are also kept in /var/lib/hydra-umc/wifi-provision/credentials.json (root only)."
+echo "The setup network stays open for 30 minutes after each start (HYDRA_UMC_AP_WINDOW_S in"
+echo "/etc/hydra-umc/wifi-provision.env changes it); the form asks for the setup code."
 echo "Then: systemctl enable --now hydra-umc-wifi-provision"

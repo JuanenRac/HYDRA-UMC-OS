@@ -27,13 +27,16 @@ Before=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=no
-ExecStart=/usr/bin/python3 /opt/hydra-umc/wifi-provision/wifi_provision.py --apply --ifname wlan0 --ap-ssid HYDRA-UMC-SETUP
-# Real AP password MUST be overridden per-deployment via this drop-in
-# environment file - see docs/CM5_PROVISIONING.md's own "WiFi
-# provisioning" section for how to generate and place it. The module's
-# own DEFAULT_AP_PASSWORD is a known, shared placeholder, not something
-# to leave on a real device reachable over the air.
+ExecStart=/usr/bin/python3 /opt/hydra-umc/wifi-provision/wifi_provision.py --apply --ifname wlan0 --ap-ssid HYDRA-UMC-SETUP --state-dir /var/lib/hydra-umc/wifi-provision
+# The AP password and the one-time setup code are generated per device on the first start
+# and kept in /var/lib/hydra-umc/wifi-provision/credentials.json (0600); the service logs
+# them once (journalctl -u hydra-umc-wifi-provision | grep WIFI_PROVISION=CREDENTIALS) so
+# they can be written on the device label. No password is ever taken from the source code.
+# Optional /etc/hydra-umc/wifi-provision.env may set HYDRA_UMC_AP_PASSWORD (12+ characters)
+# or HYDRA_UMC_AP_WINDOW_S (seconds the setup network stays open, default 1800).
 EnvironmentFile=-/etc/hydra-umc/wifi-provision.env
+StateDirectory=hydra-umc/wifi-provision
+StateDirectoryMode=0700
 Restart=on-failure
 RestartSec=15
 TimeoutStartSec=0

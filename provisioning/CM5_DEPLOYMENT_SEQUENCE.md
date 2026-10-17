@@ -105,13 +105,15 @@ The BASE profile installs only the constrained OS agent, configuration and
 diagnostics. It does **not** enable motion, MCU, CAN, URTC, cameras, Hailo or
 other hardware profiles. Services remain an explicit activation decision.
 
-For the optional Wi-Fi access-point fallback, first create a root-only
-per-device secret, then enable the service only when it is actually required:
+For the optional Wi-Fi access-point fallback, enable the service only when it is
+actually required. The setup network's password and a one-time setup code are generated
+for that device on its first start (nothing comes from the source code); read them once
+from the journal, to write on the device label. The network stays open 30 minutes after
+each start, and the setup form asks for the code:
 
 ```bash
-sudo install -m 0600 -o root -g root /dev/null /etc/hydra-umc/wifi-provision.env
-sudo sh -c 'printf "%s\\n" "HYDRA_UMC_AP_PASSWORD=<unique-device-password>" >> /etc/hydra-umc/wifi-provision.env'
 sudo systemctl enable --now hydra-umc-wifi-provision
+sudo journalctl -u hydra-umc-wifi-provision | grep WIFI_PROVISION=CREDENTIALS
 ```
 
 **Gate 3:** preflight, reviewed dry run and BASE installation succeed without

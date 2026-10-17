@@ -38,12 +38,15 @@ network interface, so it never runs a mutating nmcli command without it.
 from __future__ import annotations
 
 import argparse
+import hmac
 import html
 import json
 import os
+import secrets
 import subprocess
 import sys
 import time
+from pathlib import Path
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Protocol
@@ -51,14 +54,69 @@ from urllib.parse import parse_qs
 
 DEFAULT_IFNAME = "wlan0"
 DEFAULT_AP_SSID = "HYDRA-UMC-SETUP"
-# PLACEHOLDER - a real deployment MUST override this (--ap-password / the
-# HYDRA_UMC_AP_PASSWORD env var), same "change before relying on this for
-# anything real" caveat this ecosystem's other placeholder secrets already
-# carry (e.g. HYDRA-UMC's own bootloader_common.h HMAC_KEY). A shared,
-# fixed AP password shipped in source is a real, known-bad default, not a
-# design recommendation.
+# The old, publicly known AP password. It is NEVER used as a fallback any more: a device
+# without a configured password generates its own random one (resolve_ap_credentials) and
+# an explicit value equal to this one (or a short one) is refused. The constant stays only
+# so that a configuration still carrying it can be recognised and replaced.
 DEFAULT_AP_PASSWORD = "hydraumc-setup"
+MIN_AP_PASSWORD_LENGTH = 12
 DEFAULT_PORT = 8080
+# The setup network and form exist only for this long after the service starts (a device
+# that is not set up by then simply stops offering them until the next boot).
+DEFAULT_WINDOW_SECONDS = 1800
+MAX_BODY_BYTES = 4096
+MAX_CODE_FAILURES = 5
+CODE_LOCKOUT_SECONDS = 60
+DEFAULT_STATE_DIR = "/var/lib/hydra-umc/wifi-provision"
+_PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"  # no look-alike characters (0/o, 1/l/i)
+
+
+def ap_password_problem(password: str | None) -> str | None:
+    """Why a configured AP password must not be used (None when it is acceptable)."""
+    if not password:
+        return "no AP password configured"
+    if password == DEFAULT_AP_PASSWORD:
+        return "the AP password is the publicly known default"
+    if len(password) < MIN_AP_PASSWORD_LENGTH:
+        return f"the AP password has fewer than {MIN_AP_PASSWORD_LENGTH} characters"
+    return None
+
+
+def resolve_ap_credentials(state_dir: Path, explicit_password: str | None = None) -> tuple[str, str, bool]:
+    """The AP password and the one-time setup code of THIS device: (password, code, generated).
+
+    A device must never offer a Wi-Fi network whose password is in the source code. An explicit, acceptable password is used as given; otherwise a random one is generated the first time
+    and kept in `state_dir/credentials.json` (0600, root), so a restart keeps the same values and the label or the log line stays valid. The setup code is always generated: the form
+    asks for it, so joining the setup network is not enough to hand the device a network.
+    """
+    state_dir.mkdir(parents=True, exist_ok=True)
+    path = state_dir / "credentials.json"
+    stored: dict[str, str] = {}
+    if path.exists():
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                stored = {key: value for key, value in loaded.items() if isinstance(value, str)}
+        except (OSError, ValueError):
+            stored = {}
+    generated = False
+    password = explicit_password if ap_password_problem(explicit_password) is None else None
+    if password is None:
+        password = stored.get("password") if ap_password_problem(stored.get("password")) is None else None
+    if password is None:
+        password = "".join(secrets.choice(_PASSWORD_ALPHABET) for _ in range(16))
+        generated = True
+    code = stored.get("code") if (stored.get("code") or "").isdigit() and len(stored.get("code", "")) == 8 else None
+    if code is None:
+        code = f"{secrets.randbelow(10 ** 8):08d}"
+        generated = True
+    if generated or not path.exists():
+        path.write_text(json.dumps({"password": password, "code": code}), encoding="utf-8")
+        try:
+            os.chmod(path, 0o600)
+        except OSError:
+            pass
+    return password, code, generated
 POLL_INTERVAL_S = 5.0
 NMCLI_TIMEOUT_S = 30
 
@@ -214,7 +272,7 @@ _FORM_PAGE = """<!doctype html>
 <form method="POST" action="/wifi">
 <label>Network name (SSID)<br><input name="ssid" required style="width:100%"></label><br><br>
 <label>Password<br><input name="password" type="password" style="width:100%"></label><br><br>
-<button type="submit">Connect</button>
+{code_field}<button type="submit">Connect</button>
 </form>
 </body></html>
 """
@@ -226,19 +284,24 @@ def make_handler(
     on_joined: "list[bool]",
     ap_ssid: str = DEFAULT_AP_SSID,
     ap_password: str = DEFAULT_AP_PASSWORD,
+    setup_code: str | None = None,
 ) -> type[BaseHTTPRequestHandler]:
-    """`on_joined` is a real, single-element mutable list used as a
+    """`setup_code` (the one-time code of this device) is required in the form when given: only someone who can read the device's label or log can hand it a network.
+    A wrong code five times in a row locks the form for a minute. `on_joined` is a real, single-element mutable list used as a
     plain out-of-band signal (`on_joined[0] = True`) the serving loop
     below polls - `ThreadingHTTPServer` handlers are constructed fresh
     per request, so there is no `self` that would survive between
     requests to hold this state instead."""
+
+    guard = {"failures": 0, "locked_until": 0.0}
+    code_field = ('<label>Setup code (printed on the device label)<br><input name="code" inputmode="numeric" autocomplete="off" required style="width:100%"></label><br><br>' + chr(10)) if setup_code else ""
 
     class WifiConfigHandler(BaseHTTPRequestHandler):
         def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - stdlib's own signature
             pass  # real requests go to journald via systemd's own stdout capture, not duplicated here
 
         def _send_html(self, status: int, message: str) -> None:
-            body = _FORM_PAGE.format(message=html.escape(message)).encode("utf-8")
+            body = _FORM_PAGE.format(message=html.escape(message), code_field=code_field).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -273,9 +336,29 @@ def make_handler(
                 self.send_response(404)
                 self.end_headers()
                 return
-            length = int(self.headers.get("Content-Length", "0"))
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = -1
+            if length < 0 or length > MAX_BODY_BYTES:
+                self._send_html(413, "That request is too large.")
+                return
             raw = self.rfile.read(length).decode("utf-8", errors="replace")
             fields = parse_qs(raw)
+            if setup_code:
+                now = time.monotonic()
+                if now < guard["locked_until"]:
+                    self._send_html(429, "Too many wrong codes. Wait a minute and try again.")
+                    return
+                given = (fields.get("code") or [""])[0].strip()
+                if not hmac.compare_digest(given.encode("utf-8"), setup_code.encode("utf-8")):
+                    guard["failures"] += 1
+                    if guard["failures"] >= MAX_CODE_FAILURES:
+                        guard["failures"] = 0
+                        guard["locked_until"] = now + CODE_LOCKOUT_SECONDS
+                    self._send_html(403, "The setup code is wrong.")
+                    return
+                guard["failures"] = 0
             ssid = (fields.get("ssid") or [""])[0].strip()
             password = (fields.get("password") or [""])[0]
             if not ssid:
@@ -299,6 +382,8 @@ def serve_until_joined(
     host: str = "0.0.0.0",
     port: int = DEFAULT_PORT,
     poll_interval_s: float = POLL_INTERVAL_S,
+    setup_code: str | None = None,
+    window_s: float | None = None,
 ) -> None:
     """Real serving loop: brings up the AP if needed, serves the config
     form, and returns as soon as a submitted attempt actually joins a
@@ -308,16 +393,25 @@ def serve_until_joined(
     by design)."""
     ensure_hotspot_if_disconnected(runner, ifname, ap_ssid, ap_password)
     joined = [False]
-    handler = make_handler(runner, ifname, joined, ap_ssid, ap_password)
+    handler = make_handler(runner, ifname, joined, ap_ssid, ap_password, setup_code)
     httpd = ThreadingHTTPServer((host, port), handler)
     print(f"WIFI_PROVISION=SERVING http://{host}:{port}/ (AP {ap_ssid!r} on {ifname})")
+    deadline = None if window_s is None else time.monotonic() + window_s
     try:
-        while not joined[0]:
+        while not joined[0] and (deadline is None or time.monotonic() < deadline):
             httpd.timeout = poll_interval_s
             httpd.handle_request()
     finally:
         httpd.server_close()
-    print("WIFI_PROVISION=JOINED")
+    if joined[0]:
+        print("WIFI_PROVISION=JOINED")
+        return
+    # nobody set the device up within the window: the setup network does not stay open for ever
+    try:
+        runner.stop_hotspot(ifname)
+    except NmcliError:
+        pass
+    print("WIFI_PROVISION=WINDOW_CLOSED")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -327,9 +421,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--ap-ssid", default=os.environ.get("HYDRA_UMC_AP_SSID", DEFAULT_AP_SSID))
     parser.add_argument(
         "--ap-password",
-        default=os.environ.get("HYDRA_UMC_AP_PASSWORD", DEFAULT_AP_PASSWORD),
-        help="real deployments must override this (or set HYDRA_UMC_AP_PASSWORD)",
+        default=os.environ.get("HYDRA_UMC_AP_PASSWORD"),
+        help="optional: a password of at least 12 characters (or HYDRA_UMC_AP_PASSWORD); without one this device generates its own, kept in --state-dir",
     )
+    parser.add_argument("--state-dir", default=os.environ.get("HYDRA_UMC_WIFI_STATE_DIR", DEFAULT_STATE_DIR))
+    parser.add_argument("--window-seconds", type=float, default=float(os.environ.get("HYDRA_UMC_AP_WINDOW_S", DEFAULT_WINDOW_SECONDS)))
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     args = parser.parse_args(argv)
@@ -345,7 +441,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    serve_until_joined(runner, args.ifname, args.ap_ssid, args.ap_password, args.host, args.port)
+    problem = ap_password_problem(args.ap_password) if args.ap_password else None
+    if problem:
+        print(f"WIFI_PROVISION=WARNING {problem}: a password of this device's own is used instead")
+    password, code, generated = resolve_ap_credentials(Path(args.state_dir), args.ap_password)
+    # Root-only journal: this line is how the person at the device learns the password and the code (also kept in state-dir/credentials.json, 0600).
+    print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} password={password} code={code}{' (generated now)' if generated else ''}")
+    serve_until_joined(runner, args.ifname, args.ap_ssid, password, args.host, args.port, setup_code=code, window_s=args.window_seconds)
     return 0
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.8] - Secrets generated per device, a Wi-Fi setup network with its own password and code
+
+- New `provisioning/generate_secrets.py`: `install_server.sh` and `install_voice_ui.sh` create their env file from the example when it is missing and replace every example value (`JWT_SECRET`, the bootstrap administrator password, the voice relay token) with a random one of the device; a value the operator already chose is left alone, the voice relay token is the same in `server.env` and `voice-ui.env` whichever is installed first, the administrator password is printed once, and the installers refuse to go on while an example value or a short secret is left.
+- `preflight_cm5.py` fails when a `/etc/hydra-umc/*.env` still carries an example value or a short secret (`--env-dir`, skipped on a host without that directory).
+- New `provisioning/gateway_env.py`: `install_industrial_gateway.sh` writes the `.env` of the Industrial Gateway stack (the gateway's JWT secret, one MQTT credential and one ACL rule per machine bridge, shown once), which the production gateway and broker now require.
+- The Wi-Fi setup network no longer has a published password: each device generates its own 16-character password and a one-time 8-digit setup code on its first start (kept in `/var/lib/hydra-umc/wifi-provision/credentials.json`, 0600, and logged once for the device label); the setup form asks for the code and locks for a minute after five wrong ones, the network stays open 30 minutes after each start (`HYDRA_UMC_AP_WINDOW_S`), and the form refuses requests over 4 KB.
+- `tools/verify_generate_secrets.py` (22 checks), `tools/verify_gateway_env.py` (12 checks), 22 more Wi-Fi checks (46 in total) and one more preflight negative check; the README says so in 7 languages plus a Portuguese README.
+
 ## [0.4.7] - first_boot.sh: real fix for Bluetooth devices that pair but never bond
 
 Found live pairing a physical Xbox controller directly to a CM5: BlueZ's own default

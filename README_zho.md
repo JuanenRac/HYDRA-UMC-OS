@@ -17,7 +17,8 @@ CC BY-SA 4.0 - 参见 LICENSE.md
   <a href="README_ita.md">🇮🇹意大利语</a> |
   <a href="README_deu.md">🇩🇪德语</a> |
   <a href="README_zho.md">🇨🇳简体中文</a> |
-  <a href="README_jpn.md">🇯🇵日本语</a>
+  <a href="README_jpn.md">🇯🇵日本语</a> |
+  <a href="README_por.md">🇵🇹 Português</a>
 </p>
 
 <p align="center">
@@ -39,7 +40,7 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 配置、服务生命周期、本地身份、诊断、视觉品牌
 以及 HYDRA-UMC 组件的协调更新。
 
-**诚实核查——今天真正能跑起来的部分：** 只读设备代理（`agent/src/hydra_umc_os/agent.py`：`DeviceDescriptor`/`HealthReport`，温度/存储/网络检查，配置档案加载）是真实且经过测试的（13 个单元测试，`agent/tests/test_agent.py`，`python -m unittest discover`）。`provisioning/preflight_cm5.py` 通过一个真实测试验证为幂等且无副作用——运行两次并对比输出（`tools/verify_preflight_idempotent.py`），外加 4 项真实的反向路径检查（`tools/verify_preflight_negative.py`）；`provisioning/rollback.py` 的备份/恢复机制由 8 项真实检查验证，其中包括一个真正的部分失败场景（`tools/verify_rollback.py`）；`provisioning/wifi_provision.py` 的 AP 模式回退状态机由针对一个伪造 NetworkManager 的 24 项真实检查验证，其中包括一次通过真实回环套接字完成的端到端 HTTP 往返（`tools/verify_wifi_provision.py`）——这三者都不需要 root 权限或物理 CM5 即可验证。目前唯一没有被验证过的：真实的 CM5 硬件本身。`image-builder/` 目前只是文档（一份关于可复现性说明的 README，还没有镜像组装代码）；`packages/` 包含真实的 Debian 打包元数据（`control`/`rules`），但在本环境中尚未被构建成真正的 `.deb`。已交付的具体内容见 `CHANGELOG.md`，这里已验证的部分与仍需物理硬件的部分之间的确切界线见 `docs/CM5_SOFTWARE_READINESS.md`。
+**诚实核查——今天真正能跑起来的部分：** 只读设备代理（`agent/src/hydra_umc_os/agent.py`：`DeviceDescriptor`/`HealthReport`，温度/存储/网络检查，配置档案加载）是真实且经过测试的（13 个单元测试，`agent/tests/test_agent.py`，`python -m unittest discover`）。`provisioning/preflight_cm5.py` 通过一个真实测试验证为幂等且无副作用——运行两次并对比输出（`tools/verify_preflight_idempotent.py`），外加 5 项真实的反向路径检查（`tools/verify_preflight_negative.py`）；`provisioning/rollback.py` 的备份/恢复机制由 8 项真实检查验证，其中包括一个真正的部分失败场景（`tools/verify_rollback.py`）；`provisioning/wifi_provision.py` 的 AP 模式回退状态机由针对一个伪造 NetworkManager 的 46 项真实检查验证，其中包括一次通过真实回环套接字完成的端到端 HTTP 往返（`tools/verify_wifi_provision.py`）——这三者都不需要 root 权限或物理 CM5 即可验证。目前唯一没有被验证过的：真实的 CM5 硬件本身。`image-builder/` 目前只是文档（一份关于可复现性说明的 README，还没有镜像组装代码）；`packages/` 包含真实的 Debian 打包元数据（`control`/`rules`），但在本环境中尚未被构建成真正的 `.deb`。已交付的具体内容见 `CHANGELOG.md`，这里已验证的部分与仍需物理硬件的部分之间的确切界线见 `docs/CM5_SOFTWARE_READINESS.md`。
 
 ## 🚧 状态
 
@@ -51,6 +52,8 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 安装预检（`provisioning/preflight_cm5.py`）已通过一项真实测试证明其具有幂等性且无副作用——连续运行两次会产生逐字节相同的输出，并且不会触及此仓库中的任何文件——而一个真实的、与主机无关的备份/回滚机制（`provisioning/rollback.py`）保护着 `install_local_agent.sh` 在每次运行时无条件覆盖的那一个系统文件。两者均已在无需 root 权限或 CM5 的情况下完成验证——参见 `tools/verify_preflight_idempotent.py` 和 `tools/verify_rollback.py`。
 
 **WiFi 首次接触配网同样是真实的**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——为尚无已知网络的无头 CM5 提供真实的 NetworkManager AP 模式回退：启动一个真实的热点（`nmcli device wifi hotspot`），操作员的手机/笔记本电脑可以加入该热点，通过一个小型本地 HTTP 表单提交真实的目标 SSID/密码，成功后关闭 AP 并加入真实网络，失败时恢复 AP，使设备永远不会被困住。该状态机针对一个伪造的 NetworkManager 进行了完整的单元测试，包括通过真实回环套接字进行的真实端到端 HTTP 往返——参见 `tools/verify_wifi_provision.py`。由 `install_cm5_base.sh` 安装，但刻意未自动启用，因为它绝不能在真实的、可通过空口访问的设备上以自带的占位 AP 密码启动——需先完成 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` 第 3 节所述的真实密码设置步骤。
+
+**密钥按设备生成，绝不从模板沿用。** `install_server.sh` 和 `install_voice_ui.sh` 在 env 文件缺失时会根据示例创建，并把每个示例值（`JWT_SECRET`、首个管理员密码、语音中继令牌）替换为本设备的随机值（`provisioning/generate_secrets.py`；运维人员已选定的值会保留，管理员密码只显示一次），随后如果仍残留示例值或过短的密钥就拒绝继续；`preflight_cm5.py` 会拒绝仍含有示例值的 `/etc/hydra-umc/*.env`。`install_industrial_gateway.sh` 会写出该栈的 `.env`（`provisioning/gateway_env.py`：网关密钥，以及每个设备桥接器各一份 MQTT 凭据和 ACL 规则）。Wi-Fi 配置网络的源码中不再有密码：每台设备在首次启动时生成自己的密码和一次性配置码（在日志中读取一次，写到标签上），表单要求输入配置码（连续五次错误后锁定一分钟），配置网络在每次启动后只开放 30 分钟，表单会拒绝过大的请求。由 `tools/verify_generate_secrets.py`、`tools/verify_gateway_env.py` 和 `tools/verify_wifi_provision.py` 验证。
 
 ## 🎯 第一个里程碑
 

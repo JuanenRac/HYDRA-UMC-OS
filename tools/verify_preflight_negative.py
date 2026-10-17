@@ -48,7 +48,18 @@ def main() -> int:
             "--server-root", str(directory / "missing-server"),
             "--skip-sdk",
         )
-    print("PREFLIGHT_NEGATIVE=PASS checks=4")
+
+        # a deployment env file that still carries an example value of the template must stop the preflight
+        env_dir = directory / "etc-hydra-umc"
+        env_dir.mkdir()
+        (env_dir / "server.env").write_text((ROOT / "provisioning" / "server.env.example").read_text(encoding="utf-8"), encoding="utf-8")
+        expect_failure("example-secrets-in-env", "--skip-sdk", "--env-dir", str(env_dir))
+        (env_dir / "server.env").write_text("JWT_SECRET=" + "f3a9c07b" * 8 + chr(10), encoding="utf-8")
+        ok = subprocess.run((sys.executable, str(PREFLIGHT), "--skip-sdk", "--env-dir", str(env_dir)), cwd=ROOT, text=True, capture_output=True, check=False)
+        if ok.returncode != 0:
+            raise SystemExit("PREFLIGHT_NEGATIVE=FAIL a real secret must pass: " + (ok.stderr or ok.stdout))
+        print("PREFLIGHT_NEGATIVE=PASS real-secrets-in-env")
+    print("PREFLIGHT_NEGATIVE=PASS checks=5")
     return 0
 
 

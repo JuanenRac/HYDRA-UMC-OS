@@ -50,6 +50,15 @@ run apt-get update
 run apt-get install -y --no-install-recommends docker.io docker-cli docker-buildx docker-compose
 run systemctl enable --now docker
 
+# docker-compose.yml needs the secrets of a production gateway and broker (GATEWAY_JWT_SECRET, MQTT_AUTH_JSON, MQTT_ACL_JSON): without them
+# both refuse to start. They are generated per device into the stack's own .env (root only, never overwritten) and the credential of each
+# machine bridge is printed once. A bridge connects with HYDRA_MQTT_USERNAME / HYDRA_MQTT_PASSWORD of its own credential.
+if $APPLY; then
+  python3 "$(dirname "$0")/gateway_env.py" "$GATEWAY_DIR/.env" --apply
+else
+  python3 "$(dirname "$0")/gateway_env.py" "$GATEWAY_DIR/.env"
+fi
+
 if $APPLY; then
   echo "Building and starting the Gateway stack (docker compose up -d --build)..."
   (cd "$GATEWAY_DIR" && docker compose up -d --build)

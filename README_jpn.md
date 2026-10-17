@@ -17,7 +17,8 @@ CC BY-SA 4.0 - LICENSE.md を参照
   <a href="README_ita.md">🇮🇹 イタリアーノ</a> |
   <a href="README_deu.md">🇩🇪 ドイツ語</a> |
   <a href="README_zho.md">🇨🇳 简体中文</a> |
-  <a href="README_jpn.md">🇯🇵 日本語</a>
+  <a href="README_jpn.md">🇯🇵 日本語</a> |
+  <a href="README_por.md">🇵🇹 Português</a>
 </p>
 
 <p align="center">
@@ -39,7 +40,7 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 構成、サービス ライフサイクル、ローカル ID、診断、ビジュアル
 ブランド化、および HYDRA-UMC コンポーネントの更新の調整。
 
-**正直な現状確認 - 実際に今動くもの:** 読み取り専用のデバイスエージェント（`agent/src/hydra_umc_os/agent.py`: `DeviceDescriptor`/`HealthReport`、温度・ストレージ・ネットワークのチェック、設定プロファイルの読み込み）は本物であり、テスト済みです（13件のユニットテスト、`agent/tests/test_agent.py`、`python -m unittest discover`）。`provisioning/preflight_cm5.py` は、2回実行して出力を比較する実際のテスト（`tools/verify_preflight_idempotent.py`）により冪等かつ副作用がないことが検証されており、さらに4件の実際のネガティブパスチェック（`tools/verify_preflight_negative.py`）もあります。`provisioning/rollback.py` のバックアップ/復元メカニズムは、実際の部分的失敗シナリオを含む8件の実際のチェックで検証されています（`tools/verify_rollback.py`）。`provisioning/wifi_provision.py` のAPモード・フォールバック状態機械は、偽のNetworkManagerに対する24件の実際のチェックで検証されており、その中には実際のループバックソケット上での本物のエンドツーエンドHTTPラウンドトリップも含まれます（`tools/verify_wifi_provision.py`）- これら3つはいずれも検証にroot権限や物理的なCM5を必要としません。これまでに検証されていないもの: 実機のCM5ハードウェアそのものです。`image-builder/` は現時点ではドキュメントのみです（再現性に関するメモのREADMEで、まだイメージ組み立てコードはありません）。`packages/` には実際のDebianパッケージメタデータ（`control`/`rules`）が含まれていますが、この環境ではまだ実際の `.deb` としてビルドされていません。これまでに実際に出荷されたものの詳細は `CHANGELOG.md` を、ここで検証済みのものと物理ハードウェアが依然として必要なものとの正確な境界線は `docs/CM5_SOFTWARE_READINESS.md` を参照してください。
+**正直な現状確認 - 実際に今動くもの:** 読み取り専用のデバイスエージェント（`agent/src/hydra_umc_os/agent.py`: `DeviceDescriptor`/`HealthReport`、温度・ストレージ・ネットワークのチェック、設定プロファイルの読み込み）は本物であり、テスト済みです（13件のユニットテスト、`agent/tests/test_agent.py`、`python -m unittest discover`）。`provisioning/preflight_cm5.py` は、2回実行して出力を比較する実際のテスト（`tools/verify_preflight_idempotent.py`）により冪等かつ副作用がないことが検証されており、さらに5件の実際のネガティブパスチェック（`tools/verify_preflight_negative.py`）もあります。`provisioning/rollback.py` のバックアップ/復元メカニズムは、実際の部分的失敗シナリオを含む8件の実際のチェックで検証されています（`tools/verify_rollback.py`）。`provisioning/wifi_provision.py` のAPモード・フォールバック状態機械は、偽のNetworkManagerに対する46件の実際のチェックで検証されており、その中には実際のループバックソケット上での本物のエンドツーエンドHTTPラウンドトリップも含まれます（`tools/verify_wifi_provision.py`）- これら3つはいずれも検証にroot権限や物理的なCM5を必要としません。これまでに検証されていないもの: 実機のCM5ハードウェアそのものです。`image-builder/` は現時点ではドキュメントのみです（再現性に関するメモのREADMEで、まだイメージ組み立てコードはありません）。`packages/` には実際のDebianパッケージメタデータ（`control`/`rules`）が含まれていますが、この環境ではまだ実際の `.deb` としてビルドされていません。これまでに実際に出荷されたものの詳細は `CHANGELOG.md` を、ここで検証済みのものと物理ハードウェアが依然として必要なものとの正確な境界線は `docs/CM5_SOFTWARE_READINESS.md` を参照してください。
 
 ## 🚧 ステータス
 
@@ -51,6 +52,8 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 インストールのプリフライト（`provisioning/preflight_cm5.py`）は、実際のテストによって冪等性があり副作用がないことが証明されている——2回連続で実行してもバイト単位で同一の出力が得られ、このリポジトリ内のファイルには一切触れない——そして、実際のホスト非依存なバックアップ/ロールバック機構（`provisioning/rollback.py`）が、`install_local_agent.sh` が実行のたびに無条件で上書きする唯一のシステムファイルを保護する。どちらも root 権限や CM5 なしで検証されている——`tools/verify_preflight_idempotent.py` と `tools/verify_rollback.py` を参照。
 
 **WiFi 初回接続プロビジョニングも実際に動作する**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——まだ既知のネットワークを持たないヘッドレス CM5 のための、実際の NetworkManager AP モードのフォールバック。実際のホットスポット（`nmcli device wifi hotspot`）を起動し、オペレーターの携帯電話やノート PC がそれに接続して、小さなローカル HTTP フォームを通じて実際のターゲット SSID/パスワードを送信できるようにする。成功時には AP を停止して実際のネットワークに参加し、失敗時には AP を復元してデバイスが孤立しないようにする。この状態機械は、疑似的な NetworkManager に対して完全に単体テストされており、実際のループバックソケット上での実際のエンドツーエンド HTTP 往復も含まれる——`tools/verify_wifi_provision.py` を参照。`install_cm5_base.sh` によってインストールされるが、実際に無線到達可能なデバイス上でプレースホルダーの AP パスワードのまま起動してはならないため、意図的に自動有効化はされない——先に必要な実際のパスワード設定手順については `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` のセクション 3 を参照。
+
+**シークレットはデバイスごとに生成され、テンプレートから流用されることはありません。** `install_server.sh` と `install_voice_ui.sh` は、env ファイルがなければ例から作成し、例の値（`JWT_SECRET`、最初の管理者パスワード、音声リレートークン）をすべてこのデバイス固有のランダム値に置き換えます（`provisioning/generate_secrets.py`。運用者がすでに選んだ値は残り、管理者パスワードは一度だけ表示されます）。例の値や短すぎるシークレットが残っていれば先へ進みません。`preflight_cm5.py` は、まだそれらを含む `/etc/hydra-umc/*.env` を拒否します。`install_industrial_gateway.sh` はスタックの `.env` を書きます（`provisioning/gateway_env.py`：ゲートウェイのシークレットと、マシンブリッジごとの MQTT 認証情報と ACL ルール）。Wi-Fi セットアップネットワークはソースコード内にパスワードを持たなくなりました。各デバイスが初回起動時に自分のパスワードと使い捨てのセットアップコードを生成し（ジャーナルで一度だけ読み取り、ラベルに書く）、フォームはコードを要求し（5 回間違えると 1 分間ロック）、セットアップネットワークは起動のたびに 30 分間だけ開き、フォームは大きすぎるリクエストを拒否します。`tools/verify_generate_secrets.py`、`tools/verify_gateway_env.py`、`tools/verify_wifi_provision.py` で検証しています。
 
 ## 🎯 最初のマイルストーン
 

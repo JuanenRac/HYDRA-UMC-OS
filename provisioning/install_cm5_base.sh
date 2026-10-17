@@ -63,10 +63,10 @@ if $APPLY; then
   if $ENABLE_SERVICES; then
     systemctl enable --now hydra-umc-agent
     # WiFi provisioning is deliberately NOT auto-enabled even under
-    # --enable-services - see install_wifi_provision.sh's own note: it
-    # must not start with the module's own placeholder AP password on a
-    # real, over-the-air-reachable device. Set
-    # /etc/hydra-umc/wifi-provision.env first, then enable it by hand.
+    # --enable-services: it opens a setup network on a real, over-the-air-
+    # reachable device, so it is an explicit decision (see
+    # install_wifi_provision.sh's own note: the password and the setup code are
+    # generated per device on the first start).
     # The bounded Voice UI gateway must be ready before Server accepts
     # authenticated Watch/phone voice turns that it relays locally.
     $WITH_VOICE_UI && systemctl enable --now hydra-umc-voice-ui

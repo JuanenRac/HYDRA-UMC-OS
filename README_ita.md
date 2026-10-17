@@ -17,7 +17,8 @@ CC BY-SA 4.0 - vedere LICENZA.md
   <a href="README_ita.md">🇮🇹 Italiano</a> |
   <a href="README_deu.md">🇩🇪 Tedesco</a> |
   <a href="README_zho.md">🇨🇳 简体中文</a> |
-  <a href="README_jpn.md">🇯🇵 日本語</a>
+  <a href="README_jpn.md">🇯🇵 日本語</a> |
+  <a href="README_por.md">🇵🇹 Português</a>
 </p>
 
 <p align="center">
@@ -39,7 +40,7 @@ La sua responsabilità è fornire un profilo riproducibile del dispositivo HYDRA
 configurazione, ciclo di vita del servizio, identità locale, diagnostica,
 branding visivo e aggiornamenti coordinati per i componenti HYDRA-UMC.
 
-**Verifica di onestà - cosa funziona davvero oggi:** l'agente del dispositivo in sola lettura (`agent/src/hydra_umc_os/agent.py`: `DeviceDescriptor`/`HealthReport`, controlli di temperatura/spazio di archiviazione/rete, caricamento del profilo di configurazione) è reale e testato (13 test unitari, `agent/tests/test_agent.py`, `python -m unittest discover`). `provisioning/preflight_cm5.py` è verificato come idempotente e privo di effetti collaterali da un test reale che lo esegue due volte e confronta l'output (`tools/verify_preflight_idempotent.py`), più 4 controlli reali sui percorsi negativi (`tools/verify_preflight_negative.py`); il meccanismo di backup/ripristino di `provisioning/rollback.py` è verificato da 8 controlli reali, incluso uno scenario di fallimento parziale genuino (`tools/verify_rollback.py`); la macchina a stati del fallback in modalità AP di `provisioning/wifi_provision.py` è verificata da 24 controlli reali contro un NetworkManager fittizio, incluso un vero round-trip HTTP end-to-end su un socket loopback reale (`tools/verify_wifi_provision.py`) - nessuno dei tre richiede permessi root o una CM5 fisica per essere verificato. Ciò che non è mai stato testato: hardware CM5 reale. `image-builder/` è solo documentazione (un README di note sulla riproducibilità, senza ancora codice di assemblaggio immagine); `packages/` contiene metadati reali di pacchetto Debian (`control`/`rules`) che non sono stati compilati in un vero `.deb` in questo ambiente. Vedi `CHANGELOG.md` per ciò che è stato consegnato finora esattamente, e `docs/CM5_SOFTWARE_READINESS.md` per la linea esatta tra ciò che è verificato qui e ciò che richiede ancora hardware fisico.
+**Verifica di onestà - cosa funziona davvero oggi:** l'agente del dispositivo in sola lettura (`agent/src/hydra_umc_os/agent.py`: `DeviceDescriptor`/`HealthReport`, controlli di temperatura/spazio di archiviazione/rete, caricamento del profilo di configurazione) è reale e testato (13 test unitari, `agent/tests/test_agent.py`, `python -m unittest discover`). `provisioning/preflight_cm5.py` è verificato come idempotente e privo di effetti collaterali da un test reale che lo esegue due volte e confronta l'output (`tools/verify_preflight_idempotent.py`), più 5 controlli reali sui percorsi negativi (`tools/verify_preflight_negative.py`); il meccanismo di backup/ripristino di `provisioning/rollback.py` è verificato da 8 controlli reali, incluso uno scenario di fallimento parziale genuino (`tools/verify_rollback.py`); la macchina a stati del fallback in modalità AP di `provisioning/wifi_provision.py` è verificata da 46 controlli reali contro un NetworkManager fittizio, incluso un vero round-trip HTTP end-to-end su un socket loopback reale (`tools/verify_wifi_provision.py`) - nessuno dei tre richiede permessi root o una CM5 fisica per essere verificato. Ciò che non è mai stato testato: hardware CM5 reale. `image-builder/` è solo documentazione (un README di note sulla riproducibilità, senza ancora codice di assemblaggio immagine); `packages/` contiene metadati reali di pacchetto Debian (`control`/`rules`) che non sono stati compilati in un vero `.deb` in questo ambiente. Vedi `CHANGELOG.md` per ciò che è stato consegnato finora esattamente, e `docs/CM5_SOFTWARE_READINESS.md` per la linea esatta tra ciò che è verificato qui e ciò che richiede ancora hardware fisico.
 
 ## 🚧 Stato
 
@@ -75,6 +76,8 @@ avviarsi con la propria password AP segnaposto su un dispositivo reale
 raggiungibile via etere - vedere la sezione 3 di
 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` per il passaggio della
 password reale richiesto prima.
+
+**I segreti si generano per dispositivo, mai presi da un modello.** `install_server.sh` e `install_voice_ui.sh` creano i loro file env dall'esempio quando mancano e sostituiscono ogni valore di esempio (`JWT_SECRET`, la password dell'amministratore iniziale, il token del relay vocale) con uno casuale di questo dispositivo (`provisioning/generate_secrets.py`; ciò che l'operatore ha già scelto resta, e la password dell'amministratore viene stampata una sola volta), poi si rifiutano di proseguire se resta un valore di esempio o un segreto troppo corto; `preflight_cm5.py` rifiuta un `/etc/hydra-umc/*.env` che ne contenga ancora. `install_industrial_gateway.sh` scrive il `.env` dello stack (`provisioning/gateway_env.py`: il segreto del gateway e una credenziale MQTT e una regola ACL per ogni bridge di macchina). La rete Wi-Fi di configurazione non ha più una password nel codice sorgente: ogni dispositivo genera la propria e un codice di configurazione monouso al primo avvio (da leggere una volta nel journal, da scrivere sull'etichetta), il modulo chiede il codice (bloccato un minuto dopo cinque errori), la rete di configurazione resta aperta solo 30 minuti dopo ogni avvio e il modulo rifiuta richieste troppo grandi. Verificato da `tools/verify_generate_secrets.py`, `tools/verify_gateway_env.py` e `tools/verify_wifi_provision.py`.
 
 ## 🎯 Primo traguardo
 
