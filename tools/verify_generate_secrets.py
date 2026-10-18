@@ -49,6 +49,7 @@ check("comments and other variables are untouched", "NODE_ENV=production" in fil
 own = "JWT_SECRET=" + "f3a9c07b" * 8 + "\nHYDRA_UMC_BOOTSTRAP_ADMIN_PASSWORD=a-password-of-my-own-1\n"
 check("a value the operator chose is left alone", gs.fill(own)[1], {})
 check("...and accepted by the check", gs.problems(own), [])
+check("an empty JWT secret is refused", gs.problems("JWT_SECRET=" + chr(10)), ["JWT_SECRET is empty"])
 check("a short JWT secret is refused", gs.problems("JWT_SECRET=short\n"), ["JWT_SECRET has fewer than 32 characters"])
 check("a short password is refused", gs.problems("HYDRA_UMC_BOOTSTRAP_ADMIN_PASSWORD=short\n"), ["HYDRA_UMC_BOOTSTRAP_ADMIN_PASSWORD has fewer than 12 characters"])
 

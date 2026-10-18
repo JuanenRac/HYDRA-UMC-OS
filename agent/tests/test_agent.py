@@ -169,6 +169,23 @@ class AgentTests(unittest.TestCase):
             sensor = Path(directory) / "temp"; sensor.write_text("42500", encoding="utf-8")
             self.assertEqual(read_temperature_celsius(sensor), 42.5)
 
+    def test_serve_reports_are_single_line_json(self):
+        import io
+        from contextlib import redirect_stdout
+
+        from hydra_umc_os.agent import emit
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            emit(health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=["eth0"], temperature_celsius=40.0), compact=True)
+        lines = buffer.getvalue().strip().splitlines()
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(json.loads(lines[0])["schema_version"], "1.0")
+
+    def test_the_agent_version_is_the_manifest_version(self):
+        manifest = json.loads((Path(__file__).resolve().parents[2] / "hydra-umc.project.json").read_text(encoding="utf-8"))
+        self.assertEqual(__version__, manifest["version"])
+
     def test_serve_rejects_non_positive_or_non_finite_intervals(self):
         self.assertEqual(main(["--interval", "0", "serve"]), 2)
         self.assertEqual(main(["--interval", "nan", "serve"]), 2)

@@ -273,8 +273,29 @@ lockout_thread.join(timeout=10)
 check("nobody set the device up within the window: the loop ends", lockout_thread.is_alive(), False)
 check("...and the setup network is switched off", lockout_fake._hotspot_active, False)
 
+# an already-connected device serves nothing: no form on the production LAN, no waiting at boot
+connected_fake = FakeNetworkManager()
+connected_fake._connected_ssid = "HomeNetwork"
+served = []
+original_make_handler = wp.make_handler
+wp.make_handler = lambda *a, **k: served.append(True) or original_make_handler(*a, **k)
+try:
+    wp.serve_until_joined(connected_fake, "wlan0", "ap", "password-12345", host="127.0.0.1", port=18768, poll_interval_s=0.1, window_s=1)
+finally:
+    wp.make_handler = original_make_handler
+check("an already-connected device never starts the setup form", served, [])
+check("...and never raises the access point", connected_fake._hotspot_active, False)
+
+import os as _os
+
+_os.environ["HYDRA_UMC_AP_WINDOW_S"] = "soon"
+check("a non-numeric window falls back to the default instead of crashing", wp._window_from_environment(), float(wp.DEFAULT_WINDOW_SECONDS))
+_os.environ["HYDRA_UMC_AP_WINDOW_S"] = "90"
+check("a numeric window is honoured", wp._window_from_environment(), 90.0)
+_os.environ.pop("HYDRA_UMC_AP_WINDOW_S")
+
 print()
 if failures:
     print(f"WIFI_PROVISION_VERIFY=FAIL {failures} mismatches")
     sys.exit(1)
-print("WIFI_PROVISION_VERIFY=PASS checks=46")
+print("WIFI_PROVISION_VERIFY=PASS checks=49")

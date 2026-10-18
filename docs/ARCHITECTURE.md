@@ -42,8 +42,9 @@ CM5 -- Hailo -- network -- MCU / URTC / CAN
 ## State model
 
 `BOOTING -> DIAGNOSING -> READY` is the normal route. A non-critical failure
-may produce `DEGRADED`; a missing safety prerequisite produces `INHIBITED`;
-an MCU or safety fault produces `FAULT` or `SAFE_STOP`. The MCU remains the
+may produce `DEGRADED`; a failed check produces `FAULT`. `INHIBITED` (a
+missing safety prerequisite) and `SAFE_STOP` (an MCU or safety fault) are part of
+the planned state model: the agent does not produce them yet. The MCU remains the
 authority for physical limits and emergency behavior.
 
 ## First public interfaces

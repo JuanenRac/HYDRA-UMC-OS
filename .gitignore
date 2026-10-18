@@ -11,3 +11,5 @@ __pycache__/
 *.egg-info/
 # HYDRA-UMC shared secret protection
 !.env.example
+
+.vscode/

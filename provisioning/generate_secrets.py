@@ -65,7 +65,9 @@ def problems(text: str) -> list[str]:
     for _, key, value in parse(text):
         if not SECRET_NAME.search(key):
             continue
-        if is_placeholder(value):
+        if not value and key.upper() in ("JWT_SECRET", "GATEWAY_JWT_SECRET"):
+            out.append(f"{key} is empty")
+        elif is_placeholder(value):
             out.append(f"{key} is still an example value")
         elif value and "PASSWORD" in key.upper() and len(value) < MIN_PASSWORD_LENGTH:
             out.append(f"{key} has fewer than {MIN_PASSWORD_LENGTH} characters")
@@ -161,8 +163,16 @@ def main(argv: list[str] | None = None) -> int:
             continue
         mirrored_text, mirrored_values = fill(other.read_text(encoding="utf-8"), {other_key: generated[key]})
         if other_key in mirrored_values:
+            before = os.stat(other)
             write_private(other, mirrored_text)
-            shutil.copymode(path, other)
+            # the destination keeps the owner, group and mode it had (for example
+            # root:hydra-umc-voice-ui 0640), not those of the freshly written file
+            os.chmod(other, before.st_mode & 0o7777)
+            if hasattr(os, "chown"):
+                try:
+                    os.chown(other, before.st_uid, before.st_gid)
+                except PermissionError:
+                    pass
             print(f"SECRETS=MIRRORED {key} -> {other}:{other_key}")
     if ADMIN_PASSWORD_KEY in generated:
         print("")

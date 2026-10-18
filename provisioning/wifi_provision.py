@@ -391,7 +391,11 @@ def serve_until_joined(
     is what unit tests exercise instead (with a bounded fake server-tick
     substitute, since a real `ThreadingHTTPServer.serve_forever()` blocks
     by design)."""
-    ensure_hotspot_if_disconnected(runner, ifname, ap_ssid, ap_password)
+    if not ensure_hotspot_if_disconnected(runner, ifname, ap_ssid, ap_password):
+        # already on a network (the normal case at every boot): nothing to set up, and the
+        # form must not stay open on the production LAN nor hold network-online.target
+        print(f"WIFI_PROVISION=ALREADY_CONNECTED {ifname}")
+        return
     joined = [False]
     handler = make_handler(runner, ifname, joined, ap_ssid, ap_password, setup_code)
     httpd = ThreadingHTTPServer((host, port), handler)
@@ -414,6 +418,22 @@ def serve_until_joined(
     print("WIFI_PROVISION=WINDOW_CLOSED")
 
 
+def _window_from_environment() -> float:
+    """HYDRA_UMC_AP_WINDOW_S, or the default when it is unset or not a positive number
+    (a typo must not make the service crash-loop at start-up)."""
+    raw = os.environ.get("HYDRA_UMC_AP_WINDOW_S")
+    if raw is None:
+        return float(DEFAULT_WINDOW_SECONDS)
+    try:
+        value = float(raw)
+    except ValueError:
+        value = 0.0
+    if not value > 0 or value == float("inf"):
+        print(f"WIFI_PROVISION=WARNING HYDRA_UMC_AP_WINDOW_S={raw!r} is not a positive number: using {DEFAULT_WINDOW_SECONDS}")
+        return float(DEFAULT_WINDOW_SECONDS)
+    return value
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="required for any real network change")
@@ -425,7 +445,7 @@ def main(argv: list[str] | None = None) -> int:
         help="optional: a password of at least 12 characters (or HYDRA_UMC_AP_PASSWORD); without one this device generates its own, kept in --state-dir",
     )
     parser.add_argument("--state-dir", default=os.environ.get("HYDRA_UMC_WIFI_STATE_DIR", DEFAULT_STATE_DIR))
-    parser.add_argument("--window-seconds", type=float, default=float(os.environ.get("HYDRA_UMC_AP_WINDOW_S", DEFAULT_WINDOW_SECONDS)))
+    parser.add_argument("--window-seconds", type=float, default=_window_from_environment())
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     args = parser.parse_args(argv)
@@ -446,7 +466,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"WIFI_PROVISION=WARNING {problem}: a password of this device's own is used instead")
     password, code, generated = resolve_ap_credentials(Path(args.state_dir), args.ap_password)
     # Root-only journal: this line is how the person at the device learns the password and the code (also kept in state-dir/credentials.json, 0600).
-    print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} password={password} code={code}{' (generated now)' if generated else ''}")
+    if generated:
+        print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} password={password} code={code} (generated now)")
+    else:
+        print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} (password and code are in {Path(args.state_dir) / 'credentials.json'})")
     serve_until_joined(runner, args.ifname, args.ap_ssid, password, args.host, args.port, setup_code=code, window_s=args.window_seconds)
     return 0
 

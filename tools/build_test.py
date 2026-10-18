@@ -53,7 +53,10 @@ def run_agent_checks() -> None:
     environment["PYTHONPATH"] = agent_source if not existing_python_path else os.pathsep.join((agent_source, existing_python_path))
     run(sys.executable, "-m", "unittest", "discover", "-s", "agent/tests", "-v", env=environment)
     run(sys.executable, "tools/verify_agent_deployment_contract.py", env=environment)
-    run(sys.executable, "tools/verify_voice_gateway_deployment_contract.py", env=environment)
+    if (ROOT.parent / "HYDRA-UMC-VOICE-UI").is_dir():
+        run(sys.executable, "tools/verify_voice_gateway_deployment_contract.py", env=environment)
+    else:
+        print("VOICE_GATEWAY_CONTRACT=SKIPPED the sibling HYDRA-UMC-VOICE-UI checkout is not present")
     run(sys.executable, "tools/verify_preflight_negative.py", env=environment)
     run(sys.executable, "tools/verify_preflight_idempotent.py", env=environment)
     run(sys.executable, "tools/verify_rollback.py", env=environment)

@@ -21,7 +21,8 @@ SERVER_USER="hydra-umc-server"
 # this device: a server must never start with the published placeholders. A value the operator already
 # chose is left alone; what is generated is printed once. The check below refuses any file that still
 # carries an example value or a secret that is too short.
-install -d -o root -g root -m 0750 /etc/hydra-umc
+# an existing directory keeps its owner: the agent (group hydra-umc-agent) reads its config there
+[[ -d /etc/hydra-umc ]] || install -d -o root -g root -m 0750 /etc/hydra-umc
 python3 "$OS_ROOT/provisioning/generate_secrets.py" /etc/hydra-umc/server.env --create-from "$OS_ROOT/provisioning/server.env.example" --apply   --adopt "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_TOKEN"   --mirror "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_TOKEN"
 python3 "$OS_ROOT/provisioning/generate_secrets.py" /etc/hydra-umc/server.env --check || { echo "Fix /etc/hydra-umc/server.env (no example value, secrets long enough) and rerun." >&2; exit 2; }
 command -v node >/dev/null || { echo "HYDRA-UMC-SERVER requires Node.js 20 or later." >&2; exit 2; }

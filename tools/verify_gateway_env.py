@@ -57,7 +57,8 @@ check("the passwords differ", len({c["password"] for c in credentials}), len(ge.
 check("each credential's prefix is its own user name", all(c["clientIdPrefix"] == c["username"] for c in credentials), True)
 # the broker evaluates the ACL for the credential's own prefix: a rule must exist whose prefix the credential's prefix starts with
 check("an ACL rule covers every credential", all(any(c["clientIdPrefix"].startswith(r["clientIdPrefix"]) for r in rules) for c in credentials), True)
-check("a bridge may only publish and subscribe inside its own namespace", all(r["publish"] == [f"hydra/bridges/{r['clientIdPrefix'].rsplit('-', 1)[1]}/#"] for r in rules), True)
+check("a bridge may only publish and subscribe inside its own namespace", all(r["publish"] == [f"hydra/bridges/{r['clientIdPrefix'].rsplit('-', 1)[1]}/#"] for r in rules if not r["clientIdPrefix"].endswith("-amr")), True)
+check("the AMR bridge gets a credential and a VDA 5050 namespace", [(r["publish"], r["subscribe"]) for r in rules if r["clientIdPrefix"].endswith("-amr")], [(["vda5050/#"], ["vda5050/#"])])
 check("no rule matches every client", any(r["clientIdPrefix"] == "" for r in rules), False)
 check("the printed passwords are the ones in the file", {n: passwords[n] for n in ge.BRIDGES} == {c["username"].rsplit("-", 1)[1]: c["password"] for c in credentials}, True)
 

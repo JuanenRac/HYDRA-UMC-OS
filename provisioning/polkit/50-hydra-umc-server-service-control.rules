@@ -26,6 +26,11 @@ polkit.addRule(function (action, subject) {
   if (subject.user !== "hydra-umc-server") return;
   var unit = action.lookup("unit");
   if (!unit || unit === "hydra-umc-server.service") return;
+  // only start, stop and restart (not enable, mask or reload); and never the units that
+  // open the setup access point or report the device health
+  var verb = action.lookup("verb");
+  if (verb !== "start" && verb !== "stop" && verb !== "restart") return;
+  if (unit === "hydra-umc-wifi-provision.service" || unit === "hydra-umc-agent.service") return;
   if (/^hydra-umc-[a-z0-9-]+\.service$/.test(unit)) {
     return polkit.Result.YES;
   }

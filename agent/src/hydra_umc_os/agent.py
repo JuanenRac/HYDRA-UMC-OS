@@ -235,8 +235,12 @@ def health(
     )
 
 
-def emit(value: DeviceDescriptor | HealthReport) -> None:
-    print(json.dumps(asdict(value), sort_keys=True, indent=2))
+def emit(value: DeviceDescriptor | HealthReport, *, compact: bool = False) -> None:
+    if compact:
+        # one line per report keeps the journal readable and the flash wear low
+        print(json.dumps(asdict(value), sort_keys=True, separators=(",", ":")), flush=True)
+    else:
+        print(json.dumps(asdict(value), sort_keys=True, indent=2))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -256,7 +260,7 @@ def main(argv: list[str] | None = None) -> int:
             emit(health(config))
             return 0
         while True:
-            emit(health(config))
+            emit(health(config), compact=True)
             time.sleep(args.interval)
     except (ValueError, OSError) as exc:
         print(f"hydra-umc-agent: {exc}", file=sys.stderr)

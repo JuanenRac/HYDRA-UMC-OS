@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.9] - A build that works again, an agent that keeps running, a setup form that stays closed
+
+- The agent in the package said 0.4.6 although the product was 0.4.8, and `bump_version.py` refused every build because the manifest and the package disagreed. Both are 0.4.9 now, the manifest follows the version in `agent/pyproject.toml` (a changelog edit can no longer hide the drift) and a test pins the agent version to the manifest.
+- `install_server.sh` and `install_voice_ui.sh` changed the owner of an existing `/etc/hydra-umc` to root:root, after which the agent (group `hydra-umc-agent`) could no longer read its configuration and restarted in a loop; an existing directory is now left alone.
+- The Wi-Fi setup service served its form on every port 8080 interface for 30 minutes at every boot even when the device was already online, which delayed `network-online.target` and left a root-run form open on the production network. It now exits at once when the device is connected. A non-numeric `HYDRA_UMC_AP_WINDOW_S` falls back to the default instead of crash-looping, and the access point password and setup code are written to the journal only when they are generated.
+- The agent in `serve` mode prints one compact line per report instead of 25 indented lines every 30 seconds.
+- `generate_secrets.py` treats an empty `JWT_SECRET` as a problem (the Server refuses it) and a mirrored env file keeps its owner, group and mode.
+- `gateway_env.py` also creates a credential and an ACL rule (`vda5050/#`) for the AMR bridge, which connects to the broker like the others.
+- The polkit rule for the Server only allows start, stop and restart, and never of the Wi-Fi setup or agent units.
+- `build-test` skips the voice gateway contract check, with a notice, when the sibling Voice UI checkout is missing, instead of failing.
+- The architecture document no longer says the agent produces `INHIBITED` (it is planned); checks went from 46 to 49 for Wi-Fi, 22 to 23 for secrets and 12 to 13 for the gateway environment, plus 2 agent tests (17).
+
 ## [0.4.8] - Secrets generated per device, a Wi-Fi setup network with its own password and code
 
 - New `provisioning/generate_secrets.py`: `install_server.sh` and `install_voice_ui.sh` create their env file from the example when it is missing and replace every example value (`JWT_SECRET`, the bootstrap administrator password, the voice relay token) with a random one of the device; a value the operator already chose is left alone, the voice relay token is the same in `server.env` and `voice-ui.env` whichever is installed first, the administrator password is printed once, and the installers refuse to go on while an example value or a short secret is left.
