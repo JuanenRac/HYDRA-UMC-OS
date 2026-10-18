@@ -13,7 +13,7 @@ an out-of-band mechanism this repo owns none of - not a design.
 
 Real design: NetworkManager (`nmcli`), the real, already-confirmed
 network stack on this repo's own committed base (Raspberry Pi OS
-Bookworm - see `docs/CM5_PACKAGE_MANIFEST.md`). When this interface has
+Trixie - see `docs/CM5_PACKAGE_MANIFEST.md`). When this interface has
 no active WiFi connection, this module brings up a real NetworkManager
 hotspot (`nmcli device wifi hotspot`) an operator's phone/laptop can join
 directly, and serves a small real HTTP form (stdlib `http.server`, same
@@ -167,7 +167,7 @@ class RealNetworkManager:
 
     def start_hotspot(self, ifname: str, ssid: str, password: str) -> None:
         # Real, real one-shot nmcli hotspot command (NetworkManager 1.x,
-        # confirmed present on this repo's own Raspberry Pi OS Bookworm
+        # confirmed present on this repo's own Raspberry Pi OS Trixie
         # base) - creates and activates a real connection profile, always
         # named "Hotspot" by nmcli itself, bound to `ifname`.
         self._run("device", "wifi", "hotspot", "ifname", ifname, "ssid", ssid, "password", password)

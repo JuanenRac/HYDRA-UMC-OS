@@ -6,7 +6,7 @@ handoff, and recovery sequence, read [CM5 provisioning](CM5_PROVISIONING.md).
 ## Target
 
 The initial target is a Raspberry Pi CM5 using a documented Raspberry Pi OS
-ARM64 release. Development images and production images must record the base
+ARM64 release (Debian trixie). Development images and production images must record the base
 release, kernel, firmware, installed HYDRA-UMC package versions, and SDK range.
 
 ## Intended installation sequence

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.0] - Trixie everywhere
+
+- Comments and docs that still named Debian bookworm as the base (the job dispatcher's Go install note, the Wi-Fi setup module, the installation guide) now say trixie, matching `install_industrial_gateway.sh` and the base image the Rebuilder downloads.
+
+## [0.5.0]
+
+### Changed
+
+- Automated build version increment from 0.4.9.
+
 ## [0.4.9] - A build that works again, an agent that keeps running, a setup form that stays closed
 
 - The agent in the package said 0.4.6 although the product was 0.4.8, and `bump_version.py` refused every build because the manifest and the package disagreed. Both are 0.4.9 now, the manifest follows the version in `agent/pyproject.toml` (a changelog edit can no longer hide the drift) and a test pins the agent version to the manifest.

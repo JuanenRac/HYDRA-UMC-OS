@@ -12,15 +12,10 @@
 # Real gap found in a later pass, before this ever ran against real
 # hardware: go.mod now needs a real Go >= 1.21 (modernc.org/sqlite, the
 # pure-Go SQLite driver src/sqlitestore's own persistence uses - see that
-# repo's own CHANGELOG) - but Raspberry Pi OS's own base, Debian 12
-# "bookworm", ships golang-go 2:1.19~1 (verified against packages.debian.org),
-# one real minor version short. `apt-get install golang-go` alone would
-# fail this build on real hardware, not a hypothetical - this installs a
-# specific, checksum-verified upstream Go release from go.dev instead of
-# depending on whatever Debian happens to package (bookworm-backports has
-# a new-enough Go, but isn't guaranteed enabled on every real image this
-# runs against, and its own version drifts over time - a pinned, verified
-# tarball doesn't). Still a pure-Go binary otherwise: CGO_ENABLED is left
+# repo's own CHANGELOG). This installs a specific, checksum-verified
+# upstream Go release from go.dev instead of depending on whatever Go the
+# base's own Debian trixie archive happens to package: that version drifts
+# over time, a pinned, verified tarball doesn't. Still a pure-Go binary otherwise: CGO_ENABLED is left
 # at its default (no cgo dependency in go.mod), so no C cross-toolchain is
 # needed beyond this one real Go toolchain.
 set -euo pipefail
