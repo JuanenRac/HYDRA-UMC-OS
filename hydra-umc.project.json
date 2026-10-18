@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "ecosystem": "HYDRA-UMC",
   "name": "HYDRA-UMC-OS",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "role": "service",
   "stack": "python",
   "technologies": [
@@ -13,7 +13,7 @@
     "NetworkManager"
   ],
   "deployment_target": "cm5",
-  "maturity": "established",
+  "maturity": "functional",
   "family": "Platform Foundation & Contracts",
   "parent": null,
   "build": "Functional read-only CM5 platform agent, validated configuration, systemd unit and host-side tests.",
