@@ -30,6 +30,17 @@ CC BY-SA 4.0 - voir LICENSE.md
 
 # HYDRA-UMC-OS
 
+## 📋 En un coup d'œil
+
+| | |
+|---|---|
+| Version | `0.5.1` |
+| Maturité | Établi |
+| Tests | 13 (`python -m unittest`) |
+| Technologie | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |
+| Cible | Le Raspberry Pi CM5 d'une cellule HYDRA-UMC |
+| Sur matériel réel | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
+
 ## 🖥️ Couche de plateforme HYDRA-UMC pour Raspberry Pi OS
 
 HYDRA-UMC-OS est la couche de plate-forme installable pour un nœud HYDRA-UMC CM5.
