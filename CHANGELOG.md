@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.5.1]
+
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
+- The licence is written as GPL-3.0-or-later in every header and in the package metadata.
+
 ## [0.5.0] - Trixie everywhere
 
 - Comments and docs that still named Debian bookworm as the base (the job dispatcher's Go install note, the Wi-Fi setup module, the installation guide) now say trixie, matching `install_industrial_gateway.sh` and the base image the Rebuilder downloads.

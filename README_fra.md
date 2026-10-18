@@ -22,7 +22,7 @@ CC BY-SA 4.0 - voir LICENSE.md
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg" alt="Licence : GPL 3.0">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="Licence : GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Platform-Raspberry%20Pi%20OS%20%7C%20CM5-red.svg" alt="Plateforme : OS Raspberry Pi | CM5">
   <img src="https://img.shields.io/badge/Services-systemd%20%7C%20udev-orange.svg" alt="Services : systemd | udev">
   <img src="https://img.shields.io/badge/Stack-Debian%20%7C%20Python%20%7C%20Shell-blueviolet.svg" alt="Pile : Debian | Python | Shell">
@@ -240,4 +240,4 @@ Ce projet fait partie de l'écosystème robotique HYDRA-UMC du même auteur (Jua
 
 ## 📜 LICENCE
 
-Le code est GPL-3.0 ou version ultérieure et la documentation est CC BY-SA 4.0. Voir [LICENCE](LICENSE).
+Le code est GPL-3.0-or-later ou version ultérieure et la documentation est CC BY-SA 4.0. Voir [LICENCE](LICENSE).

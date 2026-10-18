@@ -22,7 +22,7 @@ CC BY-SA 4.0 - LICENSE.md を参照
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-GPL%203.0-blue.svg" alt="ライセンス: GPL 3.0">
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="ライセンス: GPL 3.0 or later">
   <img src="https://img.shields.io/badge/Platform-Raspberry%20Pi%20OS%20%7C%20CM5-red.svg" alt="プラットフォーム: Raspberry Pi OS | CM5">
   <img src="https://img.shields.io/badge/Services-systemd%20%7C%20udev-orange.svg" alt="サービス: systemd | udev">
   <img src="https://img.shields.io/badge/Stack-Debian%20%7C%20Python%20%7C%20Shell-blueviolet.svg" alt="スタック: Debian | Python | シェル">
@@ -216,4 +216,4 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 ## 📜 ライセンス
 
-コードは GPL-3.0 以降、ドキュメントは CC BY-SA 4.0 です。[LICENSE](LICENSE) を参照してください。
+コードは GPL-3.0-or-later 以降、ドキュメントは CC BY-SA 4.0 です。[LICENSE](LICENSE) を参照してください。

@@ -1,7 +1,7 @@
 <!--
 HYDRA-UMC-OS - CM5 first boot checklist
 Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-GPL-3.0 - see LICENSE
+GPL-3.0-or-later - see LICENSE
 -->
 
 # CM5 first boot checklist
