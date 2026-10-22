@@ -105,6 +105,14 @@ jobs:
         run: |
           python -m unittest discover -s agent/tests -v
           python tools/verify_agent_deployment_contract.py
+      - name: Test signed packages, the certificate authority script, the firewall rules and the encrypted backup
+        if: ${{ hashFiles('tools/verify_package_component.py') != '' }}
+        shell: bash
+        run: |
+          python tools/verify_package_component.py
+          python tools/verify_mqtt_tls.py
+          python tools/verify_firewall.py
+          python tools/verify_backup_settings.py
       - name: Validate v1 SDK contract fixtures
         if: ${{ hashFiles('clients/python/tests/test_validation.py') != '' }}
         env:
