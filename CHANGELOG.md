@@ -1,5 +1,7 @@
 # Changelog
 
+All notable changes to this project are documented here.
+
 ## [Unreleased]
 
 - The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.
