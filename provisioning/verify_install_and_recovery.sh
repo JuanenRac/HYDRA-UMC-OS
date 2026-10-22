@@ -42,8 +42,11 @@ id hydra-umc-agent >/dev/null 2>&1 || { echo "VERIFY_INSTALL=FAIL: hydra-umc-age
 [[ -f /etc/systemd/system/hydra-umc-agent.service ]] || { echo "VERIFY_INSTALL=FAIL: hydra-umc-agent.service was not installed" >&2; exit 1; }
 # Real, current hostnamectl state - not left at whatever the base image
 # happened to have before this ran.
-[[ "$(hostname)" == "hydra-umc-test" || "$(cat /etc/hostname 2>/dev/null || true)" == "hydra-umc-test" ]] \
-  || { echo "VERIFY_INSTALL=FAIL: hostname was not really set to hydra-umc-test" >&2; exit 1; }
+# The default name ends with a part taken from this machine (provisioning/device_identity.py);
+# an explicit HYDRA_UMC_HOSTNAME is what first_boot.sh used as given.
+EXPECTED_HOSTNAME="${HYDRA_UMC_HOSTNAME:-$(python3 provisioning/device_identity.py hostname)}"
+[[ "$(hostname)" == "$EXPECTED_HOSTNAME" || "$(cat /etc/hostname 2>/dev/null || true)" == "$EXPECTED_HOSTNAME" ]] \
+  || { echo "VERIFY_INSTALL=FAIL: hostname was not really set to $EXPECTED_HOSTNAME" >&2; exit 1; }
 echo "VERIFY_INSTALL=PASS"
 
 echo "[3/4] Real backup/wipe/restore cycle (cm5_recovery.sh --apply)"

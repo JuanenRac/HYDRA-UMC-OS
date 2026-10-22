@@ -54,6 +54,11 @@ itself is at fault.
 | Network | Local Wi-Fi only when its credentials are already known |
 | Remote access | SSH enabled with the administrator public key |
 
+The host name above is the one Imager sets. `first_boot.sh` sets it again only when
+`HYDRA_UMC_HOSTNAME` is given; otherwise it uses `hydra-umc-` followed by six characters taken from the device
+(Raspberry Pi serial number, else MAC address), so that two devices from the same image
+never share a name. `HYDRA_UMC_DEVICE_SUFFIX=off` keeps the fixed `hydra-umc-test`.
+
 Define the administrator password interactively in Imager or on the device;
 never write it into a repository, shell script, log or support ticket. SSH
 without typing a password means **key-based SSH**, not anonymous or
