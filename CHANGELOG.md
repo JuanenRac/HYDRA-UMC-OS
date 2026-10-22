@@ -29,8 +29,6 @@ All notable changes to this project are documented here.
 
 ## [0.5.0]
 
-### Changed
-
 - Automated build version increment from 0.4.9.
 
 ## [0.4.9] - A build that works again, an agent that keeps running, a setup form that stays closed
@@ -186,8 +184,6 @@ ecosystem:
 
 ## [0.4.1] - a real --apply install + a real backup/wipe/restore cycle, not just bash -n
 
-### Added
-
 - **`provisioning/verify_install_and_recovery.sh`** - CI (and any real,
   disposable systemd-based Debian/Ubuntu machine) only ever ran `bash -n`
   (syntax-only) against `provisioning/*.sh` - a real `--apply` install and
@@ -208,8 +204,6 @@ ecosystem:
 
 ## [0.4.0] - install_server.sh no longer leaves stale public/dist files behind
 
-### Fixed
-
 - **`provisioning/install_server.sh`** - a plain `cp -a` over an existing
   `$TARGET/dist`/`$TARGET/public` never removed a file the new SOURCE
   build had renamed or dropped. Found live on this repo's own test CM5
@@ -221,8 +215,6 @@ ecosystem:
   own `dist` copy already used.
 
 ## [0.3.9] - real pre-validation before any rollback mutation
-
-### Fixed
 
 - **`provisioning/rollback.py`'s `restore_all()`**: used to validate one
   manifest entry, mutate it, validate the next, mutate that one, and so
@@ -246,8 +238,6 @@ ecosystem:
 
 ## [0.3.8] - Real per-node data/ directory for install_swarm_sync.sh
 
-### Fixed
-
 - **`provisioning/install_swarm_sync.sh`** - real gap found while wiring
   real per-node CRDT persistence into HYDRA-UMC-SWARM-SYNC (that repo's
   own CHANGELOG): its `serve` mode now writes a real, durable state file
@@ -259,8 +249,6 @@ ecosystem:
   convention.
 
 ## [0.3.7] - Real Go toolchain for install_job_dispatcher.sh, not whatever Debian happens to ship
-
-### Fixed
 
 - **`provisioning/install_job_dispatcher.sh`** - real gap found while
   wiring real SQLite-backed persistence into HYDRA-UMC-JOB-DISPATCHER
@@ -291,8 +279,6 @@ ecosystem:
 
 ## [0.3.6] - Polkit-scoped service control for hydra-umc-server, CI shell syntax checks
 
-### Added
-
 - **`provisioning/polkit/50-hydra-umc-server-service-control.rules`**
   (new), installed by `install_server.sh` alongside the existing
   reboot/poweroff rule - grants the unprivileged `hydra-umc-server`
@@ -309,8 +295,6 @@ ecosystem:
   optional, left for the operator to enable after review, same policy
   the main service already follows.
 
-### Fixed
-
 - **`.github/workflows/ci.yml`** - a new `bash -n` (syntax-only) pass over
   every `provisioning/**/*.sh` script: CI already validated Python/Node syntax
   and tests but never checked the ~30 `install_*.sh` scripts that are
@@ -321,8 +305,6 @@ ecosystem:
   triaged.
 
 ## [0.3.5] - Dashboard-AI static serving
-
-### Added
 
 - **`provisioning/install_dashboard_ai.sh`** (new) - builds and installs
   HYDRA-UMC-DASHBOARD-AI's real static SPA (`npm run build` -> `dist/`,
@@ -335,8 +317,6 @@ ecosystem:
   HYDRA-UMC-ANOMALY-DETECTOR by their own configured base URLs.
 
 ## [0.3.4] - Server mode for the 4 Rust services, closing the CLI-only-services list
-
-### Added
 
 - **`provisioning/install_twin.sh`** (new) - installs the real family-
   status/family-sync API. First Rust service in this ecosystem to get a
@@ -364,8 +344,6 @@ ecosystem:
 
 ## [0.3.3] - Server mode for 3 more CLI-only repos
 
-### Added
-
 - **`provisioning/install_safety_zones.sh`** (new) - installs the real
   zone-breach/E-STOP-request API (POST /check). Never asserts an E-STOP
   itself, only ever requests one, same as the CLI.
@@ -390,8 +368,6 @@ ecosystem:
 
 ## [0.3.2] - The 0.3.1 workspace approach was unreadable by its own service accounts
 
-### Fixed
-
 - **`provisioning/install_vision_node.sh`/`install_cognitive_node.sh`/
   `install_vla_engine.sh`** - none of the 3 symlinked `--workspace`
   directories were readable by their own unprivileged systemd service
@@ -407,8 +383,6 @@ ecosystem:
   HYDRA-UMC-VLA-ENGINE 0.1.0).
 
 ## [0.3.1] - Server mode for the 5 AI-family repos that were CLI-only
-
-### Added
 
 - **`provisioning/install_visual_servoing_api.sh`** (new) - installs the
   real PBVS correction/authorization API (POST /correct, POST /request).
@@ -441,8 +415,6 @@ ecosystem:
 
 ## [0.3.0] - The 0.2.9 fix was still wrong: Node-Healing can't watch zero nodes
 
-### Fixed
-
 - **`provisioning/install_node_healing.sh`** - live-verified on this
   device: `config.LoadNodes()` itself refuses an empty registry ("is
   empty - nothing to watch"), so 0.2.9's `nodes.json` = `[]` fix
@@ -457,8 +429,6 @@ ecosystem:
 
 ## [0.2.9] - Node-Healing permission bugfix, found live on this device
 
-### Fixed
-
 - **`provisioning/install_node_healing.sh`** - the node registry moves
   from `/etc/hydra-umc/node-healing/nodes.json` to
   `/etc/hydra-umc-node-healing/nodes.json`. Real bug found live on this
@@ -469,8 +439,6 @@ ecosystem:
   HYDRA-UMC-NODE-HEALING's own CHANGELOG (0.1.0) for the full writeup.
 
 ## [0.2.8] - Job-Dispatcher, Node-Healing, Telemetry-Collector, Production-Reports install
-
-### Added
 
 - **`provisioning/install_job_dispatcher.sh`** (new) - first Go service
   installed on this CM5: provisions `golang-go` if missing and builds
@@ -501,8 +469,6 @@ ecosystem:
 
 ## [0.2.7] - Vision-Streamer installs (real USB camera -> robot A1 pipeline)
 
-### Added
-
 - **`provisioning/install_vision_streamer.sh`** (new) - installs
   HYDRA-UMC-VISION-STREAMER's real OpenCV-backed MJPEG capture+serve
   (`python3-opencv`/`v4l-utils` from Debian's own repos, no venv/pip
@@ -523,8 +489,6 @@ ecosystem:
 
 ## [0.2.6] - Anomaly-Detector installs
 
-### Added
-
 - **`provisioning/install_anomaly_detector.sh`** (new) - installs
   HYDRA-UMC-ANOMALY-DETECTOR's real FFT + z-score anomaly-detection API
   (python3-numpy from Debian's own repos, no venv/pip needed) as a
@@ -535,8 +499,6 @@ ecosystem:
 
 ## [0.2.5] - Datalake installs; bootstrap admin password removed from disk
 
-### Added
-
 - **`provisioning/install_datalake.sh`** (new) - installs
   HYDRA-UMC-DATALAKE's real stdlib-only, sqlite3-backed time-series API
   as a loopback-bound systemd service (`data/` is the one
@@ -546,8 +508,6 @@ ecosystem:
   Live-verified: `GET /stats` responds, and Server's own
   `GET /api/telemetry/query` proxy reaches it successfully end to end
   once `HYDRA_UMC_DATALAKE_URL` is uncommented in `server.env`.
-
-### Fixed
 
 - **`HYDRA_UMC_BOOTSTRAP_ADMIN_PASSWORD` stayed in `server.env` in
   plaintext past first start** on this device, found while wiring up the
@@ -560,8 +520,6 @@ ecosystem:
 
 ## [0.2.4] - Real gap closed: the Industry 4.0 Gateway now installs
 
-### Added
-
 - **`provisioning/install_industrial_gateway.sh`** (new) - installs Docker
   and brings up HYDRA-UMC-GATEWAY-INDUSTRIAL's own real
   `docker-compose.yml` (all 3 real protocol bridges - OPC-UA, MQTT,
@@ -569,8 +527,6 @@ ecosystem:
   tested code that nothing ever installed anywhere. Live-verified on this
   CM5: all 4 containers build and stay up, `GET /status` reports
   `allReachable:true` for all 3 children with real measured latencies.
-
-### Fixed
 
 - **2 real Debian package-naming surprises**, found live installing this
   for the first time: Compose v2's package is `docker-compose`, not
@@ -583,8 +539,6 @@ ecosystem:
   run) - see each repo's own CHANGELOG.
 
 ## [0.2.3] - Documented Datalake/spi_bridge proxy env vars
-
-### Added
 
 - **`provisioning/server.env.example`** now documents (commented out)
   `HYDRA_UMC_DATALAKE_URL`/`HYDRA_UMC_DATALAKE_TIMEOUT_MS` and
@@ -599,8 +553,6 @@ ecosystem:
 
 ## [0.2.2] - The kiosk now shows a mouse cursor with a real mouse attached
 
-### Fixed
-
 - **A physical USB mouse plugged into the CM5's IO board showed no
   pointer at all**, reported live: `-nocursor` on the kiosk's own Xorg
   invocation unconditionally disabled cursor rendering, a reasonable
@@ -610,8 +562,6 @@ ecosystem:
   before while a real mouse now shows and works.
 
 ## [0.2.1] - Fixed the polkit rule install path from [0.2.0]
-
-### Fixed
 
 - **`install_server.sh` couldn't install its own new polkit rule**, found
   running `--apply` live right after `[0.2.0]`: `$ROOT` in this script is
@@ -623,8 +573,6 @@ ecosystem:
   instead.
 
 ## [0.2.0] - Kiosk power buttons: polkit grant for shutdown/restart
-
-### Added
 
 - **`provisioning/polkit/49-hydra-umc-server-power.rules`** (new),
   installed by `install_server.sh` - grants the unprivileged
@@ -639,8 +587,6 @@ ecosystem:
   before logging in, the same as a real one would.
 
 ## [0.1.9] - verify_cm5_runtime.sh's Server checks, exercised live for the first time
-
-### Fixed
 
 - **`--with-server` never passed, on the first CM5 this was ever run
   against with Server actually installed**, in 2 real, independent ways:
@@ -661,8 +607,6 @@ ecosystem:
   there, unlike Server's operator-customisable name.
 
 ## [0.1.8] - Kiosk boot is finally quiet: the real, complete story
-
-### Fixed
 
 - **The kiosk boot still showed text**, across many further rounds of
   live testing on the physical HDMI display after `[0.1.7]`, each one a
@@ -699,8 +643,6 @@ ecosystem:
 
 ## [0.1.7] - The real fix for the kiosk freeze: a compositor
 
-### Fixed
-
 - **`[0.1.6]`'s `Option "Present" "false"` did not actually fix the kiosk
   freeze** - live-verified: Xorg.0.log kept showing the exact same
   "Present-flip: queue flip during flip on CRTC 2 failed: Invalid
@@ -725,8 +667,6 @@ ecosystem:
 
 ## [0.1.6] - Kiosk display no longer freezes (X Present-extension race)
 
-### Fixed
-
 - **The kiosk display froze after `[0.1.5]`** - reported and confirmed
   live: every kiosk process stayed alive (Xorg, Chromium, openbox all
   still running, Server and the agent both healthy) but the screen
@@ -742,8 +682,6 @@ ecosystem:
 
 ## [0.1.5] - Splash now covers the whole boot, not just its first ~4s
 
-### Fixed
-
 - **Boot-log lines were still visible after `[0.1.4]`'s `quiet splash`
   fix** - reported live watching this device boot again. Root cause found
   in `journalctl`: systemd's own `plymouth-quit.service` fired only ~4s
@@ -758,8 +696,6 @@ ecosystem:
   few seconds.
 
 ## [0.1.4] - Quiet kiosk boot, and no more duplicate splash
-
-### Fixed
 
 - **The kernel/systemd boot log was visible on the HDMI display**, reported
   live watching this device boot: `cmdline.txt` shipped with no `quiet`/
@@ -780,8 +716,6 @@ ecosystem:
 
 ## [0.1.3] - Real HDMI kiosk: animated splash, then STUDIO fullscreen
 
-### Added
-
 - **`provisioning/install_kiosk.sh`** (new) - a minimal X11 + Chromium
   kiosk session for the CM5's HDMI output. Plymouth (`install_splashscreen.sh`)
   can only render a static raster frame or its own tiny scripting language,
@@ -792,8 +726,6 @@ ecosystem:
   HYDRA-UMC-SERVER's own STUDIO UI fullscreen once Server actually answers
   `/api/hydra-info`, not on a fixed timer alone. Same dry-run/`--apply`
   convention as every other provisioning script.
-
-### Fixed
 
 - **Two real, live-hardware kiosk boot failures**, found and fixed on the
   first CM5 this was ever run against: (1) `xserver-xorg`'s bundled
@@ -810,8 +742,6 @@ ecosystem:
   `Driver "modesetting"` and `Option "kmsdev" "/dev/dri/card1"`.
 
 ## [0.1.2] - install_cm5_base.sh no longer depends on git's executable bit
-
-### Fixed
 
 - **`provisioning/install_cm5_base.sh` invoked `first_boot.sh`,
   `install_local_agent.sh`, `install_wifi_provision.sh`,
@@ -831,8 +761,6 @@ ecosystem:
 
 ## [0.1.1] - Removed a real duplicate/drift risk between the two deployment docs
 
-### Fixed
-
 - **`docs/CM5_PROVISIONING.md`** - its own 13-step "Deployment sequence"
   duplicated `provisioning/CM5_DEPLOYMENT_SEQUENCE.md`'s own real,
   gated procedure at a different granularity - a real, found drift risk:
@@ -846,8 +774,6 @@ ecosystem:
   own gate-based rewrite) to point at the real, current location.
 
 ## [0.1.0] - Real, verified CM5-from-Windows flashing procedure
-
-### Added
 
 - **`docs/CM5_WINDOWS_HOST_FLASHING.md`** (new) - the real, verified
   procedure for getting a bare CM5 + official IO Board onto Raspberry Pi
@@ -870,8 +796,6 @@ ecosystem:
   step 1.
 
 ## [0.0.9] - Real WiFi first-contact provisioning (AP mode + client join)
-
-### Added
 
 - **`provisioning/wifi_provision.py`** (new) - the real gap
   `CM5_DEPLOYMENT_SEQUENCE.md`'s own "Configure local Wi-Fi using the
@@ -916,8 +840,6 @@ ecosystem:
 
 ## [0.0.8] - Fixed the real port collision with HYDRA-UMC-JOB-DISPATCHER
 
-### Fixed
-
 - **Voice gateway loopback endpoint moved 8090 -> 8091**, matching the
   real fix landing in HYDRA-UMC-VOICE-UI's own repo (that port was
   identical to HYDRA-UMC-JOB-DISPATCHER's own default - flagged there,
@@ -932,8 +854,6 @@ ecosystem:
 
 ## [0.0.7] - Documented the real anti-rollback update contract
 
-### Documentation
-
 - **`docs/UPDATE_MODEL.md`** - added the missing standard GPL header (this
   file had none), and documented the real anti-rollback precondition a
   future CM5 deployment flow must honor before changing a checkout: the
@@ -946,8 +866,6 @@ ecosystem:
 
 ## [0.0.6] - Fixed after an ecosystem-wide bug sweep
 
-### Fixed (additional, same version)
-
 - **Real version-mirror drift, `agent/pyproject.toml` and
   `agent/src/hydra_umc_os/__init__.py`** - this repo's own manifest
   declares `native_version.file` as `CHANGELOG.md` itself (not the
@@ -959,8 +877,6 @@ ecosystem:
   real installed agent one build behind what the manifest/changelog
   claimed. Manually caught both files up to 0.0.6 to match - a real
   reconciliation, not a version bump. 13/13 agent tests still passing.
-
-### Fixed
 
 - **`provisioning/inventory_cm5_projects.py`** - fixed a broken import that
   made this script fail outright: it imported a static `PROJECTS` list
@@ -985,20 +901,14 @@ ecosystem:
 
 ## [0.0.5] - Idempotent preflight verification, real system-file rollback
 
-### Added
-
 - **A real, host-independent system-file backup/rollback mechanism** (`provisioning/rollback.py`, new) - `backup`/`restore` CLI subcommands record a real, append-only manifest before an installer overwrites a real system file, and can restore it (or delete it, if the installer created it fresh) afterward. Wired into `install_local_agent.sh`'s systemd unit install step, the one file this installer unconditionally overwrites on every run.
 - **`tools/verify_rollback.py`** (new) - proves the backup/restore mechanism correct against synthetic files in a temp directory (no root, no CM5 needed): a pre-existing file's real content is restored exactly, a freshly-created file is removed on restore rather than left behind, restoring twice in a row is a real no-op (not an error), and restoring against a missing manifest fails honestly instead of silently doing nothing.
 - **`tools/verify_preflight_idempotent.py`** (new) - runs `provisioning/preflight_cm5.py` twice in a row and proves byte-identical output plus zero real files touched under this repository, turning the preflight's own "read-only" claim into a checked, reproducible property instead of only a docstring.
 - Both new checks are wired into `tools/build_test.py`'s real test run alongside the existing agent unit tests and deployment-contract verifications.
 
-### Changed
-
 - Automated build version increment from 0.0.3.
 
 ## [0.0.4] - Reworked CM5 deployment sequence, per-service accounts, real preflight gate
-
-### Documentation
 
 - Reworked the CM5 deployment sequence and first-boot checklist into explicit
   physical and software gates: carrier/power validation, key-based SSH,
@@ -1007,13 +917,9 @@ ecosystem:
   states the `HYDRA-UMC-TEST` / `hydra-umc-test` / `hydra-umc` identity,
   secret-handling boundary and what host/WSL tests cannot prove.
 
-### Added
-
 - Optional loopback-only HYDRA-UMC-VOICE-UI provisioning, environment
   templates and runtime health verification. This recognised-text gateway is
   separate from the future Hailo STT/TTS stack and cannot actuate hardware.
-
-### Fixed
 
 - Removed a duplicate standard-library import from the diagnostics agent.
 - Made the local Server installer reject an absent or unsupported Node.js/npm
@@ -1037,8 +943,6 @@ ecosystem:
   maximum temperature (default `80.0`), instead of incorrectly reporting it
   as healthy. Configuration now rejects unsafe storage or temperature limits.
 
-### Added
-
 - Added `provisioning/preflight_cm5.py`, a read-only BASE/CONTROL gate that
   validates identity, configuration, profile, deployment contracts and the
   live OS-to-SDK schema contract before a CM5 is modified.
@@ -1050,8 +954,6 @@ ecosystem:
   and CI, to keep first boot, installer and systemd identity/path/permissions
   aligned.
 
-### Documentation
-
 - `docs/AGENT_REFERENCE.md` - full CLI/JSON reference for
   `hydra-umc-agent` (`describe`/`health`/`serve`), documenting every real
   output field and how `state`/`checks.*` are derived, plus the
@@ -1061,13 +963,9 @@ ecosystem:
 
 ## [0.0.3]
 
-### Changed
-
 - Automated build version increment from 0.0.2.
 
 ## [0.0.2]
-
-### Added
 
 - Read-only Python device agent with `describe`, `health`, and periodic
   `serve` commands.
@@ -1076,14 +974,10 @@ ecosystem:
 - Five host-side unit tests covering configuration and READY/DEGRADED/FAULT
   health transitions.
 
-### Limits
-
 - No production image is built or distributed by this repository yet.
 - This release does not command the MCU, CAN, URTC, motion, or updates.
 
 ## [0.0.1]
-
-### Added
 
 - Initial public project documentation and multilingual README files.
 - CM5/Raspberry Pi OS architecture, service, installation, and update design.
