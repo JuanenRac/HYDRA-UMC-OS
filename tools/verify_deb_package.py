@@ -16,6 +16,7 @@ import gzip
 import hashlib
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -138,9 +139,10 @@ def main() -> int:
 
         dpkg_deb = shutil.which("dpkg-deb")
         if dpkg_deb:
-            info = subprocess.run([dpkg_deb, "--info", str(first)], capture_output=True, text=True)
+            dpkg_env = {**os.environ, "TMPDIR": directory}  # a temporary directory dpkg-deb can certainly write to
+            info = subprocess.run([dpkg_deb, "--info", str(first)], capture_output=True, text=True, env=dpkg_env)
             expect(info.returncode == 0 and "Package: hydra-umc-platform-base" in info.stdout, f"dpkg-deb --info refused the package: {info.stderr}")
-            listing = subprocess.run([dpkg_deb, "--contents", str(first)], capture_output=True, text=True)
+            listing = subprocess.run([dpkg_deb, "--contents", str(first)], capture_output=True, text=True, env=dpkg_env)
             expect(listing.returncode == 0 and "usr/bin/hydra-umc-agent" in listing.stdout, f"dpkg-deb --contents refused the package: {listing.stderr}")
 
     if failures:
