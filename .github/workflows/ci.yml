@@ -113,6 +113,7 @@ jobs:
           python tools/verify_mqtt_tls.py
           python tools/verify_firewall.py
           python tools/verify_backup_settings.py
+          python tools/verify_os_guard_and_docs.py
       - name: Validate v1 SDK contract fixtures
         if: ${{ hashFiles('clients/python/tests/test_validation.py') != '' }}
         env:

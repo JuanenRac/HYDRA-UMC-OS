@@ -41,6 +41,8 @@ echo "  <electrohobby3d@gmail.com> | GPL-3.0-or-later - see LICENSE"
 echo " ==============================================================="
 
 python3 provisioning/preflight_cm5.py
+# Warns by default; HYDRA_UMC_OS_GUARD=enforce stops on an unsupported Debian release.
+python3 provisioning/os_release_guard.py
 # Every sub-script below is invoked via "bash provisioning/X.sh" rather than
 # relying on the executable bit. Real bug found live on the first CM5 this
 # was ever run against from a fresh git clone: these scripts are tracked as

@@ -84,11 +84,7 @@ La máquina de estados está completamente probada con pruebas unitarias
 contra un NetworkManager falso, incluyendo un recorrido HTTP real de
 extremo a extremo sobre un socket loopback real - consulte
 `tools/verify_wifi_provision.py`. Instalado por `install_cm5_base.sh`
-pero deliberadamente no habilitado automáticamente, ya que no debe
-arrancar con su propia contraseña de AP de marcador de posición en un
-dispositivo real accesible de forma inalámbrica - consulte la sección 3
-de `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` para el paso de la
-contraseña real requerido primero.
+pero deliberadamente no habilitado automáticamente, ya que solo debe ejecutarse en un dispositivo que de verdad lo necesite: la contraseña de su punto de acceso y un código de configuración de un solo uso se generan para cada dispositivo en su primer arranque y se leen una vez del journal - consulte la sección 3 de `provisioning/CM5_DEPLOYMENT_SEQUENCE.md`.
 
 **Los secretos se generan por dispositivo, nunca se toman de una plantilla.** `install_server.sh` e `install_voice_ui.sh` crean sus ficheros env a partir del ejemplo cuando faltan y sustituyen cada valor de ejemplo (`JWT_SECRET`, la contraseña del administrador inicial, el token del relé de voz) por uno aleatorio de este dispositivo (`provisioning/generate_secrets.py`; lo que el operador ya eligió se respeta, y la contraseña del administrador se imprime una sola vez), y después se niegan a continuar si queda un valor de ejemplo o un secreto corto; `preflight_cm5.py` rechaza un `/etc/hydra-umc/*.env` que aún lleve alguno. `install_industrial_gateway.sh` escribe el `.env` del stack (`provisioning/gateway_env.py`: el secreto del gateway y una credencial MQTT y una regla de ACL por cada bridge de máquina). La red Wi-Fi de configuración ya no tiene una contraseña en el código fuente: cada dispositivo genera la suya y un código de configuración de un solo uso en su primer arranque (se lee una vez en el journal, para escribirlo en la etiqueta), el formulario pide el código (se bloquea un minuto tras cinco errores), la red de configuración solo está abierta 30 minutos tras cada arranque y el formulario rechaza peticiones demasiado grandes. Verificado con `tools/verify_generate_secrets.py`, `tools/verify_gateway_env.py` y `tools/verify_wifi_provision.py`.
 
@@ -101,7 +97,7 @@ reales, todavia no verificado contra hardware CM5 fisico):
 2. ✅ Instale `hydra-umc-platform-base` y `hydra-umc-agent`.
 3. ✅ Detectar interfaces CM5 e informar un `DeviceDescriptor` y un `HealthReport`.
 4. ✅ Inicie solo los servicios habilitados a través de systemd.
-5. ✅ Muestra LISTO, DEGRADADO, INHIBIDO o FALLO localmente.
+5. ✅ Muestra LISTO, DEGRADADO o FALLO localmente.
 
 ## 📂 Diseño del repositorio
 
@@ -154,16 +150,16 @@ Este proyecto es parte del ecosistema de robótica HYDRA-UMC del mismo autor (Ju
 
 **Proyectos Hijos**
 - **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** — el contrato JSON-Schema compartido y la barrera de software de puerta de trabajos contra la que cada bridge valida sus comandos (no es una función de seguridad certificada); contratos versionados, clientes ligeros y fixtures de conformidad utilizados por el propio agente de dispositivo de este sistema operativo.
-- **[HYDRA-UMC-CONNECTOR-HUB](https://github.com/JuanenRac/HYDRA-UMC-CONNECTOR-HUB)** — registro declarativo y validador de manifiestos de adaptador para conectores de máquinas externas; extiende la propia idea de contrato del SDK a máquinas externas sin sustituir a los proyectos de pasarela industrial.
 - **[HYDRA-UMC-OS-REBUILDER](https://github.com/JuanenRac/HYDRA-UMC-OS-REBUILDER)** — herramienta de escritorio Windows/Linux que construye una imagen de este sistema operativo lista para grabar en la CM5, precargada con las versiones más actuales del ecosistema y con configuración de primer arranque al estilo de Raspberry Pi Imager.
-- **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — coordinador de incidencias de mantenimiento: un rol edge de bajo privilegio recopila un snapshot de inventario/salud saneado, un rol control-plane lo renderiza de solo lectura y pide a un proveedor de IA que sugiera un diagnóstico - nunca aplica un parche ni despliega nada.
-- **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — host de desarrollo reproducible (Raspberry Pi 5 / CM5) que almacena el código del ecosistema y ejecuta tareas acotadas de compilación/pruebas bajo una cola duradera; un rol de desarrollo dedicado, explícitamente distinto de un CM5 operativo.
 
 **Directamente Relacionados**
 - **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** — el diseño de la placa madre del brazo robótico: host CM5 + coprocesador STM32H745 de doble núcleo, pensado para coordinar hasta 8 brazos herramienta por CAN-OTA/SPI-OTA (firmware en fase temprana; todavía no hay ninguna placa poblada); la plataforma de hardware y firmware CM5/MCU que esta capa de sistema operativo configura y supervisa.
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — el backend headless real (REST/WebSocket) con el que habla de verdad cada cliente de control; el límite de servicio autenticado para las integraciones administradas de este nodo.
 - **[URTC](https://github.com/JuanenRac/URTC)** — firmware para la placa física del Universal Robot Tool Controller, más de 25 perfiles de herramienta por bus CAN; una plataforma de controlador de herramientas independiente integrada mediante adaptadores explícitos y versionados.
 - **[HYDRA-UMC-UPDATER](https://github.com/JuanenRac/HYDRA-UMC-UPDATER)** — herramienta administrativa de escritorio que descubre, clona y actualiza cada repositorio de este ecosistema; su registro de artefactos, metadatos de compatibilidad y flujo de actualización coordinado.
+- **[HYDRA-UMC-CONNECTOR-HUB](https://github.com/JuanenRac/HYDRA-UMC-CONNECTOR-HUB)** — registro declarativo y validador de manifiestos de adaptador para conectores de máquinas externas; extiende la propia idea de contrato del SDK a máquinas externas sin sustituir a los proyectos de pasarela industrial.
+- **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — coordinador de incidencias de mantenimiento: un rol edge de bajo privilegio recopila un snapshot de inventario/salud saneado, un rol control-plane lo renderiza de solo lectura y pide a un proveedor de IA que sugiera un diagnóstico - nunca aplica un parche ni despliega nada.
+- **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — host de desarrollo reproducible (Raspberry Pi 5 / CM5) que almacena el código del ecosistema y ejecuta tareas acotadas de compilación/pruebas bajo una cola duradera; un rol de desarrollo dedicado, explícitamente distinto de un CM5 operativo.
 
 **También Forma Parte del Ecosistema**
 

@@ -21,5 +21,13 @@ and evaluates health. A failed health check must surface an actionable fault
 and use rollback where supported. This is a deployment contract; it does not
 claim that a rollback has been exercised on a CM5 before hardware testing.
 
+**Status.** The paragraph above describes the target contract. Today no component
+implements it end to end: the installers (`provisioning/install_*.sh`) copy a
+checkout into place and restart its unit without a signed manifest, a
+dependency-range check, a health gate or an automatic rollback, and
+`tools/package_component.py` only packs and verifies signed component archives.
+Read it as the direction of the work, not as a description of what runs on a
+device.
+
 Firmware retains its own tested update and recovery process. Do not couple a
 Raspberry Pi OS upgrade to a firmware change without a maintenance plan.

@@ -64,7 +64,7 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 インストールのプリフライト（`provisioning/preflight_cm5.py`）は、実際のテストによって冪等性があり副作用がないことが証明されている——2回連続で実行してもバイト単位で同一の出力が得られ、このリポジトリ内のファイルには一切触れない——そして、実際のホスト非依存なバックアップ/ロールバック機構（`provisioning/rollback.py`）が、`install_local_agent.sh` が実行のたびに無条件で上書きする唯一のシステムファイルを保護する。どちらも root 権限や CM5 なしで検証されている——`tools/verify_preflight_idempotent.py` と `tools/verify_rollback.py` を参照。
 
-**WiFi 初回接続プロビジョニングも実際に動作する**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——まだ既知のネットワークを持たないヘッドレス CM5 のための、実際の NetworkManager AP モードのフォールバック。実際のホットスポット（`nmcli device wifi hotspot`）を起動し、オペレーターの携帯電話やノート PC がそれに接続して、小さなローカル HTTP フォームを通じて実際のターゲット SSID/パスワードを送信できるようにする。成功時には AP を停止して実際のネットワークに参加し、失敗時には AP を復元してデバイスが孤立しないようにする。この状態機械は、疑似的な NetworkManager に対して完全に単体テストされており、実際のループバックソケット上での実際のエンドツーエンド HTTP 往復も含まれる——`tools/verify_wifi_provision.py` を参照。`install_cm5_base.sh` によってインストールされるが、実際に無線到達可能なデバイス上でプレースホルダーの AP パスワードのまま起動してはならないため、意図的に自動有効化はされない——先に必要な実際のパスワード設定手順については `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` のセクション 3 を参照。
+**WiFi 初回接続プロビジョニングも実際に動作する**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——まだ既知のネットワークを持たないヘッドレス CM5 のための、実際の NetworkManager AP モードのフォールバック。実際のホットスポット（`nmcli device wifi hotspot`）を起動し、オペレーターの携帯電話やノート PC がそれに接続して、小さなローカル HTTP フォームを通じて実際のターゲット SSID/パスワードを送信できるようにする。成功時には AP を停止して実際のネットワークに参加し、失敗時には AP を復元してデバイスが孤立しないようにする。この状態機械は、疑似的な NetworkManager に対して完全に単体テストされており、実際のループバックソケット上での実際のエンドツーエンド HTTP 往復も含まれる——`tools/verify_wifi_provision.py` を参照。`install_cm5_base.sh` によってインストールされるが、実際に必要とするデバイスでのみ動かすべきであるため、意図的に自動有効化はされない——アクセスポイントのパスワードと一度限りのセットアップコードは、デバイスごとに初回起動時に生成され、ジャーナルから一度だけ読み取る。`provisioning/CM5_DEPLOYMENT_SEQUENCE.md` のセクション 3 を参照。
 
 **シークレットはデバイスごとに生成され、テンプレートから流用されることはありません。** `install_server.sh` と `install_voice_ui.sh` は、env ファイルがなければ例から作成し、例の値（`JWT_SECRET`、最初の管理者パスワード、音声リレートークン）をすべてこのデバイス固有のランダム値に置き換えます（`provisioning/generate_secrets.py`。運用者がすでに選んだ値は残り、管理者パスワードは一度だけ表示されます）。例の値や短すぎるシークレットが残っていれば先へ進みません。`preflight_cm5.py` は、まだそれらを含む `/etc/hydra-umc/*.env` を拒否します。`install_industrial_gateway.sh` はスタックの `.env` を書きます（`provisioning/gateway_env.py`：ゲートウェイのシークレットと、マシンブリッジごとの MQTT 認証情報と ACL ルール）。Wi-Fi セットアップネットワークはソースコード内にパスワードを持たなくなりました。各デバイスが初回起動時に自分のパスワードと使い捨てのセットアップコードを生成し（ジャーナルで一度だけ読み取り、ラベルに書く）、フォームはコードを要求し（5 回間違えると 1 分間ロック）、セットアップネットワークは起動のたびに 30 分間だけ開き、フォームは大きすぎるリクエストを拒否します。`tools/verify_generate_secrets.py`、`tools/verify_gateway_env.py`、`tools/verify_wifi_provision.py` で検証しています。
 
@@ -77,7 +77,7 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 2. ✅ `hydra-umc-platform-base` と `hydra-umc-agent` をインストールします。
 3. ✅ CM5 インターフェイスを検出し、`DeviceDescriptor` と `HealthReport` を報告します。
 4. ✅ systemd を介して有効なサービスのみを開始します。
-5. ✅ ローカルで READY、DEGRADED、INHIBITED、または FAULT を表示します。
+5. ✅ ローカルで READY、DEGRADED、または FAULT を表示します。
 
 ## 📂 リポジトリのレイアウト
 
@@ -130,16 +130,16 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 **子プロジェクト**
 - **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** — すべてのブリッジが自身のコマンドを検証する共有 JSON-Schema 契約とソフトウェアのジョブゲート境界(認証済みの安全機能ではない)。本 OS 自身のデバイスエージェントが使用する、バージョン管理された契約・シンクライアント・適合性フィクスチャ。
-- **[HYDRA-UMC-CONNECTOR-HUB](https://github.com/JuanenRac/HYDRA-UMC-CONNECTOR-HUB)** — 外部マシン用コネクタのための宣言的アダプターマニフェストのレジストリとバリデーター。SDK 自身の契約という発想を外部マシンにまで拡張し、産業用ゲートウェイ系のプロジェクトを置き換えることはありません。
 - **[HYDRA-UMC-OS-REBUILDER](https://github.com/JuanenRac/HYDRA-UMC-OS-REBUILDER)** — エコシステムの最新バージョンをプリロードし、Raspberry Pi Imager方式の初回起動設定を備えた、CM5向けの書き込み可能なこのOSのイメージを構築するWindows/Linuxデスクトップツール。
-- **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — 保守インシデントコーディネーター: 低権限のエッジ役割がサニタイズされたインベントリ/ヘルスのスナップショットを収集し、コントロールプレーン役割がそれを読み取り専用でレンダリングして AI プロバイダーに診断の提案を依頼します - パッチを適用することも、何かをデプロイすることも決してありません。
-- **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — 再現可能な開発ホスト（Raspberry Pi 5 / CM5）。エコシステムのソースコードを保管し、永続キューのもとで境界の明確なビルド/テストタスクを実行する。運用中の CM5 とは明確に異なる、開発専用の役割。
 
 **直接関連**
 - **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** — ロボットアームのマザーボードの設計——CM5 ホスト + デュアルコア STM32H745、CAN-OTA/SPI-OTA 経由で最大 8 本のツールアームを統括することを目指す(ファームウェアは初期段階で、実装済みの基板はまだない)。本 OS 層が設定・監督する CM5/MCU ハードウェア・ファームウェアプラットフォーム。
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — すべての制御クライアントが実際に通信する、本物のヘッドレスバックエンド(REST/WebSocket)。本ノードの管理対象統合のための認証済みサービス境界。
 - **[URTC](https://github.com/JuanenRac/URTC)** — 物理的な Universal Robot Tool Controller 基板向けファームウェア、CAN バス経由の 25 以上のツールプロファイル。明示的でバージョン管理されたアダプター経由で統合される独立したツールコントローラープラットフォーム。
 - **[HYDRA-UMC-UPDATER](https://github.com/JuanenRac/HYDRA-UMC-UPDATER)** — このエコシステム内のすべてのリポジトリを検出・クローン・更新する、管理用デスクトップツール。そのアーティファクトレジストリ、互換性メタデータ、調整された更新ワークフロー。
+- **[HYDRA-UMC-CONNECTOR-HUB](https://github.com/JuanenRac/HYDRA-UMC-CONNECTOR-HUB)** — 外部マシン用コネクタのための宣言的アダプターマニフェストのレジストリとバリデーター。SDK 自身の契約という発想を外部マシンにまで拡張し、産業用ゲートウェイ系のプロジェクトを置き換えることはありません。
+- **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — 保守インシデントコーディネーター: 低権限のエッジ役割がサニタイズされたインベントリ/ヘルスのスナップショットを収集し、コントロールプレーン役割がそれを読み取り専用でレンダリングして AI プロバイダーに診断の提案を依頼します - パッチを適用することも、何かをデプロイすることも決してありません。
+- **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — 再現可能な開発ホスト（Raspberry Pi 5 / CM5）。エコシステムのソースコードを保管し、永続キューのもとで境界の明確なビルド/テストタスクを実行する。運用中の CM5 とは明確に異なる、開発専用の役割。
 
 **エコシステムの他のプロジェクト**
 

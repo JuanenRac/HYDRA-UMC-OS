@@ -243,10 +243,40 @@ def emit(value: DeviceDescriptor | HealthReport, *, compact: bool = False) -> No
         print(json.dumps(asdict(value), sort_keys=True, indent=2))
 
 
+class ReportGate:
+    """Decides whether a periodic report is worth writing to the journal.
+
+    With ``on_change`` off every report is written (the long-standing behaviour).
+    With it on, a report is written when the overall state or the state of any
+    single check changed since the last written one, and otherwise at most once
+    per ``heartbeat_s`` so a quiet device still shows that it is alive. Measured
+    values (free bytes, temperature) never count as a change by themselves.
+    """
+
+    def __init__(self, on_change: bool = False, heartbeat_s: float = 300.0) -> None:
+        self.on_change = on_change
+        self.heartbeat_s = heartbeat_s
+        self._signature: tuple | None = None
+        self._last_written: float | None = None
+
+    def should_emit(self, report: HealthReport, now: float) -> bool:
+        if not self.on_change:
+            return True
+        signature = (report.state, tuple(sorted((name, check["state"]) for name, check in report.checks.items())))
+        due = self._last_written is None or now - self._last_written >= self.heartbeat_s
+        if signature != self._signature or due:
+            self._signature = signature
+            self._last_written = now
+            return True
+        return False
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, help="path to a validated non-secret JSON configuration")
     parser.add_argument("--interval", type=float, default=30.0, help="seconds between reports in serve mode")
+    parser.add_argument("--report-on-change", action="store_true", help="in serve mode, write a report only when a state changed (plus a heartbeat)")
+    parser.add_argument("--heartbeat", type=float, default=300.0, help="seconds between heartbeat reports with --report-on-change")
     parser.add_argument("command", choices=("describe", "health", "serve"))
     args = parser.parse_args(argv)
     try:
@@ -259,8 +289,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "health":
             emit(health(config))
             return 0
+        if args.command == "serve" and (not math.isfinite(args.heartbeat) or args.heartbeat <= 0):
+            raise ValueError("serve heartbeat must be a finite number greater than zero")
+        gate = ReportGate(args.report_on_change, args.heartbeat)
         while True:
-            emit(health(config), compact=True)
+            report = health(config)
+            if gate.should_emit(report, time.monotonic()):
+                emit(report, compact=True)
             time.sleep(args.interval)
     except (ValueError, OSError) as exc:
         print(f"hydra-umc-agent: {exc}", file=sys.stderr)

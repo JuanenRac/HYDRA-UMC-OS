@@ -9,6 +9,11 @@ The initial target is a Raspberry Pi CM5 using a documented Raspberry Pi OS
 ARM64 release (Debian trixie). Development images and production images must record the base
 release, kernel, firmware, installed HYDRA-UMC package versions, and SDK range.
 
+`install_cm5_base.sh` runs `provisioning/os_release_guard.py` before it changes
+anything. By default it only warns when the system is not Debian trixie; set
+`HYDRA_UMC_OS_GUARD=enforce` to stop instead, `off` to silence it, and
+`HYDRA_UMC_SUPPORTED_DEBIAN` (comma separated codenames) to accept other releases.
+
 ## Intended installation sequence
 
 1. Start from an official Raspberry Pi OS image.

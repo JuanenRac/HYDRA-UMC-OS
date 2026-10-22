@@ -186,9 +186,26 @@ class AgentTests(unittest.TestCase):
         manifest = json.loads((Path(__file__).resolve().parents[2] / "hydra-umc.project.json").read_text(encoding="utf-8"))
         self.assertEqual(__version__, manifest["version"])
 
+    def test_report_gate_writes_only_changes_and_heartbeats(self):
+        from hydra_umc_os.agent import ReportGate
+
+        ok = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=["eth0"], temperature_celsius=40.0)
+        warmer = health(DEFAULT_CONFIG, free_bytes=1_900_000_000, interfaces=["eth0"], temperature_celsius=45.0)
+        offline = health(DEFAULT_CONFIG, free_bytes=2_000_000_000, interfaces=[], temperature_celsius=40.0)
+        always = ReportGate()
+        self.assertTrue(always.should_emit(ok, 0) and always.should_emit(ok, 1))
+        gate = ReportGate(on_change=True, heartbeat_s=300)
+        self.assertTrue(gate.should_emit(ok, 0))
+        self.assertFalse(gate.should_emit(warmer, 30))
+        self.assertTrue(gate.should_emit(offline, 60))
+        self.assertFalse(gate.should_emit(offline, 90))
+        self.assertTrue(gate.should_emit(offline, 361))
+        self.assertTrue(gate.should_emit(ok, 362))
+
     def test_serve_rejects_non_positive_or_non_finite_intervals(self):
         self.assertEqual(main(["--interval", "0", "serve"]), 2)
         self.assertEqual(main(["--interval", "nan", "serve"]), 2)
+        self.assertEqual(main(["--heartbeat", "0", "--report-on-change", "serve"]), 2)
 
 
 if __name__ == "__main__":

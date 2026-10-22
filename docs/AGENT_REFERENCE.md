@@ -7,11 +7,12 @@ the boot chain). The agent never commands the MCU, moves machinery, or
 alters the OS - every command below only reads local state.
 
 ```bash
-hydra-umc-agent [--config PATH] [--interval SECONDS] {describe|health|serve}
+hydra-umc-agent [--config PATH] [--interval SECONDS] [--report-on-change] [--heartbeat SECONDS] {describe|health|serve}
 ```
 
 - `--config PATH` - a validated, non-secret JSON configuration (`schema_version: "1.0"`, `node.id`, `node.profile`, `diagnostics.minimum_free_bytes`, `diagnostics.maximum_temperature_celsius`). Defaults to a built-in `DEFAULT_CONFIG` if omitted.
 - `--interval SECONDS` - only used by `serve` (default `30.0`): seconds between reports.
+- `--report-on-change` - only used by `serve`: write a report only when the overall state or the state of any check changed (measured values alone never count), plus a heartbeat report every `--heartbeat SECONDS` (default `300.0`). Off by default, so every report is written; the installed unit turns it on to keep the journal short.
 
 Every command prints one pretty-printed JSON document to stdout and exits `0`. `2` on a configuration error (invalid JSON, missing/wrong-typed fields), `0` on `Ctrl-C` during `serve`.
 

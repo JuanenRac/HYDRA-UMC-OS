@@ -64,7 +64,7 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 安装预检（`provisioning/preflight_cm5.py`）已通过一项真实测试证明其具有幂等性且无副作用——连续运行两次会产生逐字节相同的输出，并且不会触及此仓库中的任何文件——而一个真实的、与主机无关的备份/回滚机制（`provisioning/rollback.py`）保护着 `install_local_agent.sh` 在每次运行时无条件覆盖的那一个系统文件。两者均已在无需 root 权限或 CM5 的情况下完成验证——参见 `tools/verify_preflight_idempotent.py` 和 `tools/verify_rollback.py`。
 
-**WiFi 首次接触配网同样是真实的**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——为尚无已知网络的无头 CM5 提供真实的 NetworkManager AP 模式回退：启动一个真实的热点（`nmcli device wifi hotspot`），操作员的手机/笔记本电脑可以加入该热点，通过一个小型本地 HTTP 表单提交真实的目标 SSID/密码，成功后关闭 AP 并加入真实网络，失败时恢复 AP，使设备永远不会被困住。该状态机针对一个伪造的 NetworkManager 进行了完整的单元测试，包括通过真实回环套接字进行的真实端到端 HTTP 往返——参见 `tools/verify_wifi_provision.py`。由 `install_cm5_base.sh` 安装，但刻意未自动启用，因为它绝不能在真实的、可通过空口访问的设备上以自带的占位 AP 密码启动——需先完成 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` 第 3 节所述的真实密码设置步骤。
+**WiFi 首次接触配网同样是真实的**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——为尚无已知网络的无头 CM5 提供真实的 NetworkManager AP 模式回退：启动一个真实的热点（`nmcli device wifi hotspot`），操作员的手机/笔记本电脑可以加入该热点，通过一个小型本地 HTTP 表单提交真实的目标 SSID/密码，成功后关闭 AP 并加入真实网络，失败时恢复 AP，使设备永远不会被困住。该状态机针对一个伪造的 NetworkManager 进行了完整的单元测试，包括通过真实回环套接字进行的真实端到端 HTTP 往返——参见 `tools/verify_wifi_provision.py`。由 `install_cm5_base.sh` 安装，但刻意未自动启用，因为它只应在确实需要的设备上运行：其接入点密码和一次性设置码会在每台设备首次启动时生成，并只从日志中读取一次——参见 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` 第 3 节。
 
 **密钥按设备生成，绝不从模板沿用。** `install_server.sh` 和 `install_voice_ui.sh` 在 env 文件缺失时会根据示例创建，并把每个示例值（`JWT_SECRET`、首个管理员密码、语音中继令牌）替换为本设备的随机值（`provisioning/generate_secrets.py`；运维人员已选定的值会保留，管理员密码只显示一次），随后如果仍残留示例值或过短的密钥就拒绝继续；`preflight_cm5.py` 会拒绝仍含有示例值的 `/etc/hydra-umc/*.env`。`install_industrial_gateway.sh` 会写出该栈的 `.env`（`provisioning/gateway_env.py`：网关密钥，以及每个设备桥接器各一份 MQTT 凭据和 ACL 规则）。Wi-Fi 配置网络的源码中不再有密码：每台设备在首次启动时生成自己的密码和一次性配置码（在日志中读取一次，写到标签上），表单要求输入配置码（连续五次错误后锁定一分钟），配置网络在每次启动后只开放 30 分钟，表单会拒绝过大的请求。由 `tools/verify_generate_secrets.py`、`tools/verify_gateway_env.py` 和 `tools/verify_wifi_provision.py` 验证。
 
@@ -77,7 +77,7 @@ CM5 硬件验证）：
 2. ✅ 安装 `hydra-umc-platform-base` 和 `hydra-umc-agent`。
 3. ✅ 检测 CM5 接口并报告 `DeviceDescriptor` 和 `HealthReport`。
 4. ✅ 仅启动通过 systemd 启用的服务。
-5. ✅ 本地显示 READY、DEGRADED、INHIBITED 或 FAULT。
+5. ✅ 本地显示 READY、DEGRADED 或 FAULT。
 
 ## 📂 存储库布局
 
@@ -130,16 +130,16 @@ CM5 硬件验证）：
 
 **子项目**
 - **[HYDRA-UMC-SDK](https://github.com/JuanenRac/HYDRA-UMC-SDK)** —— 每个桥接都据此校验自身指令的共享 JSON-Schema 契约与软件作业门限边界(并非经认证的安全功能);本操作系统自身的设备代理所使用的、经过版本管理的契约、轻量客户端与合规性测试夹具。
-- **[HYDRA-UMC-CONNECTOR-HUB](https://github.com/JuanenRac/HYDRA-UMC-CONNECTOR-HUB)** — 面向外部机器连接器的声明式适配器清单注册与校验工具；把 SDK 自身的契约理念扩展到外部机器，而不取代工业网关类项目。
 - **[HYDRA-UMC-OS-REBUILDER](https://github.com/JuanenRac/HYDRA-UMC-OS-REBUILDER)** —— 为 CM5 构建本操作系统即刻可烧录镜像的 Windows/Linux 桌面工具，预装生态系统最新版本，并提供 Raspberry Pi Imager 风格的首次启动配置。
-- **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — 维护事件协调器：一个低权限的边缘角色采集经过脱敏的库存/健康快照，一个控制面角色以只读方式渲染它，并请求某个 AI 提供方给出诊断建议——从不应用补丁，也从不部署任何内容。
-- **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — 可复现的开发主机（Raspberry Pi 5 / CM5），保存整个生态系统的源代码，并在持久队列下运行有界的构建/测试任务；这是专用的开发角色，明确区别于运行中的 CM5。
 
 **直接相关**
 - **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** —— 机器人手臂主板设计——CM5 主机 + 双核 STM32H745,目标是通过 CAN-OTA/SPI-OTA 协调最多 8 条工具臂(固件处于早期阶段,尚无已组装的电路板);本操作系统层所配置和监管的 CM5/MCU 硬件与固件平台。
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** —— 每个控制客户端真正通信的真实无头后端(REST/WebSocket);本节点受管理集成的认证服务边界。
 - **[URTC](https://github.com/JuanenRac/URTC)** —— 面向实体 Universal Robot Tool Controller 板卡的固件,通过 CAN 总线支持 25 种以上工具配置;通过显式的、经过版本管理的适配器集成的独立工具控制器平台。
 - **[HYDRA-UMC-UPDATER](https://github.com/JuanenRac/HYDRA-UMC-UPDATER)** —— 发现、克隆并更新本生态系统中每个仓库的管理类桌面工具;其制品注册表、兼容性元数据与协调更新流程。
+- **[HYDRA-UMC-CONNECTOR-HUB](https://github.com/JuanenRac/HYDRA-UMC-CONNECTOR-HUB)** — 面向外部机器连接器的声明式适配器清单注册与校验工具；把 SDK 自身的契约理念扩展到外部机器，而不取代工业网关类项目。
+- **[HYDRA-UMC-OPS-AGENT](https://github.com/JuanenRac/HYDRA-UMC-OPS-AGENT)** — 维护事件协调器：一个低权限的边缘角色采集经过脱敏的库存/健康快照，一个控制面角色以只读方式渲染它，并请求某个 AI 提供方给出诊断建议——从不应用补丁，也从不部署任何内容。
+- **[HYDRA-UMC-DEV-SERVER](https://github.com/JuanenRac/HYDRA-UMC-DEV-SERVER)** — 可复现的开发主机（Raspberry Pi 5 / CM5），保存整个生态系统的源代码，并在持久队列下运行有界的构建/测试任务；这是专用的开发角色，明确区别于运行中的 CM5。
 
 **生态系统中的其他项目**
 
