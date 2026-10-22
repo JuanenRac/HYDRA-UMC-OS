@@ -36,7 +36,7 @@ CC BY-SA 4.0 – siehe LICENSE.md
 
 | | |
 |---|---|
-| Version | `0.5.2` |
+| Version | `0.5.3` |
 | Reifegrad | Funktionsfähig |
 | Tests | 13 (`python -m unittest`) |
 | Technik | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |

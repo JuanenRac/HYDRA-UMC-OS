@@ -36,7 +36,7 @@ CC BY-SA 4.0 - LICENSE.md を参照
 
 | | |
 |---|---|
-| バージョン | `0.5.2` |
+| バージョン | `0.5.3` |
 | 成熟度 | 機能する |
 | テスト | 13 (`python -m unittest`) |
 | 技術 | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |
