@@ -1,0 +1,28 @@
+#!/bin/sh
+# =============================================================================
+# HYDRA-UMC-OS - hydra-umc-platform-base: after the files are removed
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Removing the package keeps the configuration and the state; purging removes only the
+# configuration this package created (the state directory also holds rollback copies and stays).
+set -e
+
+case "$1" in
+  remove|purge|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+    if [ -d /run/systemd/system ]; then
+      systemctl daemon-reload >/dev/null 2>&1 || true
+    fi
+    ;;
+  *)
+    echo "postrm called with unknown argument '$1'" >&2
+    exit 1
+    ;;
+esac
+
+if [ "$1" = "purge" ]; then
+  rm -f /etc/hydra-umc/config.json
+  rmdir /etc/hydra-umc 2>/dev/null || true
+fi
+
+exit 0

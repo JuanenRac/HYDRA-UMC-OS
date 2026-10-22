@@ -53,7 +53,7 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 配置、服务生命周期、本地身份、诊断、视觉品牌
 以及 HYDRA-UMC 组件的协调更新。
 
-**诚实核查——今天真正能跑起来的部分：** 只读设备代理（`agent/src/hydra_umc_os/agent.py`：`DeviceDescriptor`/`HealthReport`，温度/存储/网络检查，配置档案加载）是真实且经过测试的（13 个单元测试，`agent/tests/test_agent.py`，`python -m unittest discover`）。`provisioning/preflight_cm5.py` 通过一个真实测试验证为幂等且无副作用——运行两次并对比输出（`tools/verify_preflight_idempotent.py`），外加 5 项真实的反向路径检查（`tools/verify_preflight_negative.py`）；`provisioning/rollback.py` 的备份/恢复机制由 8 项真实检查验证，其中包括一个真正的部分失败场景（`tools/verify_rollback.py`）；`provisioning/wifi_provision.py` 的 AP 模式回退状态机由针对一个伪造 NetworkManager 的 46 项真实检查验证，其中包括一次通过真实回环套接字完成的端到端 HTTP 往返（`tools/verify_wifi_provision.py`）——这三者都不需要 root 权限或物理 CM5 即可验证。目前唯一没有被验证过的：真实的 CM5 硬件本身。`image-builder/` 目前只是文档（一份关于可复现性说明的 README，还没有镜像组装代码）；`packages/` 包含真实的 Debian 打包元数据（`control`/`rules`），但在本环境中尚未被构建成真正的 `.deb`。已交付的具体内容见 `CHANGELOG.md`，这里已验证的部分与仍需物理硬件的部分之间的确切界线见 `docs/CM5_SOFTWARE_READINESS.md`。
+**诚实核查——今天真正能跑起来的部分：** 只读设备代理（`agent/src/hydra_umc_os/agent.py`：`DeviceDescriptor`/`HealthReport`，温度/存储/网络检查，配置档案加载）是真实且经过测试的（13 个单元测试，`agent/tests/test_agent.py`，`python -m unittest discover`）。`provisioning/preflight_cm5.py` 通过一个真实测试验证为幂等且无副作用——运行两次并对比输出（`tools/verify_preflight_idempotent.py`），外加 5 项真实的反向路径检查（`tools/verify_preflight_negative.py`）；`provisioning/rollback.py` 的备份/恢复机制由 8 项真实检查验证，其中包括一个真正的部分失败场景（`tools/verify_rollback.py`）；`provisioning/wifi_provision.py` 的 AP 模式回退状态机由针对一个伪造 NetworkManager 的 46 项真实检查验证，其中包括一次通过真实回环套接字完成的端到端 HTTP 往返（`tools/verify_wifi_provision.py`）——这三者都不需要 root 权限或物理 CM5 即可验证。目前唯一没有被验证过的：真实的 CM5 硬件本身。`image-builder/` 目前只是文档（一份关于可复现性说明的 README，还没有镜像组装代码）；`packages/debian/` 包含软件包 `hydra-umc-platform-base` 的维护者脚本和版权文件，`tools/build_deb.py` 会把它构建成真正的 `.deb`（纯 Python，无需 dpkg，每次字节完全相同），`tools/verify_deb_package.py` 会读回并检查；尚未在真实的 CM5 上安装过。已交付的具体内容见 `CHANGELOG.md`，这里已验证的部分与仍需物理硬件的部分之间的确切界线见 `docs/CM5_SOFTWARE_READINESS.md`。
 
 ## 🚧 状态
 
@@ -66,7 +66,7 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 **WiFi 首次接触配网同样是真实的**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——为尚无已知网络的无头 CM5 提供真实的 NetworkManager AP 模式回退：启动一个真实的热点（`nmcli device wifi hotspot`），操作员的手机/笔记本电脑可以加入该热点，通过一个小型本地 HTTP 表单提交真实的目标 SSID/密码，成功后关闭 AP 并加入真实网络，失败时恢复 AP，使设备永远不会被困住。该状态机针对一个伪造的 NetworkManager 进行了完整的单元测试，包括通过真实回环套接字进行的真实端到端 HTTP 往返——参见 `tools/verify_wifi_provision.py`。由 `install_cm5_base.sh` 安装，但刻意未自动启用，因为它只应在确实需要的设备上运行：其接入点密码和一次性设置码会在每台设备首次启动时生成，并只从日志中读取一次——参见 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` 第 3 节。
 
-**密钥按设备生成，绝不从模板沿用。** `install_server.sh` 和 `install_voice_ui.sh` 在 env 文件缺失时会根据示例创建，并把每个示例值（`JWT_SECRET`、首个管理员密码、语音中继令牌）替换为本设备的随机值（`provisioning/generate_secrets.py`；运维人员已选定的值会保留，管理员密码只显示一次），随后如果仍残留示例值或过短的密钥就拒绝继续；`preflight_cm5.py` 会拒绝仍含有示例值的 `/etc/hydra-umc/*.env`。`install_industrial_gateway.sh` 会写出该栈的 `.env`（`provisioning/gateway_env.py`：网关密钥，以及每个设备桥接器各一份 MQTT 凭据和 ACL 规则）。Wi-Fi 配置网络的源码中不再有密码：每台设备在首次启动时生成自己的密码和一次性配置码（在日志中读取一次，写到标签上），表单要求输入配置码（连续五次错误后锁定一分钟），配置网络在每次启动后只开放 30 分钟，表单会拒绝过大的请求。由 `tools/verify_generate_secrets.py`、`tools/verify_gateway_env.py` 和 `tools/verify_wifi_provision.py` 验证。
+**密钥按设备生成，绝不从模板沿用。** `install_server.sh` 和 `install_voice_ui.sh` 在 env 文件缺失时会根据示例创建，并把每个示例值（`JWT_SECRET`、首个管理员密码、语音中继令牌）替换为本设备的随机值（`provisioning/generate_secrets.py`；运维人员已选定的值会保留，管理员密码只显示一次），随后如果仍残留示例值或过短的密钥就拒绝继续；`preflight_cm5.py` 会拒绝仍含有示例值的 `/etc/hydra-umc/*.env`。`install_industrial_gateway.sh` 会写出该栈的 `.env`（`provisioning/gateway_env.py`：网关密钥，以及每个设备桥接器各一份 MQTT 凭据和 ACL 规则）。Wi-Fi 配置网络的源码中不再有密码：每台设备在首次启动时生成自己的密码和一次性配置码（在日志中读取一次，写到标签上），表单要求输入配置码（连续五次错误后锁定一分钟），配置网络在每次启动后只开放 30 分钟，表单会拒绝过大的请求。由 `tools/verify_generate_secrets.py`、`tools/verify_gateway_env.py` 和 `tools/verify_wifi_provision.py` 验证。 主机名和配网网络名称的末尾也带有取自设备的六个字符（Raspberry Pi 序列号，否则为 MAC 地址），因此用同一镜像烧录的两台设备不再共用同一个名称（`provisioning/device_identity.py`，由 `tools/verify_device_identity.py` 检查）；`HYDRA_UMC_DEVICE_SUFFIX=off` 保留固定名称，您自己选定的名称永远不会被更改。
 
 ## 🎯 第一个里程碑
 
@@ -89,7 +89,7 @@ CM5 硬件验证）：
 | ---| ---|
 | `docs/` |架构、安装、服务和更新规范。 |
 | `image-builder/` |官方 Raspberry Pi OS 镜像组装边界和可复现性说明。 |
-| `packages/` | `hydra-umc-platform-base` 的 Debian 软件包元数据。 |
+| `packages/` | Debian 软件包 `hydra-umc-platform-base` 的维护者脚本和版权文件（由 `tools/build_deb.py` 构建）。 |
 | `agent/` |只读的 Python 设备描述符与健康状态代理，含单元测试。 |
 | `systemd/` |强化的 `hydra-umc-agent.service` 和 `hydra-umc-wifi-provision.service` 生命周期单元。 |
 | `config/` |默认模式和非秘密配置。 |

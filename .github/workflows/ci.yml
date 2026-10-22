@@ -114,6 +114,9 @@ jobs:
           python tools/verify_firewall.py
           python tools/verify_backup_settings.py
           python tools/verify_os_guard_and_docs.py
+          python tools/verify_bump_version.py
+          python tools/verify_device_identity.py
+          python tools/verify_deb_package.py
       - name: Validate v1 SDK contract fixtures
         if: ${{ hashFiles('clients/python/tests/test_validation.py') != '' }}
         env:

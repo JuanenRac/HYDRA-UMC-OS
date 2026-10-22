@@ -24,6 +24,7 @@ run() { if $APPLY; then "$@"; else printf '[dry-run] '; printf '%q ' "$@"; print
 
 run install -d -o root -g root -m 0755 "$TARGET"
 run install -m 0755 "$ROOT/provisioning/wifi_provision.py" "$TARGET/wifi_provision.py"
+run install -m 0644 "$ROOT/provisioning/device_identity.py" "$TARGET/device_identity.py"
 run python3 "$ROOT/provisioning/rollback.py" backup /etc/systemd/system/hydra-umc-wifi-provision.service \
   --backup-dir /var/lib/hydra-umc/rollback --manifest /var/lib/hydra-umc/rollback/manifest.json
 run install -m 0644 "$ROOT/systemd/hydra-umc-wifi-provision.service" /etc/systemd/system/hydra-umc-wifi-provision.service

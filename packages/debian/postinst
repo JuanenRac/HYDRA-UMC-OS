@@ -1,0 +1,35 @@
+#!/bin/sh
+# =============================================================================
+# HYDRA-UMC-OS - hydra-umc-platform-base: after the files are in place
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Creates the service account and the directories, puts the example configuration in place when
+# there is none and tells systemd about the unit. It never enables or starts the service: that
+# stays an explicit decision (systemctl enable --now hydra-umc-agent).
+set -e
+
+case "$1" in
+  configure)
+    if ! getent passwd hydra-umc-agent >/dev/null 2>&1; then
+      adduser --system --group --no-create-home --home /nonexistent --shell /usr/sbin/nologin hydra-umc-agent
+    fi
+    install -d -o root -g hydra-umc-agent -m 0750 /etc/hydra-umc
+    install -d -o root -g root -m 0755 /var/lib/hydra-umc
+    if [ ! -f /etc/hydra-umc/config.json ]; then
+      install -m 0640 -o root -g hydra-umc-agent /usr/share/hydra-umc/config/hydra-umc-os.example.json /etc/hydra-umc/config.json
+    fi
+    if [ -d /run/systemd/system ]; then
+      systemctl daemon-reload >/dev/null 2>&1 || true
+    fi
+    echo "hydra-umc-platform-base installed. Review /etc/hydra-umc/config.json, then enable manually: systemctl enable --now hydra-umc-agent"
+    ;;
+  abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+  *)
+    echo "postinst called with unknown argument '$1'" >&2
+    exit 1
+    ;;
+esac
+
+exit 0

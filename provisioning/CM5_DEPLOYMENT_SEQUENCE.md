@@ -200,6 +200,12 @@ The following are separate physical-validation gates, not a bulk install:
 
 1. **CONTROL:** CM5-to-MCU/URTC transport, version/HELLO, capabilities, CRC,
    timeouts, heartbeat, SAFE_STOP and no-motion failure behaviour.
+   The `control` profile (`config/profiles/control.json`) declares
+   `hydra-umc-server` next to the agent, because a control node is driven
+   through the Server, and the preflight checks the Server contract for it. The
+   profile is a declaration, not a switch: to run a control node without the
+   Server, copy the file, remove that entry and pass the copy with `--profile`
+   to `provisioning/preflight_cm5.py`.
 2. **VISION:** camera permissions, stable device paths, cooling, power and one
    camera at a time.
 3. **HAILO-8 / HAILO-10:** PCIe enumeration, exact model, official compatible

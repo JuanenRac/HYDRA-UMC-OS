@@ -5,6 +5,19 @@
 `python3`, `python3-venv`, `ca-certificates`, `systemd`, `NetworkManager`,
 `openssh-server`, and the HYDRA-UMC-OS package.
 
+## The OS package
+
+`python3 tools/build_deb.py` builds `hydra-umc-platform-base_<version>_all.deb`
+without dpkg: the agent under `/opt/hydra-umc/os-agent`, the command
+`/usr/bin/hydra-umc-agent`, the unit in `/usr/lib/systemd/system`, and the
+example configuration and profiles in `/usr/share/hydra-umc`. The post-install
+script creates the service account and the directories and puts the example
+configuration in `/etc/hydra-umc/config.json` only when there is none; it never
+enables or starts the service. Removing the package keeps the configuration;
+purging removes only `config.json`. `tools/verify_deb_package.py` reads the
+archive back (and asks `dpkg-deb` when it is installed). The package has not
+been installed on a real CM5 yet.
+
 ## Server
 
 Node.js 20 LTS plus the lockfile-resolved dependencies of HYDRA-UMC-SERVER.

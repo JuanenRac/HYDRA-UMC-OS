@@ -68,6 +68,9 @@ def run_agent_checks() -> None:
     run(sys.executable, "tools/verify_firewall.py", env=environment)
     run(sys.executable, "tools/verify_backup_settings.py", env=environment)
     run(sys.executable, "tools/verify_os_guard_and_docs.py", env=environment)
+    run(sys.executable, "tools/verify_bump_version.py", env=environment)
+    run(sys.executable, "tools/verify_device_identity.py", env=environment)
+    run(sys.executable, "tools/verify_deb_package.py", env=environment)
     # CI checks the self-contained BASE plan. A full local preflight also
     # validates a sibling SDK checkout before a real CM5 is changed.
     run(sys.executable, "provisioning/preflight_cm5.py", "--skip-sdk", env=environment)

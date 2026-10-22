@@ -147,6 +147,20 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(profile["profile"], "control")
         self.assertIn("cm5_mcu_adapter", profile["requires"])
 
+    def test_control_profile_starts_the_server_and_base_does_not(self):
+        profiles = Path(__file__).resolve().parents[2] / "config" / "profiles"
+        self.assertEqual(load_profile(profiles / "control.json")["enabled_services"], ["hydra-umc-agent", "hydra-umc-server"])
+        self.assertEqual(load_profile(profiles / "base.json")["enabled_services"], ["hydra-umc-agent"])
+
+    def test_a_control_profile_without_the_server_is_still_a_valid_profile(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile_path = Path(directory) / "control-no-server.json"
+            profile_path.write_text(
+                json.dumps({"schema_version": "1.0", "profile": "control", "enabled_services": ["hydra-umc-agent"], "requires": ["cm5_mcu_adapter"]}),
+                encoding="utf-8",
+            )
+            self.assertEqual(load_profile(profile_path)["enabled_services"], ["hydra-umc-agent"])
+
     def test_rejects_invalid_or_duplicate_profile_entries(self):
         with tempfile.TemporaryDirectory() as directory:
             profile_path = Path(directory) / "profile.json"

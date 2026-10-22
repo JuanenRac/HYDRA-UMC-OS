@@ -27,7 +27,7 @@ Before=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=no
-ExecStart=/usr/bin/python3 /opt/hydra-umc/wifi-provision/wifi_provision.py --apply --ifname wlan0 --ap-ssid HYDRA-UMC-SETUP --state-dir /var/lib/hydra-umc/wifi-provision
+ExecStart=/usr/bin/python3 /opt/hydra-umc/wifi-provision/wifi_provision.py --apply --ifname wlan0 --state-dir /var/lib/hydra-umc/wifi-provision
 # The AP password and the one-time setup code are generated per device on the first start
 # and kept in /var/lib/hydra-umc/wifi-provision/credentials.json (0600); the service logs
 # them once (journalctl -u hydra-umc-wifi-provision | grep WIFI_PROVISION=CREDENTIALS) so

@@ -1,72 +1,60 @@
 #!/usr/bin/env python3
 # =============================================================================
-# HYDRA-UMC-OS - Decimal build version odometer
+# HYDRA-UMC-OS - Version increment
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
+"""Increment the version with the one rule of the ecosystem.
+
+The rule (decimal odometer, three components up to 0.7.9 and four from 0.8.0) lives in
+bump_manifest_version.py and is shared by every repository; this script no longer has a copy of it.
+It runs that utility, which moves the native version (agent/pyproject.toml), the manifest and the
+changelog together, and then carries the agent's own ``__version__`` along, because the agent
+reports it and a test pins it to the manifest.
+"""
 from __future__ import annotations
+
+import importlib.util
 import json
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-TARGETS = (ROOT / "agent/pyproject.toml", ROOT / "agent/src/hydra_umc_os/__init__.py")
 MANIFEST = ROOT / "hydra-umc.project.json"
+AGENT_INIT = ROOT / "agent" / "src" / "hydra_umc_os" / "__init__.py"
 
-def bump(value: str) -> str:
-    major, minor, patch = map(int, value.split(".")); patch += 1
-    if patch == 10: minor, patch = minor + 1, 0
-    if minor == 10: major, minor = major + 1, 0
-    return f"{major}.{minor}.{patch}"
 
-def main() -> None:
-    pattern = re.compile(r'(?m)(version\s*=\s*"|__version__\s*=\s*")([0-9]+\.[0-9]+\.[0-9]+)(")')
-    first = TARGETS[0].read_text(encoding="utf-8"); match = pattern.search(first)
-    if not match: raise SystemExit("Version not found")
-    old, new = match.group(2), bump(match.group(2))
-    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    if manifest.get("name") != "HYDRA-UMC-OS" or manifest.get("version") != old:
-        raise SystemExit("Manifest version must match the native version before a build")
-    for target in TARGETS:
-        text = target.read_text(encoding="utf-8")
-        target.write_text(pattern.sub(lambda m: m.group(1) + new + m.group(3), text), encoding="utf-8")
-    changelog = ROOT / "CHANGELOG.md"
-    text = changelog.read_text(encoding="utf-8")
-    # No calendar date in this heading, on purpose - every real entry in
-    # this CHANGELOG is dated only by its position, never a literal date.
-    entry = f"## [{new}]\n\n### Changed\n\n- Automated build version increment from {old}.\n\n"
-    changelog.write_text(text.replace("# Changelog\n\n", "# Changelog\n\n" + entry, 1), encoding="utf-8")
-    manifest["version"] = new
-    MANIFEST.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"Version bumped: {old} -> {new}")
-
-def _delegate_to_shared_utility():
-    """Hand the bump over to the shared utility once the version has four parts.
-
-    Returns its exit code, or None when this step is an ordinary three-part one.
-    """
-    import importlib.util
-    import json as _json
-    from pathlib import Path as _Path
-
-    here = _Path(__file__).resolve().parent
-    root = here if (here / "bump_manifest_version.py").is_file() else here.parent
-    utility, manifest = root / "bump_manifest_version.py", root / "hydra-umc.project.json"
-    if not utility.is_file() or not manifest.is_file():
-        return None
-    spec = importlib.util.spec_from_file_location("_shared_bump", utility)
+def load_shared():
+    spec = importlib.util.spec_from_file_location("_hydra_shared_bump", ROOT / "bump_manifest_version.py")
     module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
     spec.loader.exec_module(module)
-    version = _json.loads(manifest.read_text(encoding="utf-8")).get("version", "")
-    if not hasattr(module, "FOUR_PART_FROM") or module.next_version(version).count(".") != 3:
-        return None
-    return module.main()
+    return module
+
+
+def sync_agent_version(version: str, path: Path = AGENT_INIT) -> bool:
+    """Write `version` into the agent's ``__version__`` line; True when the file changed."""
+    text = path.read_text(encoding="utf-8")
+    line = re.compile(r'(?m)^(__version__\s*=\s*")[^"]*(")')
+    if not line.search(text):
+        raise SystemExit(f"{path} has no __version__ line")
+    new = line.sub(lambda m: m.group(1) + version + m.group(2), text, count=1)
+    if new == text:
+        return False
+    path.write_text(new, encoding="utf-8")
+    return True
+
+
+def main() -> int:
+    shared = load_shared()
+    code = shared.main()
+    if code != 0:
+        return code
+    version = json.loads(MANIFEST.read_text(encoding="utf-8"))["version"]
+    sync_agent_version(version)
+    return 0
 
 
 if __name__ == "__main__":
-    _shared_exit = _delegate_to_shared_utility()
-    if _shared_exit is not None:
-        raise SystemExit(_shared_exit)
-
-
-if __name__ == "__main__": main()
+    sys.exit(main())

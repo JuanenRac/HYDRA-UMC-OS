@@ -1,0 +1,24 @@
+#!/bin/sh
+# =============================================================================
+# HYDRA-UMC-OS - hydra-umc-platform-base: before the files are removed
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+set -e
+
+case "$1" in
+  remove|deconfigure)
+    if [ -d /run/systemd/system ]; then
+      systemctl stop hydra-umc-agent >/dev/null 2>&1 || true
+      systemctl disable hydra-umc-agent >/dev/null 2>&1 || true
+    fi
+    ;;
+  upgrade|failed-upgrade)
+    ;;
+  *)
+    echo "prerm called with unknown argument '$1'" >&2
+    exit 1
+    ;;
+esac
+
+exit 0

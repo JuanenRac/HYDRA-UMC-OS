@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import hmac
+import importlib.util
 import html
 import json
 import os
@@ -54,6 +55,24 @@ from urllib.parse import parse_qs
 
 DEFAULT_IFNAME = "wlan0"
 DEFAULT_AP_SSID = "HYDRA-UMC-SETUP"
+
+
+def device_default_ap_ssid() -> str:
+    """The setup network name when none was chosen: the fixed name plus a part taken from this device.
+
+    The part comes from device_identity.py, installed next to this file; without it (or with
+    HYDRA_UMC_DEVICE_SUFFIX=off) the fixed name is used, as before.
+    """
+    path = Path(__file__).with_name("device_identity.py")
+    try:
+        spec = importlib.util.spec_from_file_location("hydra_umc_device_identity", path)
+        if spec is None or spec.loader is None:
+            return DEFAULT_AP_SSID
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.default_ap_ssid(DEFAULT_AP_SSID)
+    except (OSError, ImportError, AttributeError, SyntaxError):
+        return DEFAULT_AP_SSID
 # The old, publicly known AP password. It is NEVER used as a fallback any more: a device
 # without a configured password generates its own random one (resolve_ap_credentials) and
 # an explicit value equal to this one (or a short one) is refused. The constant stays only
@@ -438,7 +457,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="required for any real network change")
     parser.add_argument("--ifname", default=DEFAULT_IFNAME)
-    parser.add_argument("--ap-ssid", default=os.environ.get("HYDRA_UMC_AP_SSID", DEFAULT_AP_SSID))
+    parser.add_argument("--ap-ssid", default=os.environ.get("HYDRA_UMC_AP_SSID") or device_default_ap_ssid())
     parser.add_argument(
         "--ap-password",
         default=os.environ.get("HYDRA_UMC_AP_PASSWORD"),
