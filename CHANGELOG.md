@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- The banner follows the animated style of the ecosystem banners, with the name, the kind and the technologies of the project.
 - Added `tools/package_component.py`: packs the server, Studio or the device agent as `hydra-<component>-<version>.tgz` with its `.sha256` and an Ed25519 `.sig` over the component, the version and the hash. `verify` refuses a changed package (even with a rewritten hash), a missing or foreign signature, a package passed off as another component or version, and members that are links or leave the target. The public key is `config/release_key.pub`; the private key is never in a repository. Tested by `tools/verify_package_component.py` (RFC 8032 vectors, 18 tests).
 - Added `provisioning/hydra_mqtt_tls.sh`: a certificate authority of this installation, the certificate of the broker and one certificate per bridge for mutual TLS. Tested with real handshakes by `tools/verify_mqtt_tls.py`.
 - Added `provisioning/hydra_firewall.sh`: nftables rules that close the broker ports to everything but the field network and the server port to the clients' network, without taking over the machine. Tested by `tools/verify_firewall.py`.
