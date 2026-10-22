@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- Building no longer changes the version; raising it is the explicit `bump` command (`python tools/hydra_project_tool.py bump`). The build scripts only report the version they built, and CI fails if a build script runs a bump.
 - The agent in `serve` mode can write a report only when the overall state or the state of a check changes, plus a heartbeat every five minutes (`--report-on-change`, `--heartbeat`). The installed unit turns it on, which keeps the journal short; running the agent by hand still writes every report. Tested.
 - Added `provisioning/os_release_guard.py`, run by `install_cm5_base.sh` before anything is changed: it warns when the system is not Debian trixie. `HYDRA_UMC_OS_GUARD=enforce` stops the installer instead, `off` silences it and `HYDRA_UMC_SUPPORTED_DEBIAN` lists the accepted releases. Tested by `tools/verify_os_guard_and_docs.py`.
 - The READMEs no longer say the agent can report an inhibited state (it reports READY, DEGRADED or FAULT), describe the per-device access point password and one-time setup code instead of a placeholder password, and list the projects that are not children of this repository under directly related ones. The same check keeps them from drifting.
