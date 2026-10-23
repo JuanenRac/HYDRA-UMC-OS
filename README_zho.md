@@ -68,6 +68,8 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 **密钥按设备生成，绝不从模板沿用。** `install_server.sh` 和 `install_voice_ui.sh` 在 env 文件缺失时会根据示例创建，并把每个示例值（`JWT_SECRET`、首个管理员密码、语音中继令牌）替换为本设备的随机值（`provisioning/generate_secrets.py`；运维人员已选定的值会保留，管理员密码只显示一次），随后如果仍残留示例值或过短的密钥就拒绝继续；`preflight_cm5.py` 会拒绝仍含有示例值的 `/etc/hydra-umc/*.env`。`install_industrial_gateway.sh` 会写出该栈的 `.env`（`provisioning/gateway_env.py`：网关密钥，以及每个设备桥接器各一份 MQTT 凭据和 ACL 规则）。Wi-Fi 配置网络的源码中不再有密码：每台设备在首次启动时生成自己的密码和一次性配置码（在日志中读取一次，写到标签上），表单要求输入配置码（连续五次错误后锁定一分钟），配置网络在每次启动后只开放 30 分钟，表单会拒绝过大的请求。由 `tools/verify_generate_secrets.py`、`tools/verify_gateway_env.py` 和 `tools/verify_wifi_provision.py` 验证。 主机名和配网网络名称的末尾也带有取自设备的六个字符（Raspberry Pi 序列号，否则为 MAC 地址），因此用同一镜像烧录的两台设备不再共用同一个名称（`provisioning/device_identity.py`，由 `tools/verify_device_identity.py` 检查）；`HYDRA_UMC_DEVICE_SUFFIX=off` 保留固定名称，您自己选定的名称永远不会被更改。
 
+**可选日志，默认关闭。** `install_local_technician.sh --audit` 会开启技术员的只追加、哈希链式审计日志，`install_node_healing.sh --journal` 会开启看门狗的日志；不带该选项时，每个安装器都会写入一个带说明的设置文件（`/etc/hydra-umc-local-technician/local-technician.env`、`/etc/hydra-umc-node-healing/journal.env`），其中相应行被注释掉，之后编辑即可开启。`tools/verify_optional_journals.py` 以静态方式检查选项和名称；尚未在真实 CM5 上用它们安装过。
+
 ## 🎯 第一个里程碑
 
 已完成，按照上方"状态"小节所述（真实代码、真实测试，尚未针对真实
