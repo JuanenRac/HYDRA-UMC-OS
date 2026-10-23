@@ -51,21 +51,42 @@ run apt-get install -y --no-install-recommends docker.io docker-cli docker-build
 run systemctl enable --now docker
 
 # docker-compose.yml needs the secrets of a production gateway and broker (GATEWAY_JWT_SECRET, MQTT_AUTH_JSON, MQTT_ACL_JSON): without them
-# both refuse to start. They are generated per device into the stack's own .env (root only, never overwritten) and the credential of each
-# machine bridge is printed once. A bridge connects with HYDRA_MQTT_USERNAME / HYDRA_MQTT_PASSWORD of its own credential.
+# both refuse to start. They are generated per device (never overwritten) and the credential of each machine bridge is printed once. A bridge
+# connects with HYDRA_MQTT_USERNAME / HYDRA_MQTT_PASSWORD of its own credential.
+#
+# The file lives in /etc/hydra-umc/gateway.env (root only, 0600), outside the checkout of the user: a `git clean -xdf` or a fresh clone cannot
+# take it away, and the updater, which works as a normal user in that checkout, has no file of root to trip over. Compose reads it with
+# --env-file; the compose file itself does not change. A file left in the checkout by an earlier version is MOVED (not copied: there is
+# never a second copy of the secrets).
+GATEWAY_ENV="${HYDRA_GATEWAY_ENV:-/etc/hydra-umc/gateway.env}"
+LEGACY_ENV="$GATEWAY_DIR/.env"
+# --- gateway env begin
 if $APPLY; then
-  python3 "$(dirname "$0")/gateway_env.py" "$GATEWAY_DIR/.env" --apply
+  [[ -d "$(dirname "$GATEWAY_ENV")" ]] || install -d -o root -g root -m 0750 "$(dirname "$GATEWAY_ENV")"
+  if [[ -f "$LEGACY_ENV" && ! -e "$GATEWAY_ENV" ]]; then
+    mv "$LEGACY_ENV" "$GATEWAY_ENV"
+    chown root:root "$GATEWAY_ENV"
+    chmod 0600 "$GATEWAY_ENV"
+    echo "Moved the secrets of the stack from $LEGACY_ENV to $GATEWAY_ENV."
+  elif [[ -f "$LEGACY_ENV" ]]; then
+    echo "WARNING: $LEGACY_ENV exists next to $GATEWAY_ENV. The stack reads only $GATEWAY_ENV: compare them and remove the old file by hand." >&2
+  fi
+  python3 "$(dirname "$0")/gateway_env.py" "$GATEWAY_ENV" --apply
 else
-  python3 "$(dirname "$0")/gateway_env.py" "$GATEWAY_DIR/.env"
+  [[ -f "$LEGACY_ENV" && ! -e "$GATEWAY_ENV" ]] && echo "[dry-run] mv $LEGACY_ENV $GATEWAY_ENV"
+  python3 "$(dirname "$0")/gateway_env.py" "$GATEWAY_ENV"
 fi
+# --- gateway env end
 
+# every compose command takes the same --env-file: compose resolves ${GATEWAY_JWT_SECRET:?...} when it reads the file, even for `ps` or `logs`
+COMPOSE="docker compose --env-file $GATEWAY_ENV"
 if $APPLY; then
-  echo "Building and starting the Gateway stack (docker compose up -d --build)..."
-  (cd "$GATEWAY_DIR" && docker compose up -d --build)
-  echo "Gateway stack started. Check status: cd $GATEWAY_DIR && docker compose ps"
-  echo "Follow logs: cd $GATEWAY_DIR && docker compose logs -f"
+  echo "Building and starting the Gateway stack ($COMPOSE up -d --build)..."
+  (cd "$GATEWAY_DIR" && $COMPOSE up -d --build)
+  echo "Gateway stack started. Check status: cd $GATEWAY_DIR && $COMPOSE ps"
+  echo "Follow logs: cd $GATEWAY_DIR && $COMPOSE logs -f"
 else
-  echo "[dry-run] cd $GATEWAY_DIR && docker compose up -d --build"
+  echo "[dry-run] cd $GATEWAY_DIR && $COMPOSE up -d --build"
 fi
 
 # Real gap found live, distinct from every other install_*.sh's own

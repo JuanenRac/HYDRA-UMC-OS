@@ -47,6 +47,7 @@ def run_agent_checks() -> None:
     run(sys.executable, "tools/verify_wifi_provision.py", env=environment)
     run(sys.executable, "tools/verify_generate_secrets.py", env=environment)
     run(sys.executable, "tools/verify_gateway_env.py", env=environment)
+    run(sys.executable, "tools/verify_gateway_installer.py", env=environment)
     run(sys.executable, "tools/verify_package_component.py", env=environment)
     run(sys.executable, "tools/verify_mqtt_tls.py", env=environment)
     run(sys.executable, "tools/verify_firewall.py", env=environment)

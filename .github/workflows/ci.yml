@@ -114,6 +114,7 @@ jobs:
           python tools/verify_firewall.py
           python tools/verify_optional_journals.py
           python tools/verify_service_registry.py
+          python tools/verify_gateway_installer.py
           python tools/verify_backup_settings.py
           python tools/verify_os_guard_and_docs.py
           python tools/verify_bump_version.py

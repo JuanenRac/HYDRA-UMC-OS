@@ -57,7 +57,7 @@ def build_env() -> tuple[str, dict[str, str]]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("env_file", help="HYDRA-UMC-GATEWAY-INDUSTRIAL/.env")
+    parser.add_argument("env_file", help="where to write the file: /etc/hydra-umc/gateway.env on a device (compose reads it with --env-file)")
     parser.add_argument("--apply", action="store_true", help="write the file (default: dry run)")
     args = parser.parse_args(argv)
     path = Path(args.env_file)
