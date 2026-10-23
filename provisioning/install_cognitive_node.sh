@@ -24,6 +24,7 @@
 # root:root 0755 tree this service CAN read - a point-in-time snapshot,
 # not a live view; rerun this script to refresh it.
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
@@ -72,5 +73,5 @@ systemctl daemon-reload
 echo "Cognitive-Node installed. Enable manually after review: systemctl enable --now hydra-umc-cognitive-node"
 
 # Where to look once the service runs: the port and the health route come from the service registry.
-source "$(dirname "$0")/service_registry.sh"
+source "$HERE/service_registry.sh"
 announce_health HYDRA-UMC-COGNITIVE-NODE

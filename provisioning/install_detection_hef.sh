@@ -19,6 +19,7 @@
 # registry ([]) - safe to enable/start immediately, no real .hef models
 # registered yet.
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
@@ -65,5 +66,5 @@ echo "Detection-HEF installed, serving an empty registry. Enable manually after 
 echo "Add real entries to /etc/hydra-umc-detection-hef/registry.json and .hef files to $TARGET/models as they exist."
 
 # Where to look once the service runs: the port and the health route come from the service registry.
-source "$(dirname "$0")/service_registry.sh"
+source "$HERE/service_registry.sh"
 announce_health HYDRA-UMC-DETECTION-HEF

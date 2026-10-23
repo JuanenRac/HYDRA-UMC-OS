@@ -12,6 +12,7 @@
 # never installed anywhere. This is the cheapest real gap to close: install
 # Docker, then let that existing compose file do the rest.
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
 APPLY=false
 [[ "${1:-}" == "--apply" ]] && APPLY=true
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
@@ -106,7 +107,7 @@ for project in HYDRA-UMC-GATEWAY-INDUSTRIAL HYDRA-UMC-OPCUA-SERVER HYDRA-UMC-MQT
 done
 
 # Where to look once the stack runs: the port and the health route of each part come from the service registry.
-source "$(dirname "$0")/service_registry.sh"
+source "$HERE/service_registry.sh"
 for service in HYDRA-UMC-GATEWAY-INDUSTRIAL HYDRA-UMC-OPCUA-SERVER HYDRA-UMC-MQTT-BROKER HYDRA-UMC-MTCONNECT-ADAPTER; do
   announce_health "$service"
 done

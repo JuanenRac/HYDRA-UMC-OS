@@ -19,6 +19,7 @@
 # at its default (no cgo dependency in go.mod), so no C cross-toolchain is
 # needed beyond this one real Go toolchain.
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
@@ -81,5 +82,5 @@ systemctl daemon-reload
 echo "Job-Dispatcher installed. Enable manually after review: systemctl enable --now hydra-umc-job-dispatcher"
 
 # Where to look once the service runs: the port and the health route come from the service registry.
-source "$(dirname "$0")/service_registry.sh"
+source "$HERE/service_registry.sh"
 announce_health HYDRA-UMC-JOB-DISPATCHER

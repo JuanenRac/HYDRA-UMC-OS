@@ -12,6 +12,7 @@
 # root - the one build-shape difference from install_job_dispatcher.sh/
 # install_node_healing.sh.
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
@@ -59,5 +60,5 @@ echo "Telemetry-Collector installed. Enable manually after review: systemctl ena
 echo "Depends on HYDRA-UMC-DATALAKE already running for -datalake-url to actually deliver samples."
 
 # Where to look once the service runs: the port and the health route come from the service registry.
-source "$(dirname "$0")/service_registry.sh"
+source "$HERE/service_registry.sh"
 announce_health HYDRA-UMC-TELEMETRY-COLLECTOR

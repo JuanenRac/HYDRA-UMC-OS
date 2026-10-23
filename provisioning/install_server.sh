@@ -5,6 +5,7 @@
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"; SOURCE="$ROOT/HYDRA-UMC-SERVER"; TARGET=/opt/hydra-umc/server
@@ -81,5 +82,5 @@ systemctl daemon-reload
 echo "Server installed. Enable manually after review: systemctl enable --now hydra-umc-server"
 
 # Where to look once the service runs: the port and the health route come from the service registry.
-source "$(dirname "$0")/service_registry.sh"
+source "$HERE/service_registry.sh"
 announce_health HYDRA-UMC-SERVER

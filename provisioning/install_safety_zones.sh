@@ -11,6 +11,7 @@
 # real stdlib HTTP API. Same simple "copy src/ + PYTHONPATH" shape as
 # install_datalake.sh, no venv/pip needed at runtime.
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
@@ -52,5 +53,5 @@ systemctl daemon-reload
 echo "Safety-Zones installed. Enable manually after review: systemctl enable --now hydra-umc-safety-zones"
 
 # Where to look once the service runs: the port and the health route come from the service registry.
-source "$(dirname "$0")/service_registry.sh"
+source "$HERE/service_registry.sh"
 announce_health HYDRA-UMC-SAFETY-ZONES

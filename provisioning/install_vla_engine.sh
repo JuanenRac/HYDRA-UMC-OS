@@ -25,6 +25,7 @@
 # so today this is an honest empty directory, not a stand-in for real
 # hardware readiness).
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
@@ -71,5 +72,5 @@ systemctl daemon-reload
 echo "VLA-Engine installed. Enable manually after review: systemctl enable --now hydra-umc-vla-engine"
 
 # Where to look once the service runs: the port and the health route come from the service registry.
-source "$(dirname "$0")/service_registry.sh"
+source "$HERE/service_registry.sh"
 announce_health HYDRA-UMC-VLA-ENGINE
