@@ -13,7 +13,7 @@
 # PYTHONPATH" alone is not enough - python3-numpy is a real Debian package,
 # no venv/pip needed.
 set -euo pipefail
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 APPLY=false
 [[ "${1:-}" == "--apply" ]] && APPLY=true
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }

@@ -12,7 +12,7 @@
 # never installed anywhere. This is the cheapest real gap to close: install
 # Docker, then let that existing compose file do the rest.
 set -euo pipefail
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 APPLY=false
 [[ "${1:-}" == "--apply" ]] && APPLY=true
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }

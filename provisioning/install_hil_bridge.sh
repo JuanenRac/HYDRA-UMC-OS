@@ -12,7 +12,7 @@
 # Cargo.toml) - this closes the CLI-only gap, not that still-deferred
 # question. Compiled release binary, same pattern as install_twin.sh.
 set -euo pipefail
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" \&\& pwd)"   # absolute, before any cd
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
