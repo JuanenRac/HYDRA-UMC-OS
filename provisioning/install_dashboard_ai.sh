@@ -63,3 +63,7 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-dashboard-ai.service" /etc/systemd/sy
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Dashboard-AI installed. Enable manually after review: systemctl enable --now hydra-umc-dashboard-ai"
+
+# Where to look once the service runs: the port and the health route come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+announce_health HYDRA-UMC-DASHBOARD-AI

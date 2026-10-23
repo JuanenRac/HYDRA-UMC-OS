@@ -70,6 +70,8 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 **任意のジャーナル(既定は無効)。** `install_local_technician.sh --audit` は技術者の追記専用・ハッシュ連鎖の監査ジャーナルを、`install_node_healing.sh --journal` は監視役のジャーナルを有効にします。オプションなしでは、各インストーラーが該当行をコメントアウトした設定ファイル(`/etc/hydra-umc-local-technician/local-technician.env`、`/etc/hydra-umc-node-healing/journal.env`)を書くので、後で編集して有効にできます。`tools/verify_optional_journals.py` がオプションと名前を静的に確認します。実機の CM5 へのインストールはまだ行われていません。
 
+**サービスレジストリは 1 つ。** 各サービスのポート、ヘルスルート、systemd ユニットは `provisioning/ports.yaml`(プロジェクトのマニフェストから生成される SDK の `contracts/ports.yaml` のコピー)から取得します。サービスの各インストーラーは、起動後にどこを確認すればよいかを表示して終わり、`verify_cm5_runtime.sh --with-services` は実行中の各サービスのヘルスルートを確認します(読み取り専用。動いていないものはスキップ)。`tools/verify_service_registry.py` が、ヘルパー、インストーラー、実行時チェックをスタブで検証します。実機の CM5 へのインストールはまだ行われていません。
+
 ## 🎯 最初のマイルストーン
 
 完了済み。上記のステータスセクションの通り(実際のコード、実際の

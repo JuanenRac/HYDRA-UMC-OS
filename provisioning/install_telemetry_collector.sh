@@ -57,3 +57,7 @@ install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json
 systemctl daemon-reload
 echo "Telemetry-Collector installed. Enable manually after review: systemctl enable --now hydra-umc-telemetry-collector"
 echo "Depends on HYDRA-UMC-DATALAKE already running for -datalake-url to actually deliver samples."
+
+# Where to look once the service runs: the port and the health route come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+announce_health HYDRA-UMC-TELEMETRY-COLLECTOR

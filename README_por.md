@@ -63,6 +63,8 @@ O preflight de instalação (`provisioning/preflight_cm5.py`) está provado idem
 
 **Registos opcionais, desativados por omissão.** `install_local_technician.sh --audit` ativa o registo de auditoria do técnico (só de acréscimo, encadeado por hash) e `install_node_healing.sh --journal` o registo do vigilante; sem a opção, cada instalador escreve um ficheiro de definições documentado (`/etc/hydra-umc-local-technician/local-technician.env`, `/etc/hydra-umc-node-healing/journal.env`) com a linha comentada, para a ativar mais tarde editando-o. `tools/verify_optional_journals.py` verifica as opções e os nomes de forma estática; ainda não se instalou nada com eles num CM5 real.
 
+**Um só registo de serviços.** A porta, a rota de saúde e a unidade systemd de cada serviço vêm de `provisioning/ports.yaml` (cópia do `contracts/ports.yaml` do SDK, gerado a partir dos manifestos dos projetos). Cada instalador de um serviço termina a dizer onde olhar quando estiver a funcionar, e `verify_cm5_runtime.sh --with-services` sonda a rota de saúde de cada serviço em execução (só de leitura; o que não está em execução é ignorado). `tools/verify_service_registry.py` verifica o auxiliar, os instaladores e a verificação em execução com simulacros; ainda não se instalou nada com isto num CM5 real.
+
 ## 🎯 Primeiro marco
 
 Concluído, segundo a secção Estado acima (código real, testes reais, ainda não verificado contra hardware CM5 físico):

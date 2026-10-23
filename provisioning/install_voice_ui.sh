@@ -56,3 +56,7 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-voice-ui.service" /etc/systemd/system
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Voice UI installed. Enable manually after Server token review: systemctl enable --now hydra-umc-voice-ui"
+
+# Where to look once the service runs: the port and the health route come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+announce_health HYDRA-UMC-VOICE-UI

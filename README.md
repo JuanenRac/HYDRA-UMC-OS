@@ -87,6 +87,8 @@ deliberately not auto-enabled, since it should only run on a device that really 
 
 **Optional journals, off by default.** `install_local_technician.sh --audit` switches on the technician's append-only, hash-chained audit journal and `install_node_healing.sh --journal` the watchdog's journal; without the option each installer writes a documented settings file (`/etc/hydra-umc-local-technician/local-technician.env`, `/etc/hydra-umc-node-healing/journal.env`) with the line commented out, so it can be switched on later by editing it. `tools/verify_optional_journals.py` checks the options and the names statically; nothing has been installed from them on a real CM5 yet.
 
+**One service registry.** The port, the health route and the systemd unit of every service come from `provisioning/ports.yaml` (a copy of the SDK's `contracts/ports.yaml`, generated from the project manifests). Each installer of a service ends by saying where to look once it runs, and `verify_cm5_runtime.sh --with-services` probes the health route of every running service (read-only; what is not running is skipped). `tools/verify_service_registry.py` checks the helper, the installers and the runtime check against stubs; nothing has been installed from it on a real CM5 yet.
+
 ## 🎯 First milestone
 
 Complete, per the Status section above (real code, real tests, not yet

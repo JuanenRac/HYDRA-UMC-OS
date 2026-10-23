@@ -90,6 +90,8 @@ mais délibérément non activé automatiquement, car il ne doit tourner que sur
 
 **Journaux facultatifs, désactivés par défaut.** `install_local_technician.sh --audit` active le journal d'audit du technicien (ajout seul, chaîné par hachage) et `install_node_healing.sh --journal` celui du veilleur ; sans l'option, chaque installateur écrit un fichier de réglages documenté (`/etc/hydra-umc-local-technician/local-technician.env`, `/etc/hydra-umc-node-healing/journal.env`) dont la ligne est commentée, pour l'activer plus tard en l'éditant. `tools/verify_optional_journals.py` vérifie statiquement les options et les noms ; rien n'a encore été installé avec eux sur un vrai CM5.
 
+**Un seul registre de services.** Le port, la route de santé et l'unité systemd de chaque service viennent de `provisioning/ports.yaml` (copie du `contracts/ports.yaml` du SDK, généré à partir des manifestes des projets). Chaque installateur d'un service se termine en disant où regarder une fois qu'il tourne, et `verify_cm5_runtime.sh --with-services` sonde la route de santé de chaque service en marche (lecture seule ; ce qui ne tourne pas est ignoré). `tools/verify_service_registry.py` vérifie l'aide, les installateurs et la vérification d'exécution avec des simulacres ; rien n'a encore été installé avec cela sur un vrai CM5.
+
 ## 🎯 Première étape
 
 Terminée, selon la section État ci-dessus (code réel, tests réels, pas

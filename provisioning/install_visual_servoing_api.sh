@@ -50,3 +50,7 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-visual-servoing-api.service" /etc/sys
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Visual-Servoing-API installed. Enable manually after review: systemctl enable --now hydra-umc-visual-servoing-api"
+
+# Where to look once the service runs: the port and the health route come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+announce_health HYDRA-UMC-VISUAL-SERVOING-API

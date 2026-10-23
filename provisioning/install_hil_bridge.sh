@@ -55,3 +55,7 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-hil-bridge.service" /etc/systemd/syst
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "HIL-Bridge installed. Enable manually after review: systemctl enable --now hydra-umc-hil-bridge"
+
+# Where to look once the service runs: the port and the health route come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+announce_health HYDRA-UMC-HIL-BRIDGE

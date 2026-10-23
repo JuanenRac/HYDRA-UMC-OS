@@ -70,6 +70,8 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 **可选日志，默认关闭。** `install_local_technician.sh --audit` 会开启技术员的只追加、哈希链式审计日志，`install_node_healing.sh --journal` 会开启看门狗的日志；不带该选项时，每个安装器都会写入一个带说明的设置文件（`/etc/hydra-umc-local-technician/local-technician.env`、`/etc/hydra-umc-node-healing/journal.env`），其中相应行被注释掉，之后编辑即可开启。`tools/verify_optional_journals.py` 以静态方式检查选项和名称；尚未在真实 CM5 上用它们安装过。
 
+**统一的服务注册表。** 每个服务的端口、健康路由和 systemd 单元都来自 `provisioning/ports.yaml`(由项目清单生成的 SDK `contracts/ports.yaml` 的副本)。服务的每个安装脚本结束时都会说明运行后在哪里查看,`verify_cm5_runtime.sh --with-services` 会探测每个正在运行的服务的健康路由(只读;未运行的会被跳过)。`tools/verify_service_registry.py` 用桩程序检查辅助脚本、安装脚本和运行时检查;尚未在真实 CM5 上用它安装过任何内容。
+
 ## 🎯 第一个里程碑
 
 已完成，按照上方"状态"小节所述（真实代码、真实测试，尚未针对真实

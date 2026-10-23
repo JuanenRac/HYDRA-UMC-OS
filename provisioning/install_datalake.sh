@@ -67,3 +67,7 @@ echo "Datalake installed. Enable manually after review: systemctl enable --now h
 echo "Then point Server at it: uncomment HYDRA_UMC_DATALAKE_URL in /etc/hydra-umc/server.env and restart hydra-umc-server."
 echo "Optional: if any series has a real retention policy configured, also enable the daily apply timer:"
 echo "  systemctl enable --now hydra-umc-datalake-retention.timer"
+
+# Where to look once the service runs: the port and the health route come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+announce_health HYDRA-UMC-DATALAKE

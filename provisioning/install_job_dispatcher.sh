@@ -79,3 +79,7 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-job-dispatcher.service" /etc/systemd/
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Job-Dispatcher installed. Enable manually after review: systemctl enable --now hydra-umc-job-dispatcher"
+
+# Where to look once the service runs: the port and the health route come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+announce_health HYDRA-UMC-JOB-DISPATCHER

@@ -50,3 +50,7 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-semantic-planner.service" /etc/system
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 echo "Semantic-Planner installed. Enable manually after review: systemctl enable --now hydra-umc-semantic-planner"
+
+# Where to look once the service runs: the port and the health route come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+announce_health HYDRA-UMC-SEMANTIC-PLANNER

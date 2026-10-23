@@ -63,3 +63,7 @@ install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json
 systemctl daemon-reload
 echo "Detection-HEF installed, serving an empty registry. Enable manually after review: systemctl enable --now hydra-umc-detection-hef"
 echo "Add real entries to /etc/hydra-umc-detection-hef/registry.json and .hef files to $TARGET/models as they exist."
+
+# Where to look once the service runs: the port and the health route come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+announce_health HYDRA-UMC-DETECTION-HEF

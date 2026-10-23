@@ -83,3 +83,9 @@ for project in HYDRA-UMC-GATEWAY-INDUSTRIAL HYDRA-UMC-OPCUA-SERVER HYDRA-UMC-MQT
   run install -d -o root -g root -m 0755 "$target_dir"
   run install -m 0644 "$ROOT/$project/hydra-umc.project.json" "$target_dir/hydra-umc.project.json"
 done
+
+# Where to look once the stack runs: the port and the health route of each part come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+for service in HYDRA-UMC-GATEWAY-INDUSTRIAL HYDRA-UMC-OPCUA-SERVER HYDRA-UMC-MQTT-BROKER HYDRA-UMC-MTCONNECT-ADAPTER; do
+  announce_health "$service"
+done

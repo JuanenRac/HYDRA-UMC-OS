@@ -92,6 +92,8 @@ aktiviert, da es nur auf einem Gerät laufen soll, das es wirklich braucht: Das 
 
 **Optionale Journale, standardmäßig aus.** `install_local_technician.sh --audit` schaltet das nur anhängbare, hash-verkettete Prüfjournal des Technikers ein und `install_node_healing.sh --journal` das Journal des Wächters; ohne die Option schreibt jeder Installer eine dokumentierte Einstellungsdatei (`/etc/hydra-umc-local-technician/local-technician.env`, `/etc/hydra-umc-node-healing/journal.env`) mit auskommentierter Zeile, die sich später durch Bearbeiten einschalten lässt. `tools/verify_optional_journals.py` prüft Optionen und Namen statisch; auf einem echten CM5 wurde damit noch nichts installiert.
 
+**Ein Dienstregister.** Port, Gesundheitsroute und systemd-Unit jedes Dienstes stammen aus `provisioning/ports.yaml` (Kopie der `contracts/ports.yaml` des SDK, aus den Projektmanifesten erzeugt). Jeder Installer eines Dienstes endet mit dem Hinweis, wo nach dem Start nachzusehen ist, und `verify_cm5_runtime.sh --with-services` prüft die Gesundheitsroute jedes laufenden Dienstes (nur lesend; was nicht läuft, wird übersprungen). `tools/verify_service_registry.py` prüft Helfer, Installer und die Laufzeitprüfung mit Attrappen; auf einem echten CM5 wurde damit noch nichts installiert.
+
 ## 🎯 Erster Meilenstein
 
 Abgeschlossen, gemäß dem Status-Abschnitt oben (echter Code, echte

@@ -9,11 +9,13 @@ set -euo pipefail
 
 WITH_SERVER=false
 WITH_VOICE_UI=false
+WITH_SERVICES=false
 for argument in "$@"; do
   case "$argument" in
     --with-server) WITH_SERVER=true ;;
     --with-voice-ui) WITH_VOICE_UI=true ;;
-    *) echo "Usage: $0 [--with-server] [--with-voice-ui]" >&2; exit 2 ;;
+    --with-services) WITH_SERVICES=true ;;
+    *) echo "Usage: $0 [--with-server] [--with-voice-ui] [--with-services]" >&2; exit 2 ;;
   esac
 done
 $WITH_VOICE_UI && ! $WITH_SERVER && { echo "--with-voice-ui requires --with-server." >&2; exit 2; }
@@ -78,8 +80,25 @@ if $WITH_SERVER; then
   fi
 fi
 
+# Every service of the registry that is running answers on its health route. A service that is not running is not
+# a failure (it was never installed or enabled here): it is reported as skipped. Read-only, like the rest.
+if $WITH_SERVICES; then
+  # shellcheck source=service_registry.sh
+  source "$(dirname "$0")/service_registry.sh"
+  while read -r name; do
+    unit="$(service_field "$name" systemd_unit)" || { echo "RUNTIME_CHECK=SKIP $name has no systemd unit"; continue; }
+    systemctl is-active --quiet "$unit" || { echo "RUNTIME_CHECK=SKIP $name is not running"; continue; }
+    if health="$(service_field "$name" health_path)"; then
+      port="$(service_field "$name" port)"
+      check_test "curl --fail --silent --max-time 5 http://127.0.0.1:$port$health >/dev/null" "$name answers on $health"
+    else
+      echo "RUNTIME_CHECK=SKIP $name has no HTTP health route"
+    fi
+  done < <(registry_services)
+fi
+
 if (( failures > 0 )); then
   echo "CM5_RUNTIME=FAIL failures=$failures" >&2
   exit 1
 fi
-echo "CM5_RUNTIME=PASS profile=$($WITH_SERVER && printf control || printf base) voice_ui=$WITH_VOICE_UI changes=none"
+echo "CM5_RUNTIME=PASS profile=$($WITH_SERVER && printf control || printf base) voice_ui=$WITH_VOICE_UI services=$WITH_SERVICES changes=none"

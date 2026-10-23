@@ -59,3 +59,7 @@ install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json
 systemctl daemon-reload
 echo "Docs-QA installed, serving its own README.md/CHANGELOG.md as a demo corpus."
 echo "Enable manually after review: systemctl enable --now hydra-umc-docs-qa"
+
+# Where to look once the service runs: the port and the health route come from the service registry.
+source "$(dirname "$0")/service_registry.sh"
+announce_health HYDRA-UMC-DOCS-QA
