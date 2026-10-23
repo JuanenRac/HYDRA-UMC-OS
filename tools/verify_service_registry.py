@@ -108,7 +108,9 @@ class InstallerTests(unittest.TestCase):
                 if script.name in NOT_REGISTRY_SERVICES:
                     self.assertNotIn("announce_health", text, "an installer of something outside the registry names no service")
                     continue
-                self.assertIn('source "$(dirname "$0")/service_registry.sh"', text)
+                # the registry is found with an absolute path taken before the script changes directory
+                self.assertIn('HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"', text)
+                self.assertIn('source "$HERE/service_registry.sh"', text)
                 announced = set(re.findall(r"announce_health\s+(HYDRA-UMC-[A-Z0-9-]+)", text))
                 if script.name == "install_industrial_gateway.sh":
                     announced = set(re.findall(r"for service in ([A-Z0-9 -]+); do", text)[0].split())
