@@ -197,6 +197,17 @@ alone cannot - see that script's own header comment), then switches to
 Server's own STUDIO UI fullscreen once Server actually answers. Same
 dry-run/`--apply` review before committing to a boot-time change.
 
+The screen runs as its own account, `hydra-umc-kiosk` (`HYDRA_KIOSK_USER` names
+another existing one): a normal user with a login shell, a locked password, no
+sudo and only the `video`, `render` and `input` groups; the administrator who
+ran the script is no longer logged in on the screen, and the kiosk line an earlier
+version put in their `.bash_profile` is removed. Nobody can switch to a text
+console from the keyboard or kill X with Ctrl+Alt+Backspace (work on the device is
+by SSH; `HYDRA_KIOSK_ALLOW_VT_SWITCH=1` leaves the console switch alone), and a
+Chromium policy turns off the developer tools, the password manager and sign-in.
+The browser profile is new, so STUDIO asks for its login once after the change.
+None of this has run on a real HDMI screen yet.
+
 **Gate 6:** branding is cosmetic, reversible and cannot block a normal boot.
 
 ## 7. Enable hardware-dependent profiles one at a time

@@ -20,9 +20,12 @@ APPLY=false
 [[ "${1:-}" == "--apply" ]] && APPLY=true
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-KIOSK_USER="${SUDO_USER:-hydra-umc}"
-KIOSK_HOME="$(getent passwd "$KIOSK_USER" | cut -d: -f6)"
-[[ -n "$KIOSK_HOME" && -d "$KIOSK_HOME" ]] || { echo "Cannot resolve a home directory for $KIOSK_USER" >&2; exit 2; }
+# The session on the HDMI screen runs as its OWN account, hydra-umc-kiosk: no sudo, no password, no SSH key. It used to
+# autologin as the administrator who ran this script and run the browser as them, so anyone with a keyboard on the
+# screen, or anyone who found a way out of the browser, had the session of the administrator. HYDRA_KIOSK_USER names
+# another existing account to use instead (it is then the operator's own decision).
+KIOSK_USER="${HYDRA_KIOSK_USER:-hydra-umc-kiosk}"
+PREVIOUS_KIOSK_USER="${SUDO_USER:-}"
 KIOSK_DIR=/opt/hydra-umc/kiosk
 BOOT_CONFIG=/boot/firmware/config.txt
 BOOT_CMDLINE=/boot/firmware/cmdline.txt
@@ -34,11 +37,31 @@ echo "  HDMI kiosk: HYDRA_UMC_SPLASHSCREEN.svg, then STUDIO fullscreen."
 echo "  Copyright (C) 2026 JuanenRac (Electro Hobby 3D)"
 echo "  <electrohobby3d@gmail.com> | GPL-3.0-or-later - see LICENSE"
 echo " ==============================================================="
-echo "kiosk user: $KIOSK_USER"
-
 run apt-get update
 run apt-get install -y --no-install-recommends \
   xserver-xorg x11-xserver-utils xinit openbox picom chromium unclutter
+
+# --- kiosk user begin
+# The dedicated account: a normal (non-system) user so that login(1) and logind give it the seat of the console, with
+# a login shell (agetty --autologin starts it), no password (locked: it cannot be used from SSH or from a text login
+# prompt), no sudo, and only the groups the screen needs. An account that already exists is left as it is, except that
+# it is not given anything more.
+if ! id -u "$KIOSK_USER" > /dev/null 2>&1; then
+  run useradd --create-home --home-dir "/var/lib/$KIOSK_USER" --shell /bin/bash --comment "HYDRA-UMC HDMI kiosk" "$KIOSK_USER"
+  run passwd --lock "$KIOSK_USER"
+fi
+for group in video render input; do
+  getent group "$group" > /dev/null 2>&1 && run usermod --append --groups "$group" "$KIOSK_USER"
+done
+if $APPLY; then
+  KIOSK_HOME="$(getent passwd "$KIOSK_USER" | cut -d: -f6)"
+else
+  KIOSK_HOME="$(getent passwd "$KIOSK_USER" 2>/dev/null | cut -d: -f6 || true)"
+  KIOSK_HOME="${KIOSK_HOME:-/var/lib/$KIOSK_USER}"
+fi
+[[ -n "$KIOSK_HOME" ]] || { echo "Cannot resolve a home directory for $KIOSK_USER" >&2; exit 2; }
+echo "kiosk user: $KIOSK_USER (home $KIOSK_HOME)"
+# --- kiosk user end
 
 # GPU memory split: harmless to set, but real testing on this device showed
 # it is not the relevant knob here - this image already ships
@@ -157,6 +180,42 @@ else
   echo "[dry-run] write /etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf (pin Driver \"modesetting\", kmsdev /dev/dri/card1)"
 fi
 
+# Nobody can switch to a text console from the keyboard (Ctrl+Alt+F1..F12) or kill X with Ctrl+Alt+Backspace: with
+# the kiosk account locked there would be no login there anyway, but there is also nothing to find. Work on the device
+# is by SSH. HYDRA_KIOSK_ALLOW_VT_SWITCH=1 leaves the console switch alone (a keyboard on the device for debugging).
+if [[ "${HYDRA_KIOSK_ALLOW_VT_SWITCH:-0}" != "1" ]]; then
+  if $APPLY; then
+    cat > /etc/X11/xorg.conf.d/30-hydra-umc-kiosk-flags.conf <<'EOF'
+Section "ServerFlags"
+    Option "DontVTSwitch" "true"
+    Option "DontZap" "true"
+EndSection
+EOF
+  else
+    echo "[dry-run] write /etc/X11/xorg.conf.d/30-hydra-umc-kiosk-flags.conf (DontVTSwitch, DontZap)"
+  fi
+else
+  run rm -f /etc/X11/xorg.conf.d/30-hydra-umc-kiosk-flags.conf
+fi
+
+# Chromium: no developer tools, no password manager, no sign-in (the page is STUDIO and nothing else needs the browser)
+run install -d -m 0755 /etc/chromium/policies/managed
+if $APPLY; then
+  cat > /etc/chromium/policies/managed/hydra-umc-kiosk.json <<'EOF'
+{
+  "DeveloperToolsAvailability": 2,
+  "PasswordManagerEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "BrowserSignin": 0,
+  "IncognitoModeAvailability": 1,
+  "TranslateEnabled": false
+}
+EOF
+else
+  echo "[dry-run] write /etc/chromium/policies/managed/hydra-umc-kiosk.json (no developer tools, password manager or sign-in)"
+fi
+
 run install -d -o root -g root -m 0755 "$KIOSK_DIR"
 run install -m 0644 "$ROOT/images/HYDRA_UMC_SPLASHSCREEN.svg" "$KIOSK_DIR/HYDRA_UMC_SPLASHSCREEN.svg"
 run install -m 0644 "$ROOT/provisioning/kiosk/splash.html" "$KIOSK_DIR/splash.html"
@@ -169,6 +228,7 @@ run install -m 0755 "$ROOT/provisioning/kiosk/kiosk-session.sh" "$KIOSK_DIR/kios
 # shows regardless, autologin or not - real, seen live, and small enough
 # next to the other fixes above to not warrant chasing further.
 run install -d -m 0755 /etc/systemd/system/getty@tty1.service.d
+run install -d -o "$KIOSK_USER" -g "$KIOSK_USER" -m 0700 "$KIOSK_HOME"
 if $APPLY; then
   cat > /etc/systemd/system/getty@tty1.service.d/hydra-umc-autologin.conf <<EOF
 [Service]
@@ -208,5 +268,24 @@ else
   echo "[dry-run] ensure $KIOSK_HOME/.bash_profile starts the kiosk session on tty1 only, output silenced"
 fi
 
+# The administrator who ran this script no longer autologs in on the screen: take the kiosk line out of their profile
+# (an earlier version put it there), so logging in on tty1 by hand does not start the kiosk as them either.
+# --- previous user begin
+if [[ -n "$PREVIOUS_KIOSK_USER" && "$PREVIOUS_KIOSK_USER" != "$KIOSK_USER" && "$PREVIOUS_KIOSK_USER" != "root" ]]; then
+  PREVIOUS_HOME="$(getent passwd "$PREVIOUS_KIOSK_USER" 2>/dev/null | cut -d: -f6 || true)"
+  if [[ -n "$PREVIOUS_HOME" && -f "$PREVIOUS_HOME/.bash_profile" ]] && grep -q 'exec startx /opt/hydra-umc/kiosk/kiosk-session.sh' "$PREVIOUS_HOME/.bash_profile"; then
+    if $APPLY; then
+      grep -v 'exec startx /opt/hydra-umc/kiosk/kiosk-session.sh' "$PREVIOUS_HOME/.bash_profile" > "$PREVIOUS_HOME/.bash_profile.tmp" || true
+      mv "$PREVIOUS_HOME/.bash_profile.tmp" "$PREVIOUS_HOME/.bash_profile"
+      chown "$PREVIOUS_KIOSK_USER":"$PREVIOUS_KIOSK_USER" "$PREVIOUS_HOME/.bash_profile"
+      echo "Removed the kiosk line from $PREVIOUS_HOME/.bash_profile (the screen now runs as $KIOSK_USER)."
+    else
+      echo "[dry-run] remove the kiosk line from $PREVIOUS_HOME/.bash_profile"
+    fi
+  fi
+fi
+# --- previous user end
+
 echo "Kiosk installed. Reboot to see it on HDMI, or on this console: sudo systemctl restart getty@tty1"
+echo "The screen runs as $KIOSK_USER, a locked account: STUDIO asks for its login again once (the browser profile is new)."
 echo "Splash source stays HYDRA_UMC_SPLASHSCREEN.svg unmodified; edit provisioning/kiosk/splash.html to change hand-off timing."
