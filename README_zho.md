@@ -36,7 +36,7 @@ CC BY-SA 4.0 - 参见 LICENSE.md
 
 | | |
 |---|---|
-| 版本 | `0.5.3` |
+| 版本 | `0.5.4` |
 | 成熟度 | 可用 |
 | 测试 | 13 (`python -m unittest`) |
 | 技术栈 | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |
