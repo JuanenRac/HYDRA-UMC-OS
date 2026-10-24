@@ -13,6 +13,9 @@ This script fills every placeholder of an env file with a random value of its ow
 * a value that is not a placeholder is never touched (the operator's own choice stays);
 * `--adopt KEY=OTHER_FILE:OTHER_KEY` uses the real (not placeholder) value that another env file already has for OTHER_KEY instead of generating one for KEY (the order of the installers does not matter);
 * `--mirror KEY=OTHER_FILE:OTHER_KEY` writes the value of KEY into another env file too when that one still has a placeholder (the voice relay token is the same in two files);
+* `--ensure KEY` adds `KEY=<placeholder>` to the file when it has no active line for KEY, so that it is generated like the others (the key that signs the confirmations of the voice relay is
+  added to files made from an older template); `--ensure KEY=VALUE` adds that exact value instead (a setting that is on by default, such as requiring the signature), and a line that is
+  already there, the operator's own choice included, is never changed;
 * the generated bootstrap administrator password is printed once (it is also in the file, which is 0600 root: remove the variable after the first start, as the template says).
 
 Dry-run by default; `--apply` writes. Standard library only.
@@ -71,7 +74,7 @@ def problems(text: str) -> list[str]:
             out.append(f"{key} is still an example value")
         elif value and "PASSWORD" in key.upper() and len(value) < MIN_PASSWORD_LENGTH:
             out.append(f"{key} has fewer than {MIN_PASSWORD_LENGTH} characters")
-        elif value and key.upper() in ("JWT_SECRET", "GATEWAY_JWT_SECRET") and len(value) < MIN_SECRET_LENGTH:
+        elif value and (key.upper() in ("JWT_SECRET", "GATEWAY_JWT_SECRET") or key.upper().endswith("RESULT_KEY")) and len(value) < MIN_SECRET_LENGTH:
             out.append(f"{key} has fewer than {MIN_SECRET_LENGTH} characters")
     return out
 
@@ -86,6 +89,24 @@ def fill(text: str, mirrored: dict[str, str] | None = None) -> tuple[str, dict[s
             lines[index] = f"{key}={chosen}"
             generated[key] = chosen
     return "\n".join(lines), generated
+
+
+ENSURE_PLACEHOLDER = "SET_LOCALLY_TO_A_LONG_RANDOM_VALUE"
+
+
+def ensure_lines(text: str, specs: list[str]) -> tuple[str, list[str]]:
+    """The text with a line added for every `KEY` or `KEY=VALUE` that has no active line yet (a bare KEY gets a placeholder, which `fill` turns into a random value), and the keys added."""
+    present = {key for _, key, _ in parse(text)}
+    added: list[str] = []
+    for spec in specs:
+        key, separator, value = spec.partition("=")
+        if not LINE.match(f"{key}=") or key in present:
+            continue
+        base = text.rstrip("\n")
+        text = (base + "\n" if base else "") + f"{key}={value if separator else ENSURE_PLACEHOLDER}\n"
+        present.add(key)
+        added.append(key)
+    return text, added
 
 
 def write_private(path: Path, text: str) -> None:
@@ -112,6 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="only verify: exit 1 listing every example value or weak secret")
     parser.add_argument("--mirror", action="append", default=[], metavar="KEY=OTHER_FILE:OTHER_KEY", help="also write the value of KEY into another env file that still has a placeholder")
     parser.add_argument("--adopt", action="append", default=[], metavar="KEY=OTHER_FILE:OTHER_KEY", help="use the real value another env file already has instead of generating one")
+    parser.add_argument("--ensure", action="append", default=[], metavar="KEY[=VALUE]", help="add the line when the file has none (a placeholder to be generated, or the given value); never changes an existing line")
     parser.add_argument("--apply", action="store_true", help="write the changes (default: dry run)")
     args = parser.parse_args(argv)
 
@@ -135,6 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         text = Path(args.create_from).read_text(encoding="utf-8")
     else:
         text = path.read_text(encoding="utf-8")
+    text, added = ensure_lines(text, args.ensure)
     adopted: dict[str, str] = {}
     for spec in args.adopt:
         key, _, target = spec.partition("=")
@@ -145,10 +168,12 @@ def main(argv: list[str] | None = None) -> int:
                     adopted[key] = found_value
     new_text, generated = fill(text, adopted)
 
-    if not generated and path.exists():
+    if not generated and not added and path.exists():
         print(f"SECRETS=UNCHANGED {path}: no example value to replace")
         return 0
     names = ", ".join(sorted(generated)) or "(none)"
+    if added:
+        print(f"SECRETS=ADDED {path}: {', '.join(added)}")
     if not args.apply:
         print(f"[dry-run] would {'create' if not path.exists() else 'update'} {path} and generate: {names}")
         return 0
@@ -161,7 +186,9 @@ def main(argv: list[str] | None = None) -> int:
         other = Path(other_file)
         if key not in generated or not other.exists():
             continue
-        mirrored_text, mirrored_values = fill(other.read_text(encoding="utf-8"), {other_key: generated[key]})
+        # a file made from an older template has no line for the key yet: add it, so the value reaches both files in one run
+        other_text, _ = ensure_lines(other.read_text(encoding="utf-8"), [other_key])
+        mirrored_text, mirrored_values = fill(other_text, {other_key: generated[key]})
         if other_key in mirrored_values:
             before = os.stat(other)
             write_private(other, mirrored_text)

@@ -26,18 +26,26 @@ set -euo pipefail
 # settings file; `--audit` is still accepted and means the same as the default. By hand: the line
 #   HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT_LOG=/var/lib/hydra-umc-local-technician/audit.jsonl
 # in /etc/hydra-umc-local-technician/local-technician.env (the CLI reads that file when it starts).
+# The result of every tool is signed (HMAC-SHA256) with a key made when the device is installed: /etc/hydra-umc-local-technician/result.key,
+# readable by root only, never in a repository, never replaced once it exists. ON by default; `--no-signing` (or
+# HYDRA_UMC_LOCAL_TECHNICIAN_SIGNING=off) leaves the key out of the settings file, so results are not signed and the evidence package that
+# asks for signatures refuses them; a key file that already exists is kept either way.
 APPLY=0
 AUDIT="${HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT:-on}"
+SIGNING="${HYDRA_UMC_LOCAL_TECHNICIAN_SIGNING:-on}"
 for arg in "$@"; do
   case "$arg" in
     --apply) APPLY=1 ;;
     --audit) AUDIT=on ;;
     --no-audit) AUDIT=off ;;
-    *) echo "Unknown option: $arg (use --apply and, optionally, --no-audit)" >&2; exit 2 ;;
+    --signing) SIGNING=on ;;
+    --no-signing) SIGNING=off ;;
+    *) echo "Unknown option: $arg (use --apply and, optionally, --no-audit and --no-signing)" >&2; exit 2 ;;
   esac
 done
 [[ "$AUDIT" == "on" || "$AUDIT" == "off" ]] || { echo "HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT must be on or off." >&2; exit 2; }
-[[ $APPLY -eq 1 ]] || { echo "Dry-run policy: rerun with --apply after review (the audit journal is switched ON unless you add --no-audit)."; exit 0; }
+[[ "$SIGNING" == "on" || "$SIGNING" == "off" ]] || { echo "HYDRA_UMC_LOCAL_TECHNICIAN_SIGNING must be on or off." >&2; exit 2; }
+[[ $APPLY -eq 1 ]] || { echo "Dry-run policy: rerun with --apply after review (the audit journal and the signature of the results are switched ON unless you add --no-audit / --no-signing)."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -108,6 +116,24 @@ else
     sed -i 's|^\(HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT_LOG=.*\)$|# switched off by install_local_technician.sh --no-audit: \1|' "$SETTINGS_FILE"
   fi
   echo "Audit journal: OFF (--no-audit). To switch it on: rerun without --no-audit, or edit $SETTINGS_FILE. Records already written are kept."
+fi
+OS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+KEY_FILE="$SETTINGS_DIR/result.key"
+KEY_LINE="HYDRA_UMC_LOCAL_TECHNICIAN_RESULT_KEY_FILE=$KEY_FILE"
+if [[ "$SIGNING" == "on" ]]; then
+  python3 "$OS_ROOT/provisioning/make_result_key.py" "$KEY_FILE"
+  if grep -q '^HYDRA_UMC_LOCAL_TECHNICIAN_RESULT_KEY' "$SETTINGS_FILE"; then
+    echo "A result key setting is already in $SETTINGS_FILE (left as it is)."
+  else
+    echo "$KEY_LINE" >>"$SETTINGS_FILE"
+    echo "Result signing ON: results are signed with the key in $KEY_FILE (root only)."
+  fi
+else
+  # the operator asked for no signing: take an active line out (a comment saying why stays); the key file is never deleted
+  if grep -q '^HYDRA_UMC_LOCAL_TECHNICIAN_RESULT_KEY_FILE=' "$SETTINGS_FILE"; then
+    sed -i 's|^\(HYDRA_UMC_LOCAL_TECHNICIAN_RESULT_KEY_FILE=.*\)$|# switched off by install_local_technician.sh --no-signing: \1|' "$SETTINGS_FILE"
+  fi
+  echo "Result signing: OFF (--no-signing). To switch it on: rerun without --no-signing. A key file that exists is kept."
 fi
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 echo "Local-Technician installed - a real CLI (hydra-umc-local-technician), no standing service yet."

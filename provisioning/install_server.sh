@@ -24,7 +24,7 @@ SERVER_USER="hydra-umc-server"
 # carries an example value or a secret that is too short.
 # an existing directory keeps its owner: the agent (group hydra-umc-agent) reads its config there
 [[ -d /etc/hydra-umc ]] || install -d -o root -g root -m 0750 /etc/hydra-umc
-python3 "$OS_ROOT/provisioning/generate_secrets.py" /etc/hydra-umc/server.env --create-from "$OS_ROOT/provisioning/server.env.example" --apply   --adopt "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_TOKEN"   --mirror "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_TOKEN"
+python3 "$OS_ROOT/provisioning/generate_secrets.py" /etc/hydra-umc/server.env --create-from "$OS_ROOT/provisioning/server.env.example" --apply   --adopt "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_TOKEN"   --mirror "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_TOKEN" --ensure HYDRA_UMC_VOICE_UI_RESULT_KEY --adopt "HYDRA_UMC_VOICE_UI_RESULT_KEY=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_RESULT_KEY" --mirror "HYDRA_UMC_VOICE_UI_RESULT_KEY=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_RESULT_KEY" --ensure HYDRA_UMC_VOICE_CONFIRM_REQUIRE_SIGNATURE=1
 python3 "$OS_ROOT/provisioning/generate_secrets.py" /etc/hydra-umc/server.env --check || { echo "Fix /etc/hydra-umc/server.env (no example value, secrets long enough) and rerun." >&2; exit 2; }
 command -v node >/dev/null || { echo "HYDRA-UMC-SERVER requires Node.js 20 or later." >&2; exit 2; }
 command -v npm >/dev/null || { echo "HYDRA-UMC-SERVER requires npm from the same supported Node.js installation." >&2; exit 2; }

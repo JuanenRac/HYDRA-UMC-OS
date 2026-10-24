@@ -29,10 +29,13 @@ echo " ==============================================================="
 }
 # Created from the example when missing, with a random token of this device (or the one HYDRA-UMC-SERVER's
 # server.env already has: both files must carry the same value). No example value is accepted.
+# The same goes for the key that signs the result of a confirmation (HYDRA_UMC_VOICE_UI_RESULT_KEY, one value for this device in both
+# files, 0600, never in a repository), and a confirmation is bound to the user whose session asked for it (REQUIRE_SUBJECT=1; a line that is
+# already in the file is left as it is).
 OS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # an existing directory keeps its owner: the agent (group hydra-umc-agent) reads its config there
 [[ -d /etc/hydra-umc ]] || install -d -o root -g root -m 0750 /etc/hydra-umc
-python3 "$OS_ROOT/provisioning/generate_secrets.py" "$ENV_FILE" --create-from "$SOURCE/deploy/voice-ui.env.example" --apply --adopt "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/server.env:HYDRA_UMC_VOICE_UI_TOKEN"
+python3 "$OS_ROOT/provisioning/generate_secrets.py" "$ENV_FILE" --create-from "$SOURCE/deploy/voice-ui.env.example" --apply --adopt "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/server.env:HYDRA_UMC_VOICE_UI_TOKEN" --ensure HYDRA_UMC_VOICE_UI_RESULT_KEY --adopt "HYDRA_UMC_VOICE_UI_RESULT_KEY=/etc/hydra-umc/server.env:HYDRA_UMC_VOICE_UI_RESULT_KEY" --ensure HYDRA_UMC_VOICE_UI_REQUIRE_SUBJECT=1
 python3 "$OS_ROOT/provisioning/generate_secrets.py" "$ENV_FILE" --check || { echo "Fix $ENV_FILE (no example value) and rerun." >&2; exit 2; }
 command -v python3 >/dev/null || { echo "HYDRA-UMC-VOICE-UI requires python3." >&2; exit 2; }
 if ! id -u "$VOICE_USER" >/dev/null 2>&1; then
