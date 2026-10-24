@@ -20,21 +20,24 @@
 # same convention every other CLI/library-shaped project here already
 # gets.
 set -euo pipefail
-# The audit journal (an append-only, hash-chained record of every tool request) is OFF by default. It is
-# switched on by `--audit` (or HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT=on), or later by hand: put
+# The audit journal (an append-only, hash-chained record of every tool request and its outcome, rotated by size: 5 MiB,
+# 5 files) is ON by default: a request that cannot be recorded is not run, so the record is what makes the technician
+# accountable. `--no-audit` (or HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT=off) leaves it off and takes the line out of an existing
+# settings file; `--audit` is still accepted and means the same as the default. By hand: the line
 #   HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT_LOG=/var/lib/hydra-umc-local-technician/audit.jsonl
 # in /etc/hydra-umc-local-technician/local-technician.env (the CLI reads that file when it starts).
 APPLY=0
-AUDIT="${HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT:-off}"
+AUDIT="${HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT:-on}"
 for arg in "$@"; do
   case "$arg" in
     --apply) APPLY=1 ;;
     --audit) AUDIT=on ;;
-    *) echo "Unknown option: $arg (use --apply and, optionally, --audit)" >&2; exit 2 ;;
+    --no-audit) AUDIT=off ;;
+    *) echo "Unknown option: $arg (use --apply and, optionally, --no-audit)" >&2; exit 2 ;;
   esac
 done
 [[ "$AUDIT" == "on" || "$AUDIT" == "off" ]] || { echo "HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT must be on or off." >&2; exit 2; }
-[[ $APPLY -eq 1 ]] || { echo "Dry-run policy: rerun with --apply after review (add --audit to switch the audit journal on)."; exit 0; }
+[[ $APPLY -eq 1 ]] || { echo "Dry-run policy: rerun with --apply after review (the audit journal is switched ON unless you add --no-audit)."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -81,9 +84,10 @@ if [[ ! -f "$SETTINGS_FILE" ]]; then
   cat >"$SETTINGS_FILE" <<EOF
 # Settings read by /usr/local/bin/hydra-umc-local-technician (NAME=value, no quotes needed).
 #
-# Audit journal: an append-only, hash-chained JSONL record of every tool request and its outcome; a request
-# that cannot be recorded is not run. OFF by default. To switch it on remove the # from the next line (the
-# directory must exist and be writable by whoever runs the CLI; install_local_technician.sh --audit makes it):
+# Audit journal: an append-only, hash-chained JSONL record of every tool request and its outcome, rotated at 5 MiB
+# (5 rotated files kept); a request that cannot be recorded is not run. ON by default: the next line is the switch.
+# To turn it off put a # in front of it (or install_local_technician.sh --no-audit); the directory must exist and be
+# writable by whoever runs the CLI (the installer makes it):
 # $AUDIT_LINE
 # Check it with: hydra-umc-local-technician audit-verify
 EOF
@@ -96,10 +100,14 @@ if [[ "$AUDIT" == "on" ]]; then
     echo "The audit journal setting is already in $SETTINGS_FILE (left as it is)."
   else
     echo "$AUDIT_LINE" >>"$SETTINGS_FILE"
-    echo "Audit journal switched ON: $AUDIT_DIR/audit.jsonl (verify with: hydra-umc-local-technician audit-verify)."
+    echo "Audit journal ON: $AUDIT_DIR/audit.jsonl, rotated at 5 MiB (verify with: hydra-umc-local-technician audit-verify)."
   fi
 else
-  echo "Audit journal: off (default). To switch it on later: rerun with --audit, or edit $SETTINGS_FILE."
+  # the operator asked for no journal: take an active line out (a comment saying why stays), and never delete what was recorded
+  if grep -q '^HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT_LOG=' "$SETTINGS_FILE"; then
+    sed -i 's|^\(HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT_LOG=.*\)$|# switched off by install_local_technician.sh --no-audit: \1|' "$SETTINGS_FILE"
+  fi
+  echo "Audit journal: OFF (--no-audit). To switch it on: rerun without --no-audit, or edit $SETTINGS_FILE. Records already written are kept."
 fi
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 echo "Local-Technician installed - a real CLI (hydra-umc-local-technician), no standing service yet."

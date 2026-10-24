@@ -30,21 +30,24 @@
 # /etc/hydra-umc/, is read by systemd itself as root before it drops
 # privileges; a plain os.Open() by this service's own process is not).
 set -euo pipefail
-# The journal (an append-only, hash-chained record of every transition and recovery request) is OFF by default.
-# `--journal` (or HYDRA_UMC_NODE_HEALING_JOURNAL=on) switches it on; so does putting
+# The journal (an append-only, hash-chained record of every transition and recovery request, rotated by size: 5 MiB,
+# 5 files) is ON by default: what the watchdog decided about a node, and why, is the evidence that matters after a
+# failure. `--no-journal` (or HYDRA_UMC_NODE_HEALING_JOURNAL=off) leaves it off and takes the line out of an existing
+# settings file; `--journal` is still accepted and means the same as the default. By hand, the line
 #   HYDRA_UMC_NODE_HEALING_JOURNAL_ARGS=--journal /var/lib/hydra-umc-node-healing/journal.jsonl
-# in /etc/hydra-umc-node-healing/journal.env by hand, and restarting the service.
+# in /etc/hydra-umc-node-healing/journal.env, and a restart of the service.
 APPLY=0
-JOURNAL="${HYDRA_UMC_NODE_HEALING_JOURNAL:-off}"
+JOURNAL="${HYDRA_UMC_NODE_HEALING_JOURNAL:-on}"
 for arg in "$@"; do
   case "$arg" in
     --apply) APPLY=1 ;;
     --journal) JOURNAL=on ;;
-    *) echo "Unknown option: $arg (use --apply and, optionally, --journal)" >&2; exit 2 ;;
+    --no-journal) JOURNAL=off ;;
+    *) echo "Unknown option: $arg (use --apply and, optionally, --no-journal)" >&2; exit 2 ;;
   esac
 done
 [[ "$JOURNAL" == "on" || "$JOURNAL" == "off" ]] || { echo "HYDRA_UMC_NODE_HEALING_JOURNAL must be on or off." >&2; exit 2; }
-[[ $APPLY -eq 1 ]] || { echo "Dry-run policy: rerun with --apply after review (add --journal to switch the journal on)."; exit 0; }
+[[ $APPLY -eq 1 ]] || { echo "Dry-run policy: rerun with --apply after review (the journal is switched ON unless you add --no-journal)."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -80,22 +83,28 @@ JOURNAL_ENV=/etc/hydra-umc-node-healing/journal.env
 JOURNAL_LINE="HYDRA_UMC_NODE_HEALING_JOURNAL_ARGS=--journal /var/lib/hydra-umc-node-healing/journal.jsonl"
 if [[ ! -f "$JOURNAL_ENV" ]]; then
   cat >"$JOURNAL_ENV" <<EOF
-# Read by systemd (as root) for hydra-umc-node-healing.service. The journal is OFF while the next line is a comment
-# or this file is empty. To switch it on remove the #, then: systemctl restart hydra-umc-node-healing
+# Read by systemd (as root) for hydra-umc-node-healing.service. The journal is ON while the next line is active (it
+# is rotated at 5 MiB, 5 files kept). To turn it off put a # in front of it (or install_node_healing.sh --no-journal),
+# then: systemctl restart hydra-umc-node-healing
 # Check it with: /opt/hydra-umc/node-healing/hydra-umc-node-healing -journal /var/lib/hydra-umc-node-healing/journal.jsonl -journal-verify
 # $JOURNAL_LINE
 EOF
   chmod 0644 "$JOURNAL_ENV"
 fi
 if [[ "$JOURNAL" == "on" ]]; then
+  # the unit runs as its own account: the state directory it writes the journal in belongs to it (StateDirectory= in the unit also creates it)
   if grep -q '^HYDRA_UMC_NODE_HEALING_JOURNAL_ARGS=' "$JOURNAL_ENV"; then
     echo "The journal setting is already in $JOURNAL_ENV (left as it is)."
   else
     echo "$JOURNAL_LINE" >>"$JOURNAL_ENV"
-    echo "Journal switched ON (restart the service for it to take effect)."
+    echo "Journal ON, rotated at 5 MiB (restart the service for it to take effect)."
   fi
 else
-  echo "Journal: off (default). To switch it on later: rerun with --journal, or edit $JOURNAL_ENV."
+  # the operator asked for no journal: take an active line out (a comment saying why stays), and never delete what was recorded
+  if grep -q '^HYDRA_UMC_NODE_HEALING_JOURNAL_ARGS=' "$JOURNAL_ENV"; then
+    sed -i 's|^\(HYDRA_UMC_NODE_HEALING_JOURNAL_ARGS=.*\)$|# switched off by install_node_healing.sh --no-journal: \1|' "$JOURNAL_ENV"
+  fi
+  echo "Journal: OFF (--no-journal). To switch it on: rerun without --no-journal, or edit $JOURNAL_ENV. Records already written are kept."
 fi
 install -m 0644 "$SOURCE/systemd/hydra-umc-node-healing.service" /etc/systemd/system/hydra-umc-node-healing.service
 # Real bug found live: every install_*.sh here updated the deployed
