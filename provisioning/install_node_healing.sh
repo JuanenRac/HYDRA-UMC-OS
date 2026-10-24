@@ -30,6 +30,7 @@
 # /etc/hydra-umc/, is read by systemd itself as root before it drops
 # privileges; a plain os.Open() by this service's own process is not).
 set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 # The journal (an append-only, hash-chained record of every transition and recovery request, rotated by size: 5 MiB,
 # 5 files) is ON by default: what the watchdog decided about a node, and why, is the evidence that matters after a
 # failure. `--no-journal` (or HYDRA_UMC_NODE_HEALING_JOURNAL=off) leaves it off and takes the line out of an existing
@@ -65,17 +66,15 @@ echo " ==============================================================="
 [[ -f "$SOURCE/go.mod" && -f "$SOURCE/systemd/hydra-umc-node-healing.service" ]] || {
   echo "HYDRA-UMC-NODE-HEALING source or systemd unit is incomplete: $SOURCE" >&2; exit 2;
 }
-if ! command -v go >/dev/null; then
-  apt-get update
-  apt-get install -y golang-go
-fi
-command -v go >/dev/null || { echo "golang-go installed but 'go' still not on PATH." >&2; exit 2; }
+# go.mod asks for a Go newer than the one the Debian archive packages: the pinned, checksum-verified toolchain of go_toolchain.sh builds it.
+source "$HERE/go_toolchain.sh"
+ensure_go
 
 if ! id -u "$HEALING_USER" >/dev/null 2>&1; then
   useradd --system --home "$TARGET" --no-create-home --shell /usr/sbin/nologin "$HEALING_USER"
 fi
 install -d -o root -g root -m 0755 "$TARGET"
-( cd "$SOURCE" && go build -o "$TARGET/hydra-umc-node-healing" . )
+( cd "$SOURCE" && "$GO_BIN" build -o "$TARGET/hydra-umc-node-healing" . )
 chown root:root "$TARGET/hydra-umc-node-healing"
 chmod 0755 "$TARGET/hydra-umc-node-healing"
 install -d -o root -g root -m 0755 /etc/hydra-umc-node-healing

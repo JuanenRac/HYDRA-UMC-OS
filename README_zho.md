@@ -70,6 +70,8 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 **审计日志，默认开启。** `install_local_technician.sh` 会开启技术员的只追加、哈希链式审计日志，`install_node_healing.sh` 会开启看门狗的日志（均在 5 MiB 时轮转，保留 5 个文件）：技术员被要求做了什么、看门狗对某个节点做了什么决定，是故障之后真正重要的证据，所以安装器会把该设置以启用状态写入带说明的设置文件（`/etc/hydra-umc-local-technician/local-technician.env`、`/etc/hydra-umc-node-healing/journal.env`）。`--no-audit` / `--no-journal`（或 `HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT=off`、`HYDRA_UMC_NODE_HEALING_JOURNAL=off`）会让日志保持关闭并把已启用的那一行注释掉，绝不删除已记录的内容；已有的设置文件不会被覆盖。`tools/verify_optional_journals.py` 以静态方式检查选项和名称；尚未在真实 CM5 上用它们安装过。
 
+**为 Go 服务固定的 Go 版本。** 作业调度器、节点看门狗和遥测收集器都在设备上构建，它们的 `go.mod` 要求的 Go 比 Debian 软件库里的 `golang-go` 更新，后者无法构建它们。它们的安装器现在会加载 `provisioning/go_toolchain.sh`：来自 go.dev 的一个官方发行版，先用固定的 SHA-256 校验，再解压到 `/usr/local/go-<版本>`（系统自带的 Go 不受影响）。`tools/verify_go_toolchain.py` 用模拟下载（正确的压缩包、损坏的、已安装的）运行该辅助脚本，并把固定版本与同级项目的 `go.mod` 比较；尚未在真实 CM5 上用它安装过。
+
 **统一的服务注册表。** 每个服务的端口、健康路由和 systemd 单元都来自 `provisioning/ports.yaml`(由项目清单生成的 SDK `contracts/ports.yaml` 的副本)。服务的每个安装脚本结束时都会说明运行后在哪里查看,`verify_cm5_runtime.sh --with-services` 会探测每个正在运行的服务的健康路由(只读;未运行的会被跳过)。`tools/verify_service_registry.py` 用桩程序检查辅助脚本、安装脚本和运行时检查;尚未在真实 CM5 上用它安装过任何内容。
 
 ## 🎯 第一个里程碑

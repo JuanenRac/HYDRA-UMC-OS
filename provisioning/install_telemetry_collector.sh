@@ -32,17 +32,15 @@ echo " ==============================================================="
 [[ -f "$SOURCE/src/go.mod" && -f "$SOURCE/systemd/hydra-umc-telemetry-collector.service" ]] || {
   echo "HYDRA-UMC-TELEMETRY-COLLECTOR source or systemd unit is incomplete: $SOURCE" >&2; exit 2;
 }
-if ! command -v go >/dev/null; then
-  apt-get update
-  apt-get install -y golang-go
-fi
-command -v go >/dev/null || { echo "golang-go installed but 'go' still not on PATH." >&2; exit 2; }
+# go.mod asks for a Go newer than the one the Debian archive packages: the pinned, checksum-verified toolchain of go_toolchain.sh builds it.
+source "$HERE/go_toolchain.sh"
+ensure_go
 
 if ! id -u "$COLLECTOR_USER" >/dev/null 2>&1; then
   useradd --system --home "$TARGET" --no-create-home --shell /usr/sbin/nologin "$COLLECTOR_USER"
 fi
 install -d -o root -g root -m 0755 "$TARGET"
-( cd "$SOURCE/src" && go build -o "$TARGET/telemetry-collector" . )
+( cd "$SOURCE/src" && "$GO_BIN" build -o "$TARGET/telemetry-collector" . )
 chown root:root "$TARGET/telemetry-collector"
 chmod 0755 "$TARGET/telemetry-collector"
 install -m 0644 "$SOURCE/systemd/hydra-umc-telemetry-collector.service" /etc/systemd/system/hydra-umc-telemetry-collector.service

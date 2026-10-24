@@ -70,6 +70,8 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 **監査ジャーナル(既定は有効)。** `install_local_technician.sh` は技術者の追記専用・ハッシュ連鎖の監査ジャーナルを、`install_node_healing.sh` は監視役のジャーナルを有効にします(どちらも 5 MiB で切り替わり、5 ファイルを保持)。技術者に何を頼んだか、監視役がノードについて何を判断したかは障害後に重要な証拠なので、インストーラーは設定を有効な状態で文書化された設定ファイル(`/etc/hydra-umc-local-technician/local-technician.env`、`/etc/hydra-umc-node-healing/journal.env`)に書きます。`--no-audit` / `--no-journal`(または `HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT=off`、`HYDRA_UMC_NODE_HEALING_JOURNAL=off`)はジャーナルを無効のままにし、有効な行をコメントアウトします。記録済みの内容は決して削除せず、既存の設定ファイルは上書きしません。`tools/verify_optional_journals.py` がオプションと名前を静的に確認します。実機の CM5 へのインストールはまだ行われていません。
 
+**Go サービス用に固定した Go。** ジョブディスパッチャー、ノード監視役、テレメトリコレクターはデバイス上でビルドされ、その `go.mod` は Debian アーカイブの `golang-go` より新しい Go を求めるため、それではビルドできませんでした。インストーラーは `provisioning/go_toolchain.sh` を読み込みます。go.dev の公式リリースを、固定した SHA-256 と照合してから `/usr/local/go-<バージョン>` に展開します(システムの Go には手を触れません)。`tools/verify_go_toolchain.py` は、ダウンロードを模したもの(正しいアーカイブ、壊れたもの、インストール済みのもの)でヘルパーを実行し、固定バージョンを兄弟プロジェクトの `go.mod` と比べます。実機の CM5 へのインストールはまだ行われていません。
+
 **サービスレジストリは 1 つ。** 各サービスのポート、ヘルスルート、systemd ユニットは `provisioning/ports.yaml`(プロジェクトのマニフェストから生成される SDK の `contracts/ports.yaml` のコピー)から取得します。サービスの各インストーラーは、起動後にどこを確認すればよいかを表示して終わり、`verify_cm5_runtime.sh --with-services` は実行中の各サービスのヘルスルートを確認します(読み取り専用。動いていないものはスキップ)。`tools/verify_service_registry.py` が、ヘルパー、インストーラー、実行時チェックをスタブで検証します。実機の CM5 へのインストールはまだ行われていません。
 
 ## 🎯 最初のマイルストーン

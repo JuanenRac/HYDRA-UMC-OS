@@ -27,13 +27,8 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-JOB-DISPATCHER"
 TARGET=/opt/hydra-umc/job-dispatcher
 DISPATCHER_USER="hydra-umc-job-dispatcher"
-# Pinned, checksum-verified upstream Go release (go.dev/dl) - real values
-# captured from that page's own JSON API, not guessed. Bump both together
-# if this project's own go.mod ever raises its minimum past this version.
-GO_VERSION="1.27.1"
-GO_TARBALL="go${GO_VERSION}.linux-arm64.tar.gz"
-GO_SHA256="3450b45a3f9ee8568792736a5c5e70a1f2e9b36c35a8f74958c03e51d7d92bec"
-GO_ROOT="/usr/local/go-${GO_VERSION}"
+# The pinned, checksum-verified upstream Go release (go.dev/dl) is in go_toolchain.sh, shared with the other Go services.
+source "$HERE/go_toolchain.sh"
 
 echo " ==============================================================="
 echo "  HYDRA-UMC-OS - install_job_dispatcher.sh"
@@ -46,17 +41,7 @@ echo " ==============================================================="
   echo "HYDRA-UMC-JOB-DISPATCHER source or systemd unit is incomplete: $SOURCE" >&2; exit 2;
 }
 
-if [[ ! -x "$GO_ROOT/bin/go" ]]; then
-  WORKDIR="$(mktemp -d)"
-  trap 'rm -rf "$WORKDIR"' EXIT
-  curl -fsSL -o "$WORKDIR/$GO_TARBALL" "https://go.dev/dl/$GO_TARBALL"
-  echo "$GO_SHA256  $WORKDIR/$GO_TARBALL" | sha256sum -c -
-  rm -rf "$GO_ROOT"
-  mkdir -p "$GO_ROOT"
-  tar -C "$GO_ROOT" --strip-components=1 -xzf "$WORKDIR/$GO_TARBALL"
-fi
-GO_BIN="$GO_ROOT/bin/go"
-[[ -x "$GO_BIN" ]] || { echo "Go toolchain install at $GO_ROOT did not produce a real go binary." >&2; exit 2; }
+ensure_go
 
 if ! id -u "$DISPATCHER_USER" >/dev/null 2>&1; then
   useradd --system --home "$TARGET" --no-create-home --shell /usr/sbin/nologin "$DISPATCHER_USER"
