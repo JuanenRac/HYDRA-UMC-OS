@@ -114,6 +114,8 @@ CM5 硬件验证）：
 | `agent/` |只读的 Python 设备描述符与健康状态代理，含单元测试。 |
 | `systemd/` |强化的 `hydra-umc-agent.service` 和 `hydra-umc-wifi-provision.service` 生命周期单元。 |
 | `config/` |默认模式和非秘密配置。 |
+| `provisioning/` |CM5 的安装程序 (每个服务一个)、首次启动、诊断、恢复、设置的备份与还原、防火墙、MQTT 的 TLS、展台与启动画面、polkit 规则以及安装检查。 |
+| `tools/` |打包与发布工具 (`build_deb.py`、`package_component.py`)、配置脚本的 `verify_*.py` 检查以及共享的 CI 检查。 |
 
 在实现代码之前阅读[架构](docs/ARCHITECTURE.md)。
 

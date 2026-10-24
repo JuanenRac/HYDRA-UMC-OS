@@ -136,6 +136,8 @@ Tests, noch nicht gegen echte CM5-Hardware verifiziert):
 | `agent/` | Schreibgeschützter Python-Gerätedeskriptor und Integritätsagent mit Komponententests. |
 | `systemd/` | Gehärtete Lebenszykluseinheiten `hydra-umc-agent.service` und `hydra-umc-wifi-provision.service`. |
 | `config/` | Standardschemata und nicht geheime Konfiguration. |
+| `provisioning/` | Installer der CM5 (einer je Dienst), Erststart, Diagnose, Wiederherstellung, Sicherung und Rücksicherung der Einstellungen, Firewall, TLS für MQTT, Kiosk und Startbildschirm, polkit-Regeln und die Prüfungen einer Installation. |
+| `tools/` | Paket- und Release-Werkzeuge (`build_deb.py`, `package_component.py`), die `verify_*.py`-Prüfungen der Bereitstellungsskripte und die gemeinsamen CI-Prüfungen. |
 
 Lesen Sie [die Architektur](docs/ARCHITECTURE.md), bevor Sie Code implementieren.
 

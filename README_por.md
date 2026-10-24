@@ -106,6 +106,8 @@ Concluído, segundo a secção Estado acima (código real, testes reais, ainda n
 | `agent/` | Agente Python só de leitura de descritor e saúde do dispositivo, com testes unitários. |
 | `systemd/` | Unidades de ciclo de vida endurecidas `hydra-umc-agent.service` e `hydra-umc-wifi-provision.service`. |
 | `config/` | Esquemas por defeito e configuração sem segredos. |
+| `provisioning/` | Instaladores da CM5 (um por serviço), primeiro arranque, diagnóstico, recuperação, cópia e restauro das definições, firewall, TLS para MQTT, quiosque e ecrã de arranque, regras do polkit e as verificações de uma instalação. |
+| `tools/` | Ferramentas de pacote e de lançamento (`build_deb.py`, `package_component.py`), as verificações `verify_*.py` dos scripts de aprovisionamento e as verificações de CI partilhadas. |
 
 Leia [a arquitetura](docs/ARCHITECTURE.md) antes de implementar código.
 

@@ -134,6 +134,8 @@ encore vérifiée contre du matériel CM5 physique) :
 | `agent/` | Descripteur de périphérique Python en lecture seule et agent d'intégrité avec tests unitaires. |
 | `systemd/` | Unités de cycle de vie renforcées `hydra-umc-agent.service` et `hydra-umc-wifi-provision.service`. |
 | `config/` | Schémas par défaut et configuration non secrète. |
+| `provisioning/` | Installateurs de la CM5 (un par service), premier démarrage, diagnostic, récupération, sauvegarde et restauration des réglages, pare-feu, TLS pour MQTT, kiosque et écran de démarrage, règles polkit et les vérifications d'une installation. |
+| `tools/` | Outils de paquet et de version (`build_deb.py`, `package_component.py`), les vérifications `verify_*.py` des scripts de provisionnement et les vérifications de CI partagées. |
 
 Lisez [l'architecture](docs/ARCHITECTURE.md) avant d'implémenter le code.
 
