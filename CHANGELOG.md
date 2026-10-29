@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **README in the universal layout:** the README and its seven translations follow the layout that the four families share (22 sections in a fixed order), with an architecture picture and a repository-structure picture drawn from `docs/architecture.json` and `docs/structure.json`; the CI validator checks both pictures and the file tree.
+
 - **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.
 
 ## [0.5.4] - The installers hand out the signing keys and the Go services are built with a pinned Go
@@ -33,7 +35,7 @@ All notable changes to this project are documented here.
 
 - The update model document says plainly that it describes the target contract and that no component implements it end to end yet.
 - Every device now gets a name of its own: the default host name (`first_boot.sh`) and the default name of the setup network end with six characters taken from the device (the Raspberry Pi serial number, else the MAC address, else the machine id), so two devices flashed from the same image no longer share a name. A host name or network name chosen by the operator is never changed, and `HYDRA_UMC_DEVICE_SUFFIX=off` keeps the fixed names. The setup unit no longer fixes the network name on its command line. Tested by `tools/verify_device_identity.py`.
-- `bump_version.py` no longer carries a rule of its own: it runs the shared utility (decimal odometer, three components up to 0.7.9, four from 0.8.0, no manual major) and then carries the agent's own version along. Tested by `tools/verify_bump_version.py` over the roll-overs.
+- `bump_version.py` no longer carries a rule of its own: it runs the shared utility and then carries the agent's own version along. Tested by `tools/verify_bump_version.py` over the roll-overs.
 - The `control` profile now declares `hydra-umc-server` next to the agent; the profile stays an editable declaration (copy it, drop the entry, pass it to the preflight with `--profile`). Tested.
 
 ## [0.5.3] - Component packages, broker TLS, a firewall and encrypted settings backups

@@ -1,36 +1,34 @@
-<!--
-=================================================================================
-HYDRA-UMC-OS - 公共项目概述和实施指南
-版权所有 (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
-CC BY-SA 4.0 - 参见 LICENSE.md
-=================================================================================
--->
+<!-- =============================================================================
+HYDRA-UMC-OS - Platform layer for a CM5 node on Raspberry Pi OS
+Copyright (C) JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+GPL-3.0-or-later - see LICENSE
+============================================================================= -->
 
 <p align="center">
-  <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-OS 横幅" width="100%">
+  <img src="images/HYDRA_UMC_BANNER.svg" alt="HYDRA-UMC-OS banner" width="100%">
 </p>
+
+# 🖥️ HYDRA-UMC-OS
+
+<p align="center"><a href="README.md">🇺🇸 English</a> | <a href="README_spa.md">🇪🇸 Español</a> | <a href="README_fra.md">🇫🇷 Français</a> | <a href="README_ita.md">🇮🇹 Italiano</a> | <a href="README_deu.md">🇩🇪 Deutsch</a> | 🇨🇳 <b>简体中文</b> | <a href="README_jpn.md">🇯🇵 日本語</a> | <a href="README_por.md">🇵🇹 Português</a></p>
+
+### Raspberry Pi OS 上 HYDRA-UMC 节点的可复现平台层
 
 <p align="center">
-  <a href="README.md">🇺🇸 English</a> |
-  <a href="README_spa.md">🇪🇸 西班牙语</a> |
-  <a href="README_fra.md">🇫🇷法语</a> |
-  <a href="README_ita.md">🇮🇹意大利语</a> |
-  <a href="README_deu.md">🇩🇪德语</a> |
-  <a href="README_zho.md">🇨🇳简体中文</a> |
-  <a href="README_jpn.md">🇯🇵日本语</a> |
-  <a href="README_por.md">🇵🇹 Português</a>
+  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="GPL 3.0 or later">
+  <img src="https://img.shields.io/badge/Platform-Raspberry%20Pi%20OS%20%7C%20CM5-red.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/Services-systemd%20%7C%20udev-orange.svg" alt="Services">
+  <img src="https://img.shields.io/badge/Stack-Debian%20%7C%20Python%20%7C%20Shell-blueviolet.svg" alt="Stack">
+  <img src="https://img.shields.io/badge/Tests-20%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Version-0.5.4-0f6cbd.svg" alt="Version">
+  <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/License-GPL%203.0--or--later-blue.svg" alt="许可证：GPL 3.0 or later">
-  <img src="https://img.shields.io/badge/Platform-Raspberry%20Pi%20OS%20%7C%20CM5-red.svg" alt="平台：Raspberry Pi OS | CM5">
-  <img src="https://img.shields.io/badge/Services-systemd%20%7C%20udev-orange.svg" alt="服务：systemd | udev">
-  <img src="https://img.shields.io/badge/Stack-Debian%20%7C%20Python%20%7C%20Shell-blueviolet.svg" alt="堆栈：Debian | Python | Shell">
-</p>
-
-# HYDRA-UMC-OS
+---
 
 > **安全与安防现状:**本生态系统不是经认证的安全系统。目前尚无硬件 E-STOP 通路,没有由固件强制执行的限位或联锁,也没有经过验证的运动指令;固件映像使用 CRC32 和共享密钥的 HMAC-SHA256 校验,而非非对称签名;TLS 与双向 TLS 均为可选项,默认关闭;自制电路板尚未组装或测试。在依赖此处任何说法来保障人身安全之前,请先阅读[安全基线](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)和[威胁模型](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)。
+
+---
 
 ## 📋 速览
 
@@ -38,10 +36,12 @@ CC BY-SA 4.0 - 参见 LICENSE.md
 |---|---|
 | 版本 | `0.5.4` |
 | 成熟度 | 可用 |
-| 测试 | 13 (`python -m unittest`) |
+| 测试 | 20 (`python -m unittest discover -s agent/tests`) |
 | 技术栈 | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 尚未：此版本没有在真实硬件上运行的记录 |
+
+**跳转：** [概述](#-概述) · [架构](#-架构) · [快速开始](#-快速开始) · [测试](#-测试) · [仓库结构](#-仓库结构) · [相关项目](#-相关项目)
 
 ## 🚦 项目状态
 
@@ -52,11 +52,11 @@ CC BY-SA 4.0 - 参见 LICENSE.md
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 13 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 20 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🔴 | 尚未：此版本没有在真实硬件上运行的记录 |
 | 文档 | 🟢 | 八种语言的 README，每次变更都会与清单核对 |
 
-## 🖥️ Raspberry Pi OS 的 HYDRA-UMC 平台层
+## 🎯 概述
 
 HYDRA-UMC-OS 是 HYDRA-UMC CM5 节点的可安装平台层。
 它基于 Raspberry Pi OS ARM64 构建；它不会取代 Linux，
@@ -66,9 +66,99 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 配置、服务生命周期、本地身份、诊断、视觉品牌
 以及 HYDRA-UMC 组件的协调更新。
 
-**诚实核查——今天真正能跑起来的部分：** 只读设备代理（`agent/src/hydra_umc_os/agent.py`：`DeviceDescriptor`/`HealthReport`，温度/存储/网络检查，配置档案加载）是真实且经过测试的（13 个单元测试，`agent/tests/test_agent.py`，`python -m unittest discover`）。`provisioning/preflight_cm5.py` 通过一个真实测试验证为幂等且无副作用——运行两次并对比输出（`tools/verify_preflight_idempotent.py`），外加 5 项真实的反向路径检查（`tools/verify_preflight_negative.py`）；`provisioning/rollback.py` 的备份/恢复机制由 8 项真实检查验证，其中包括一个真正的部分失败场景（`tools/verify_rollback.py`）；`provisioning/wifi_provision.py` 的 AP 模式回退状态机由针对一个伪造 NetworkManager 的 46 项真实检查验证，其中包括一次通过真实回环套接字完成的端到端 HTTP 往返（`tools/verify_wifi_provision.py`）——这三者都不需要 root 权限或物理 CM5 即可验证。目前唯一没有被验证过的：真实的 CM5 硬件本身。`image-builder/` 目前只是文档（一份关于可复现性说明的 README，还没有镜像组装代码）；`packages/debian/` 包含软件包 `hydra-umc-platform-base` 的维护者脚本和版权文件，`tools/build_deb.py` 会把它构建成真正的 `.deb`（纯 Python，无需 dpkg，每次字节完全相同），`tools/verify_deb_package.py` 会读回并检查；尚未在真实的 CM5 上安装过。已交付的具体内容见 `CHANGELOG.md`，这里已验证的部分与仍需物理硬件的部分之间的确切界线见 `docs/CM5_SOFTWARE_READINESS.md`。
+**诚实核查——今天真正能跑起来的部分：** 只读设备代理（`agent/src/hydra_umc_os/agent.py`：`DeviceDescriptor`/`HealthReport`，温度/存储/网络检查，配置档案加载）是真实且经过测试的（20 个单元测试，`agent/tests/test_agent.py`，`python -m unittest discover`）。`provisioning/preflight_cm5.py` 通过一个真实测试验证为幂等且无副作用——运行两次并对比输出（`tools/verify_preflight_idempotent.py`），外加 5 项真实的反向路径检查（`tools/verify_preflight_negative.py`）；`provisioning/rollback.py` 的备份/恢复机制由 8 项真实检查验证，其中包括一个真正的部分失败场景（`tools/verify_rollback.py`）；`provisioning/wifi_provision.py` 的 AP 模式回退状态机由针对一个伪造 NetworkManager 的 46 项真实检查验证，其中包括一次通过真实回环套接字完成的端到端 HTTP 往返（`tools/verify_wifi_provision.py`）——这三者都不需要 root 权限或物理 CM5 即可验证。目前唯一没有被验证过的：真实的 CM5 硬件本身。`image-builder/` 目前只是文档（一份关于可复现性说明的 README，还没有镜像组装代码）；`packages/debian/` 包含软件包 `hydra-umc-platform-base` 的维护者脚本和版权文件，`tools/build_deb.py` 会把它构建成真正的 `.deb`（纯 Python，无需 dpkg，每次字节完全相同），`tools/verify_deb_package.py` 会读回并检查；尚未在真实的 CM5 上安装过。已交付的具体内容见 `CHANGELOG.md`，这里已验证的部分与仍需物理硬件的部分之间的确切界线见 `docs/CM5_SOFTWARE_READINESS.md`。
 
-## 🚧 状态
+## 🧩 在 HYDRA-UMC 中的角色
+
+**HYDRA-UMC-OS** 是 CM5 节点的平台层：在 Raspberry Pi OS 之上提供配置、服务生命周期、本地身份、诊断、视觉外观和协调更新，并带有只读的设备代理。它不替代 Linux、systemd 或厂商 SDK；镜像由 `HYDRA-UMC-OS-REBUILDER` 构建。
+
+## 🏛️ 架构
+
+<p align="center">
+  <img src="images/architecture.svg" alt="HYDRA-UMC-OS architecture" width="100%">
+</p>
+
+### 更多文档
+
+- **[`docs/AGENT_REFERENCE.md`](docs/AGENT_REFERENCE.md)** —— 只读诊断 CLI `hydra-umc-agent` 的真实命令/输出参考。
+- **[`docs/INSTALLATION.md`](docs/INSTALLATION.md)** —— 安装设计:目标平台与预期的安装流程。
+- **[`docs/CM5_PROVISIONING.md`](docs/CM5_PROVISIONING.md)** —— 将 Raspberry Pi OS Lite 转变为 HYDRA-UMC-OS 的完整指南。
+- **[`docs/CM5_WINDOWS_HOST_FLASHING.md`](docs/CM5_WINDOWS_HOST_FLASHING.md)** —— 从 Windows 主机烧录 CM5 的已验证流程。
+- **[`docs/CM5_FIRST_BOOT_CHECKLIST.md`](docs/CM5_FIRST_BOOT_CHECKLIST.md)** —— CM5 首次启动的 BASE 平台检查清单。
+- **[`docs/CM5_PACKAGE_MANIFEST.md`](docs/CM5_PACKAGE_MANIFEST.md)** —— 按部署阶段划分的真实软件包清单。
+- **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** —— 在 CM5 上分阶段部署生态系统其余部分的计划，每个阶段均可独立回滚。
+- **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** —— 在没有物理 CM5 硬件的情况下已验证的内容，以及验证止步之处。
+- **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** —— HYDRA-UMC 服务的运行方式：专用用户、配置路径、依赖/就绪顺序。
+- **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** —— 操作系统、HYDRA-UMC 软件包、Hailo 运行时与 MCU/URTC 固件各自独立的更新通道。
+- **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** —— 本仓库如何在不内嵌 HYDRA-UMC-SDK 源码的情况下使用其已发布的契约。
+- **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** —— 开发规则：优先使用 Raspberry Pi OS 原生接口，以及必须遵循的测试顺序。
+- **[`docs/HEADER_CONVENTION.md`](docs/HEADER_CONVENTION.md)** —— 新源码/文档文件的版权与许可证头部约定。
+- **[`provisioning/ssh_hardening.md`](provisioning/ssh_hardening.md)** —— CM5 真实的 SSH 加固步骤（在禁用密码认证前先确认密钥登录可用）。
+
+## 🚀 快速开始
+
+代理测试只需要 Python 3.11 或更高版本；镜像本身由 `HYDRA-UMC-OS-REBUILDER` 构建。
+
+```bash
+PYTHONPATH=agent/src python3 -m unittest discover -s agent/tests
+./build-test.sh  # non-mutating build check (build-test.bat on Windows)
+```
+
+## 🧪 测试
+
+运行 `python -m unittest discover -s agent/tests` 会执行 20 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
+
+CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
+
+## 🏗️ 构建与发布
+
+请在发布构建前使用不改动版本的构建检查：
+
+| 操作 | Windows | Linux / macOS |
+|---|---|---|
+| 构建检查（不修改版本或 CHANGELOG） | `build-test.bat` | `./build-test.sh` |
+| 运行 / 开发（如提供） | `run*.bat` 或 `dev*.bat` | `./run*.sh` 或 `./dev*.sh` |
+
+`build-test.bat` 和 `build-test.sh` 会编译或验证项目技术栈，但不会递增 `hydra-umc.project.json`，也不会修改 `CHANGELOG.md`。它们仅可能生成正常的编译器输出。现有的 `build*.bat`、`build*.sh`、`run*` 和 `dev*` 脚本保留各自的版本化或运行时行为；需要该行为时请使用它们。
+
+## 📂 仓库结构
+
+<p align="center">
+  <img src="images/repository-structure.svg" alt="Repository structure of HYDRA-UMC-OS" width="100%">
+</p>
+
+<details>
+<summary>目录树的文本版本</summary>
+
+```text
+HYDRA-UMC-OS/
+├── docs/                      架构、安装、服务和更新规范。
+├── image-builder/             官方 Raspberry Pi OS 镜像组装边界和可复现性说明。
+├── packages/                  Debian 软件包 `hydra-umc-platform-base` 的维护者脚本和版权文件（由 `tools/build_deb.py` 构建）。
+├── agent/                     只读的 Python 设备描述符与健康状态代理，含单元测试。
+├── systemd/                   强化的 `hydra-umc-agent.service` 和 `hydra-umc-wifi-provision.service` 生命周期单元。
+├── config/                    默认模式和非秘密配置。
+├── provisioning/              CM5 的安装程序 (每个服务一个)、首次启动、诊断、恢复、设置的备份与还原、防火墙、MQTT 的 TLS、展台与启动画面、polkit 规则以及安装检查。
+├── tools/                     打包与发布工具 (`build_deb.py`、`package_component.py`)、配置脚本的 `verify_*.py` 检查以及共享的 CI 检查。
+├── .github/                   CI 工作流和 Issue 模板
+├── images/                    横幅和 README 的图片
+├── CHANGELOG.md               每个版本的变更
+├── build-test.sh              不修改内容的构建检查
+├── build.sh                   构建并检查；从不改变版本
+├── bump_manifest_version.py   同步清单版本
+├── bump_version.py            显式提升版本
+├── hydra-umc.project.json     清单：版本、成熟度、系列
+├── run.sh                     启动程序
+└── test.sh                    运行测试
+```
+
+</details>
+
+## 🗺️ 路线图与已知限制
+
+**当前已知限制**
+
+### 状态
 
 基本代理、经过验证的非秘密配置、强化的 systemd
 单元和主机端测试均已实施。该代理是刻意
@@ -89,7 +179,7 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 **统一的服务注册表。** 每个服务的端口、健康路由和 systemd 单元都来自 `provisioning/ports.yaml`(由项目清单生成的 SDK `contracts/ports.yaml` 的副本)。服务的每个安装脚本结束时都会说明运行后在哪里查看,`verify_cm5_runtime.sh --with-services` 会探测每个正在运行的服务的健康路由(只读;未运行的会被跳过)。`tools/verify_service_registry.py` 用桩程序检查辅助脚本、安装脚本和运行时检查;尚未在真实 CM5 上用它安装过任何内容。
 
-## 🎯 第一个里程碑
+### 第一个里程碑
 
 已完成，按照上方"状态"小节所述（真实代码、真实测试，尚未针对真实
 CM5 硬件验证）：
@@ -100,52 +190,9 @@ CM5 硬件验证）：
 4. ✅ 仅启动通过 systemd 启用的服务。
 5. ✅ 本地显示 READY、DEGRADED 或 FAULT。
 
-## 📂 存储库布局
+## 🌍 语言
 
-<p align="center">
-  <img src="images/REPOSITORY_LAYOUT.svg" alt="HYDRA-UMC-OS 存储库布局的可视化地图" width="100%">
-</p>
-
-|路径|目的|
-| ---| ---|
-| `docs/` |架构、安装、服务和更新规范。 |
-| `image-builder/` |官方 Raspberry Pi OS 镜像组装边界和可复现性说明。 |
-| `packages/` | Debian 软件包 `hydra-umc-platform-base` 的维护者脚本和版权文件（由 `tools/build_deb.py` 构建）。 |
-| `agent/` |只读的 Python 设备描述符与健康状态代理，含单元测试。 |
-| `systemd/` |强化的 `hydra-umc-agent.service` 和 `hydra-umc-wifi-provision.service` 生命周期单元。 |
-| `config/` |默认模式和非秘密配置。 |
-| `provisioning/` |CM5 的安装程序 (每个服务一个)、首次启动、诊断、恢复、设置的备份与还原、防火墙、MQTT 的 TLS、展台与启动画面、polkit 规则以及安装检查。 |
-| `tools/` |打包与发布工具 (`build_deb.py`、`package_component.py`)、配置脚本的 `verify_*.py` 检查以及共享的 CI 检查。 |
-
-在实现代码之前阅读[架构](docs/ARCHITECTURE.md)。
-
-## 📖 更多文档
-
-- **[`docs/AGENT_REFERENCE.md`](docs/AGENT_REFERENCE.md)** —— 只读诊断 CLI `hydra-umc-agent` 的真实命令/输出参考。
-- **[`docs/INSTALLATION.md`](docs/INSTALLATION.md)** —— 安装设计:目标平台与预期的安装流程。
-- **[`docs/CM5_PROVISIONING.md`](docs/CM5_PROVISIONING.md)** —— 将 Raspberry Pi OS Lite 转变为 HYDRA-UMC-OS 的完整指南。
-- **[`docs/CM5_WINDOWS_HOST_FLASHING.md`](docs/CM5_WINDOWS_HOST_FLASHING.md)** —— 从 Windows 主机烧录 CM5 的已验证流程。
-- **[`docs/CM5_FIRST_BOOT_CHECKLIST.md`](docs/CM5_FIRST_BOOT_CHECKLIST.md)** —— CM5 首次启动的 BASE 平台检查清单。
-- **[`docs/CM5_PACKAGE_MANIFEST.md`](docs/CM5_PACKAGE_MANIFEST.md)** —— 按部署阶段划分的真实软件包清单。
-- **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** —— 在 CM5 上分阶段部署生态系统其余部分的计划，每个阶段均可独立回滚。
-- **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** —— 在没有物理 CM5 硬件的情况下已验证的内容，以及验证止步之处。
-- **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** —— HYDRA-UMC 服务的运行方式：专用用户、配置路径、依赖/就绪顺序。
-- **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** —— 操作系统、HYDRA-UMC 软件包、Hailo 运行时与 MCU/URTC 固件各自独立的更新通道。
-- **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** —— 本仓库如何在不内嵌 HYDRA-UMC-SDK 源码的情况下使用其已发布的契约。
-- **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** —— 开发规则：优先使用 Raspberry Pi OS 原生接口，以及必须遵循的测试顺序。
-- **[`docs/HEADER_CONVENTION.md`](docs/HEADER_CONVENTION.md)** —— 新源码/文档文件的版权与许可证头部约定。
-- **[`provisioning/ssh_hardening.md`](provisioning/ssh_hardening.md)** —— CM5 真实的 SSH 加固步骤（在禁用密码认证前先确认密钥登录可用）。
-
-## 🛠️ 构建与运行
-
-请在发布构建前使用不改动版本的构建检查：
-
-| 操作 | Windows | Linux / macOS |
-|---|---|---|
-| 构建检查（不修改版本或 CHANGELOG） | `build-test.bat` | `./build-test.sh` |
-| 运行 / 开发（如提供） | `run*.bat` 或 `dev*.bat` | `./run*.sh` 或 `./dev*.sh` |
-
-`build-test.bat` 和 `build-test.sh` 会编译或验证项目技术栈，但不会递增 `hydra-umc.project.json`，也不会修改 `CHANGELOG.md`。它们仅可能生成正常的编译器输出。现有的 `build*.bat`、`build*.sh`、`run*` 和 `dev*` 脚本保留各自的版本化或运行时行为；需要该行为时请使用它们。
+本 README 和仓库文档提供八种语言：英语、西班牙语、德语、法语、意大利语、日语、中文和葡萄牙语（葡萄牙）。它们同时编写，并由 CI 检查八个文件拥有相同的章节和相同的链接。 本仓库没有自己的界面或消息目录，因此没有需要翻译的界面文字。
 
 ## 🔗 相关项目
 
@@ -236,21 +283,26 @@ CM5 硬件验证）：
 - **[URTC-SMART-RACK](https://github.com/JuanenRac/URTC-SMART-RACK)** —— 面向板卡安装机架的固件,具备真实的工具 ID 解码与 Smart Idle 预热逻辑。
 - **[URTC-VISION-TOOL](https://github.com/JuanenRac/URTC-VISION-TOOL)** —— 面向热成像/RGB 检测工具头的固件及真实 Python 视觉伴侣程序。
 
----
+## 📚 文档
 
-## 📚 文档与社区
+更多阅读：
 
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** —— 提交 Pull Request 所需的技术栈和编码规范。
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** —— 本社区所期望的行为准则。
-- **[SECURITY.md](SECURITY.md)** —— 如何报告漏洞，以及本项目真实的安全关注重点。
-- **[SUPPORT.md](SUPPORT.md)** —— 在哪里提问和报告缺陷。
-- **[LICENSE.md](LICENSE.md)** —— 本项目自身的许可证。
+* [生态系统的安全基线](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
+* [生态系统的威胁模型](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
+* [本仓库的更新日志](CHANGELOG.md)
+* [本仓库的许可证](LICENSE.md)
+
+## 🤝 参与贡献与社区
+
+* 提交 pull request 之前，请运行 `HYDRA_UMC_CI=1 py -3 tools/ci_validate.py`（或 `HYDRA_UMC_CI=1 python3 tools/ci_validate.py`）：它必须输出 `CI_VALIDATION=PASS`。此检查不要运行 `build.sh` 或 `build.bat`；构建不是检查。
+* 八个 README 由 HYDRA-UMC-DOCS 中的同一个源生成；请勿手工编辑。修改源文件，再用 `tools/make_readmes.py` 重新生成。
+* 不要在 README 中声称尚未运行过的内容：属实时请写“仅模拟”或“尚未在硬件上试过”。
+* 请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)、[行为准则](CODE_OF_CONDUCT.md)、[SECURITY.md](SECURITY.md) 和 [SUPPORT.md](SUPPORT.md)。
 
 ## 👤 作者
-**JuanenRac** (Electro Hobby 3D)
-📧 electrohobby3d@gmail.com
-📺 [youtube.com/@electrohobby3d](https://youtube.com/@electrohobby3d)
+
+**JuanenRac (Electro Hobby 3D)** · electrohobby3d@gmail.com
 
 ## 📜 许可证
 
-代码为 GPL-3.0-or-later 或更高版本，文档为 CC BY-SA 4.0。请参阅 [LICENSE](LICENSE)。
+GPL-3.0-or-later - [LICENSE](LICENSE).

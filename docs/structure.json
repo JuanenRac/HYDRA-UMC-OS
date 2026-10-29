@@ -1,0 +1,369 @@
+{
+  "repo": "HYDRA-UMC-OS",
+  "ecosystem": "hydra",
+  "svg": "en",
+  "exempt": [
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "LICENSE",
+    "LICENSE.md",
+    "build-test.bat",
+    "build.bat",
+    "run.bat",
+    "test.bat"
+  ],
+  "cards": [
+    {
+      "name": {
+        "en": "folders",
+        "es": "carpetas",
+        "de": "Ordner",
+        "fr": "dossiers",
+        "it": "cartelle",
+        "ja": "フォルダ",
+        "zh": "文件夹",
+        "pt": "pastas"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "b",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "docs/",
+          "desc": {
+            "en": "Architecture, installation, service and",
+            "es": "Arquitectura, instalación, servicio y",
+            "de": "Architektur-, Installations-, Service- und",
+            "fr": "Spécifications d’architecture",
+            "it": "Specifiche di architettura",
+            "ja": "アーキテクチャ、インストール、サービス、およ",
+            "zh": "架构、安装、服务和更新规范。",
+            "pt": "Especificações de arquitetura"
+          },
+          "tree_desc": {
+            "en": "Architecture, installation, service and update specifications.",
+            "es": "Arquitectura, instalación, servicio y actualización de especificaciones.",
+            "de": "Architektur-, Installations-, Service- und Update-Spezifikationen.",
+            "fr": "Spécifications d’architecture, d’installation, de service et de mise à jour.",
+            "it": "Specifiche di architettura, installazione, servizio e aggiornamento.",
+            "ja": "アーキテクチャ、インストール、サービス、およびアップデートの仕様。",
+            "zh": "架构、安装、服务和更新规范。",
+            "pt": "Especificações de arquitetura, instalação, serviços e atualização."
+          }
+        },
+        {
+          "name": "image-builder/",
+          "desc": {
+            "en": "Official Raspberry Pi OS image-assembly",
+            "es": "Notas oficiales de reproducibilidad y",
+            "de": "Offizielle Hinweise zur Bildassemblierung",
+            "fr": "Notes officielles sur les limites",
+            "it": "Note ufficiali sui limiti di assemblaggio",
+            "ja": "公式の Raspberry Pi OS イメ",
+            "zh": "官方 Raspberry Pi OS 镜像组",
+            "pt": "Fronteira oficial de montagem de imagens do"
+          },
+          "tree_desc": {
+            "en": "Official Raspberry Pi OS image-assembly boundary and reproducibility notes.",
+            "es": "Notas oficiales de reproducibilidad y límites del ensamblaje de imágenes del sistema operativo Raspberry Pi.",
+            "de": "Offizielle Hinweise zur Bildassemblierung und Reproduzierbarkeit des Raspberry Pi OS.",
+            "fr": "Notes officielles sur les limites d’assemblage d’images et la reproductibilité du système d’exploitation Raspberry Pi.",
+            "it": "Note ufficiali sui limiti di assemblaggio delle immagini e sulla riproducibilità del sistema operativo Raspberry Pi.",
+            "ja": "公式の Raspberry Pi OS イメージアセンブリの境界と再現性に関するメモ。",
+            "zh": "官方 Raspberry Pi OS 镜像组装边界和可复现性说明。",
+            "pt": "Fronteira oficial de montagem de imagens do Raspberry Pi OS e notas de reprodutibilidade."
+          }
+        },
+        {
+          "name": "packages/",
+          "desc": {
+            "en": "Maintainer scripts and copyright of the",
+            "es": "Scripts del mantenedor y copyright del",
+            "de": "Paketskripte und Copyright des",
+            "fr": "Scripts du mainteneur et copyright du",
+            "it": "Script del manutentore e copyright del",
+            "ja": "Debian パッケージ `hydra-um",
+            "zh": "Debian 软件包 `hydra-umc",
+            "pt": "Scripts do responsável e copyright do"
+          },
+          "tree_desc": {
+            "en": "Maintainer scripts and copyright of the `hydra-umc-platform-base` Debian package (built by `tools/build_deb.py`).",
+            "es": "Scripts del mantenedor y copyright del paquete Debian `hydra-umc-platform-base` (construido por `tools/build_deb.py`).",
+            "de": "Paketskripte und Copyright des Debian-Pakets `hydra-umc-platform-base` (gebaut von `tools/build_deb.py`).",
+            "fr": "Scripts du mainteneur et copyright du paquet Debian `hydra-umc-platform-base` (construit par `tools/build_deb.py`).",
+            "it": "Script del manutentore e copyright del pacchetto Debian `hydra-umc-platform-base` (costruito da `tools/build_deb.py`).",
+            "ja": "Debian パッケージ `hydra-umc-platform-base` のメンテナースクリプトと著作権（`tools/build_deb.py` でビルド）。",
+            "zh": "Debian 软件包 `hydra-umc-platform-base` 的维护者脚本和版权文件（由 `tools/build_deb.py` 构建）。",
+            "pt": "Scripts do responsável e copyright do pacote Debian `hydra-umc-platform-base` (construído por `tools/build_deb.py`)."
+          }
+        },
+        {
+          "name": "agent/",
+          "desc": {
+            "en": "Read-only Python device descriptor and",
+            "es": "Descriptor de dispositivo Python de solo",
+            "de": "Schreibgeschützter Python-Gerätedeskriptor",
+            "fr": "Descripteur de périphérique Python en",
+            "it": "Descrittore del dispositivo Python di sola",
+            "ja": "単体テストを備えた読み取り専用の Pytho",
+            "zh": "只读的 Python 设备描述符与健康状态代",
+            "pt": "Agente Python só de leitura de descritor e"
+          },
+          "tree_desc": {
+            "en": "Read-only Python device descriptor and health agent with unit tests.",
+            "es": "Descriptor de dispositivo Python de solo lectura y agente de salud con pruebas unitarias.",
+            "de": "Schreibgeschützter Python-Gerätedeskriptor und Integritätsagent mit Komponententests.",
+            "fr": "Descripteur de périphérique Python en lecture seule et agent d'intégrité avec tests unitaires.",
+            "it": "Descrittore del dispositivo Python di sola lettura e agente di integrità con test unitari.",
+            "ja": "単体テストを備えた読み取り専用の Python デバイス記述子とヘルスエージェント。",
+            "zh": "只读的 Python 设备描述符与健康状态代理，含单元测试。",
+            "pt": "Agente Python só de leitura de descritor e saúde do dispositivo, com testes unitários."
+          }
+        },
+        {
+          "name": "systemd/",
+          "desc": {
+            "en": "Hardened `hydra-umc-agent.service` and",
+            "es": "Unidades de ciclo de vida reforzadas",
+            "de": "Gehärtete Lebenszykluseinheiten",
+            "fr": "Unités de cycle de vie renforcées",
+            "it": "Unità del ciclo di vita rafforzate",
+            "ja": "強化された `hydra-umc-agent",
+            "zh": "强化的 `hydra-umc-agent.s",
+            "pt": "Unidades de ciclo de vida endurecidas"
+          },
+          "tree_desc": {
+            "en": "Hardened `hydra-umc-agent.service` and `hydra-umc-wifi-provision.service` lifecycle units.",
+            "es": "Unidades de ciclo de vida reforzadas `hydra-umc-agent.service` y `hydra-umc-wifi-provision.service`.",
+            "de": "Gehärtete Lebenszykluseinheiten `hydra-umc-agent.service` und `hydra-umc-wifi-provision.service`.",
+            "fr": "Unités de cycle de vie renforcées `hydra-umc-agent.service` et `hydra-umc-wifi-provision.service`.",
+            "it": "Unità del ciclo di vita rafforzate `hydra-umc-agent.service` e `hydra-umc-wifi-provision.service`.",
+            "ja": "強化された `hydra-umc-agent.service` と `hydra-umc-wifi-provision.service` のライフサイクルユニット。",
+            "zh": "强化的 `hydra-umc-agent.service` 和 `hydra-umc-wifi-provision.service` 生命周期单元。",
+            "pt": "Unidades de ciclo de vida endurecidas `hydra-umc-agent.service` e `hydra-umc-wifi-provision.service`."
+          }
+        },
+        {
+          "name": "config/",
+          "desc": {
+            "en": "Default schemas and non-secret",
+            "es": "Esquemas predeterminados y configuración no",
+            "de": "Standardschemata und nicht geheime",
+            "fr": "Schémas par défaut et configuration non",
+            "it": "Schemi predefiniti e configurazione non",
+            "ja": "デフォルトのスキーマと非シークレット構成。",
+            "zh": "默认模式和非秘密配置。",
+            "pt": "Esquemas por defeito e configuração sem"
+          },
+          "tree_desc": {
+            "en": "Default schemas and non-secret configuration.",
+            "es": "Esquemas predeterminados y configuración no secreta.",
+            "de": "Standardschemata und nicht geheime Konfiguration.",
+            "fr": "Schémas par défaut et configuration non secrète.",
+            "it": "Schemi predefiniti e configurazione non segreta.",
+            "ja": "デフォルトのスキーマと非シークレット構成。",
+            "zh": "默认模式和非秘密配置。",
+            "pt": "Esquemas por defeito e configuração sem segredos."
+          }
+        },
+        {
+          "name": "provisioning/",
+          "desc": {
+            "en": "Installers of the CM5",
+            "es": "Instaladores de la CM5",
+            "de": "Installer der CM5",
+            "fr": "Installateurs de la CM5",
+            "it": "Installer della CM5",
+            "ja": "CM5 のインストーラー (サービスごとに1",
+            "zh": "CM5 的安装程序 (每个服务一个)",
+            "pt": "Instaladores da CM5"
+          },
+          "tree_desc": {
+            "en": "Installers of the CM5 (one per service), first boot, diagnostics, recovery, backup and restore of the settings, firewall, TLS for MQTT, kiosk and splash screen, polkit rules and the checks of an installation.",
+            "es": "Instaladores de la CM5 (uno por servicio), primer arranque, diagnóstico, recuperación, copia y restauración de los ajustes, cortafuegos, TLS para MQTT, quiosco y pantalla de arranque, reglas de polkit y las comprobaciones de una instalación.",
+            "de": "Installer der CM5 (einer je Dienst), Erststart, Diagnose, Wiederherstellung, Sicherung und Rücksicherung der Einstellungen, Firewall, TLS für MQTT, Kiosk und Startbildschirm, polkit-Regeln und die Prüfungen einer Installation.",
+            "fr": "Installateurs de la CM5 (un par service), premier démarrage, diagnostic, récupération, sauvegarde et restauration des réglages, pare-feu, TLS pour MQTT, kiosque et écran de démarrage, règles polkit et les vérifications d'une installation.",
+            "it": "Installer della CM5 (uno per servizio), primo avvio, diagnostica, ripristino, backup e ripristino delle impostazioni, firewall, TLS per MQTT, kiosk e schermata di avvio, regole polkit e i controlli di un'installazione.",
+            "ja": "CM5 のインストーラー (サービスごとに1つ)、初回起動、診断、復旧、設定のバックアップと復元、ファイアウォール、MQTT 用 TLS、キオスクとスプラッシュ画面、polkit ルール、インストールの検査。",
+            "zh": "CM5 的安装程序 (每个服务一个)、首次启动、诊断、恢复、设置的备份与还原、防火墙、MQTT 的 TLS、展台与启动画面、polkit 规则以及安装检查。",
+            "pt": "Instaladores da CM5 (um por serviço), primeiro arranque, diagnóstico, recuperação, cópia e restauro das definições, firewall, TLS para MQTT, quiosque e ecrã de arranque, regras do polkit e as verificações de uma instalação."
+          }
+        },
+        {
+          "name": "tools/",
+          "desc": {
+            "en": "Package and release tooling",
+            "es": "Herramientas de paquete y de versión",
+            "de": "Paket- und Release-Werkzeuge",
+            "fr": "Outils de paquet et de version",
+            "it": "Strumenti di pacchetto e di rilascio",
+            "ja": "パッケージとリリースのツール",
+            "zh": "打包与发布工具 (`build_deb.py",
+            "pt": "Ferramentas de pacote e de lançamento"
+          },
+          "tree_desc": {
+            "en": "Package and release tooling (`build_deb.py`, `package_component.py`), the `verify_*.py` checks of the provisioning scripts and the shared CI checks.",
+            "es": "Herramientas de paquete y de versión (`build_deb.py`, `package_component.py`), las comprobaciones `verify_*.py` de los scripts de aprovisionamiento y las comprobaciones de CI compartidas.",
+            "de": "Paket- und Release-Werkzeuge (`build_deb.py`, `package_component.py`), die `verify_*.py`-Prüfungen der Bereitstellungsskripte und die gemeinsamen CI-Prüfungen.",
+            "fr": "Outils de paquet et de version (`build_deb.py`, `package_component.py`), les vérifications `verify_*.py` des scripts de provisionnement et les vérifications de CI partagées.",
+            "it": "Strumenti di pacchetto e di rilascio (`build_deb.py`, `package_component.py`), i controlli `verify_*.py` degli script di provisioning e i controlli CI condivisi.",
+            "ja": "パッケージとリリースのツール (`build_deb.py`、`package_component.py`)、プロビジョニングスクリプトの `verify_*.py` 検査、共有の CI 検査。",
+            "zh": "打包与发布工具 (`build_deb.py`、`package_component.py`)、配置脚本的 `verify_*.py` 检查以及共享的 CI 检查。",
+            "pt": "Ferramentas de pacote e de lançamento (`build_deb.py`, `package_component.py`), as verificações `verify_*.py` dos scripts de aprovisionamento e as verificações de CI partilhadas."
+          }
+        },
+        {
+          "name": ".github/",
+          "desc": {
+            "en": "CI workflow and issue templates",
+            "es": "flujo de CI y plantillas de incidencias",
+            "de": "CI-Workflow und Issue-Vorlagen",
+            "fr": "workflow de CI et modèles de tickets",
+            "it": "workflow di CI e modelli di segnalazione",
+            "ja": "CI ワークフローと Issue テンプレート",
+            "zh": "CI 工作流和 Issue 模板",
+            "pt": "fluxo de CI e modelos de problemas"
+          }
+        },
+        {
+          "name": "images/",
+          "desc": {
+            "en": "banner and the pictures of the README",
+            "es": "banner e imágenes del README",
+            "de": "Banner und Bilder der README",
+            "fr": "bannière et images du README",
+            "it": "banner e immagini del README",
+            "ja": "バナーと README の図",
+            "zh": "横幅和 README 的图片",
+            "pt": "faixa e imagens do README"
+          }
+        }
+      ]
+    },
+    {
+      "name": {
+        "en": "project files",
+        "es": "ficheros del proyecto",
+        "de": "Projektdateien",
+        "fr": "fichiers du projet",
+        "it": "file del progetto",
+        "ja": "プロジェクトのファイル",
+        "zh": "项目文件",
+        "pt": "ficheiros do projeto"
+      },
+      "kind": "group",
+      "span": 3,
+      "accent": "c",
+      "columns": 2,
+      "rows": [
+        {
+          "name": "CHANGELOG.md",
+          "desc": {
+            "en": "what changed in each version",
+            "es": "qué cambió en cada versión",
+            "de": "was sich in jeder Version geändert hat",
+            "fr": "ce qui a changé à chaque version",
+            "it": "cosa è cambiato in ogni versione",
+            "ja": "各バージョンの変更点",
+            "zh": "每个版本的变更",
+            "pt": "o que mudou em cada versão"
+          }
+        },
+        {
+          "name": "build-test.sh",
+          "desc": {
+            "en": "non-mutating build check",
+            "es": "comprobación de compilación sin cambios",
+            "de": "Build-Prüfung ohne Änderungen",
+            "fr": "vérification de build sans modification",
+            "it": "controllo di build senza modifiche",
+            "ja": "変更を伴わないビルド確認",
+            "zh": "不修改内容的构建检查",
+            "pt": "verificação de compilação sem alterações"
+          }
+        },
+        {
+          "name": "build.sh",
+          "desc": {
+            "en": "builds and checks; never changes the version",
+            "es": "compila y comprueba; nunca cambia la versión",
+            "de": "baut und prüft; ändert nie die Version",
+            "fr": "construit et vérifie ; ne change jamais la version",
+            "it": "compila e controlla; non cambia mai la versione",
+            "ja": "ビルドと検査。バージョンは変更しない",
+            "zh": "构建并检查；从不改变版本",
+            "pt": "compila e verifica; nunca muda a versão"
+          }
+        },
+        {
+          "name": "bump_manifest_version.py",
+          "desc": {
+            "en": "syncs the manifest version",
+            "es": "sincroniza la versión del manifiesto",
+            "de": "gleicht die Manifest-Version an",
+            "fr": "synchronise la version du manifeste",
+            "it": "sincronizza la versione del manifesto",
+            "ja": "マニフェストのバージョンを同期",
+            "zh": "同步清单版本",
+            "pt": "sincroniza a versão do manifesto"
+          }
+        },
+        {
+          "name": "bump_version.py",
+          "desc": {
+            "en": "explicit version bump",
+            "es": "subida de versión explícita",
+            "de": "ausdrückliche Versionserhöhung",
+            "fr": "montée de version explicite",
+            "it": "aumento di versione esplicito",
+            "ja": "明示的なバージョン更新",
+            "zh": "显式提升版本",
+            "pt": "subida de versão explícita"
+          }
+        },
+        {
+          "name": "hydra-umc.project.json",
+          "desc": {
+            "en": "manifest: version, maturity, family",
+            "es": "manifiesto: versión, madurez, familia",
+            "de": "Manifest: Version, Reifegrad, Familie",
+            "fr": "manifeste : version, maturité, famille",
+            "it": "manifesto: versione, maturità, famiglia",
+            "ja": "マニフェスト：バージョン、成熟度、ファミリー",
+            "zh": "清单：版本、成熟度、系列",
+            "pt": "manifesto: versão, maturidade, família"
+          }
+        },
+        {
+          "name": "run.sh",
+          "desc": {
+            "en": "starts the program",
+            "es": "arranca el programa",
+            "de": "startet das Programm",
+            "fr": "démarre le programme",
+            "it": "avvia il programma",
+            "ja": "プログラムを起動",
+            "zh": "启动程序",
+            "pt": "arranca o programa"
+          }
+        },
+        {
+          "name": "test.sh",
+          "desc": {
+            "en": "runs the tests",
+            "es": "ejecuta las pruebas",
+            "de": "führt die Tests aus",
+            "fr": "lance les tests",
+            "it": "esegue i test",
+            "ja": "テストを実行",
+            "zh": "运行测试",
+            "pt": "executa os testes"
+          }
+        }
+      ]
+    }
+  ]
+}

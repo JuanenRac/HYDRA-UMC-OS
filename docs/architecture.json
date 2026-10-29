@@ -1,0 +1,123 @@
+{
+  "repo": "HYDRA-UMC-OS",
+  "ecosystem": "hydra",
+  "tagline": "A read-only device agent, a profile and a set of service units on top of Raspberry Pi OS.",
+  "description": "HYDRA-UMC-OS describes the platform layer of a CM5 node: a read-only device agent, configuration and profiles, systemd units, provisioning and the image-builder inputs that HYDRA-UMC-OS-REBUILDER uses.",
+  "columns": [
+    "WHO USES IT",
+    "THIS REPOSITORY",
+    "WHAT IT SITS ON"
+  ],
+  "nodes": [
+    {
+      "id": "rb",
+      "column": 0,
+      "level": "external",
+      "title": "OS-REBUILDER",
+      "lines": [
+        "stages this layer into",
+        "an image"
+      ]
+    },
+    {
+      "id": "ops",
+      "column": 0,
+      "level": "external",
+      "title": "Operators, OPS-AGENT",
+      "lines": [
+        "read the device descriptor"
+      ]
+    },
+    {
+      "id": "agent",
+      "column": 1,
+      "level": "tested",
+      "title": "agent/",
+      "lines": [
+        "read-only device agent:",
+        "identity and diagnostics"
+      ],
+      "code": [
+        "agent/src/hydra_umc_os/agent.py"
+      ]
+    },
+    {
+      "id": "cfg",
+      "column": 1,
+      "level": "tested",
+      "title": "config/ and packages/",
+      "lines": [
+        "device profile and the",
+        "package lists"
+      ],
+      "code": [
+        "config",
+        "packages"
+      ]
+    },
+    {
+      "id": "sys",
+      "column": 1,
+      "level": "untested",
+      "title": "systemd/",
+      "lines": [
+        "service units of the node"
+      ],
+      "code": [
+        "systemd"
+      ]
+    },
+    {
+      "id": "prov",
+      "column": 1,
+      "level": "untested",
+      "title": "provisioning/",
+      "lines": [
+        "first-contact Wi-Fi",
+        "provisioning"
+      ],
+      "code": [
+        "provisioning"
+      ]
+    },
+    {
+      "id": "pi",
+      "column": 2,
+      "level": "external",
+      "title": "Raspberry Pi OS",
+      "lines": [
+        "ARM64; Linux kernel,",
+        "systemd, NetworkManager"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "rb",
+      "to": "cfg",
+      "level": "external",
+      "label": "stages"
+    },
+    {
+      "from": "ops",
+      "to": "agent",
+      "level": "tested"
+    },
+    {
+      "from": "agent",
+      "to": "pi",
+      "level": "external"
+    },
+    {
+      "from": "sys",
+      "to": "pi",
+      "level": "external"
+    },
+    {
+      "from": "prov",
+      "to": "pi",
+      "level": "external"
+    }
+  ],
+  "footer": "The agent is tested on a computer; the image has not been checked on a CM5 by this release."
+}
