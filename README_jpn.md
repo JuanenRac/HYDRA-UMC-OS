@@ -78,23 +78,6 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
   <img src="images/architecture.svg" alt="HYDRA-UMC-OS architecture" width="100%">
 </p>
 
-### その他のドキュメント
-
-- **[`docs/AGENT_REFERENCE.md`](docs/AGENT_REFERENCE.md)** —— 読み取り専用の診断 CLI である `hydra-umc-agent` の実際のコマンド/出力リファレンス。
-- **[`docs/INSTALLATION.md`](docs/INSTALLATION.md)** —— インストール設計:対象プラットフォームと想定されるインストール手順。
-- **[`docs/CM5_PROVISIONING.md`](docs/CM5_PROVISIONING.md)** —— Raspberry Pi OS Lite を HYDRA-UMC-OS に変換する完全なガイド。
-- **[`docs/CM5_WINDOWS_HOST_FLASHING.md`](docs/CM5_WINDOWS_HOST_FLASHING.md)** —— Windows ホストから CM5 に書き込むための検証済み手順。
-- **[`docs/CM5_FIRST_BOOT_CHECKLIST.md`](docs/CM5_FIRST_BOOT_CHECKLIST.md)** —— CM5 の初回起動用の BASE プラットフォームチェックリスト。
-- **[`docs/CM5_PACKAGE_MANIFEST.md`](docs/CM5_PACKAGE_MANIFEST.md)** —— デプロイフェーズごとの実際のパッケージ一覧。
-- **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** —— CM5 上にエコシステムの残りをフェーズごとに展開する、各フェーズが個別にロールバック可能な計画。
-- **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** —— 物理的な CM5 ハードウェアなしで何が検証済みか、その検証がどこで止まるか。
-- **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** —— HYDRA-UMC サービスの実行方法:専用ユーザー、設定パス、依存/準備状態の順序。
-- **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** —— OS、HYDRA-UMC パッケージ、Hailo ランタイム、MCU/URTC ファームウェアそれぞれの独立した更新チャネル。
-- **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** —— このリポジトリが HYDRA-UMC-SDK の公開された契約をベンダリングせずに利用する方法。
-- **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** —— 開発ルール:Raspberry Pi OS のネイティブインターフェースを優先し、必須のテスト順序に従う。
-- **[`docs/HEADER_CONVENTION.md`](docs/HEADER_CONVENTION.md)** —— 新しいソース/ドキュメントファイル向けの著作権・ライセンスヘッダー規約。
-- **[`provisioning/ssh_hardening.md`](provisioning/ssh_hardening.md)** —— CM5 の実際の SSH 強化手順(パスワード認証を無効化する前に鍵ログインを確認する)。
-
 ## 🚀 クイックスタート
 
 エージェントのテストに必要なのは Python 3.11 以上だけです。イメージ自体は `HYDRA-UMC-OS-REBUILDER` が作ります。
@@ -155,6 +138,8 @@ HYDRA-UMC-OS/
 </details>
 
 ## 🗺️ ロードマップと既知の制限
+
+**現時点の既知の制限**
 
 **現時点の既知の制限**
 
@@ -287,6 +272,20 @@ HYDRA-UMC-OS/
 
 さらに読むには：
 
+* **[`docs/AGENT_REFERENCE.md`](docs/AGENT_REFERENCE.md)** —— 読み取り専用の診断 CLI である `hydra-umc-agent` の実際のコマンド/出力リファレンス。
+* **[`docs/INSTALLATION.md`](docs/INSTALLATION.md)** —— インストール設計:対象プラットフォームと想定されるインストール手順。
+* **[`docs/CM5_PROVISIONING.md`](docs/CM5_PROVISIONING.md)** —— Raspberry Pi OS Lite を HYDRA-UMC-OS に変換する完全なガイド。
+* **[`docs/CM5_WINDOWS_HOST_FLASHING.md`](docs/CM5_WINDOWS_HOST_FLASHING.md)** —— Windows ホストから CM5 に書き込むための検証済み手順。
+* **[`docs/CM5_FIRST_BOOT_CHECKLIST.md`](docs/CM5_FIRST_BOOT_CHECKLIST.md)** —— CM5 の初回起動用の BASE プラットフォームチェックリスト。
+* **[`docs/CM5_PACKAGE_MANIFEST.md`](docs/CM5_PACKAGE_MANIFEST.md)** —— デプロイフェーズごとの実際のパッケージ一覧。
+* **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** —— CM5 上にエコシステムの残りをフェーズごとに展開する、各フェーズが個別にロールバック可能な計画。
+* **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** —— 物理的な CM5 ハードウェアなしで何が検証済みか、その検証がどこで止まるか。
+* **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** —— HYDRA-UMC サービスの実行方法:専用ユーザー、設定パス、依存/準備状態の順序。
+* **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** —— OS、HYDRA-UMC パッケージ、Hailo ランタイム、MCU/URTC ファームウェアそれぞれの独立した更新チャネル。
+* **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** —— このリポジトリが HYDRA-UMC-SDK の公開された契約をベンダリングせずに利用する方法。
+* **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** —— 開発ルール:Raspberry Pi OS のネイティブインターフェースを優先し、必須のテスト順序に従う。
+* **[`docs/HEADER_CONVENTION.md`](docs/HEADER_CONVENTION.md)** —— 新しいソース/ドキュメントファイル向けの著作権・ライセンスヘッダー規約。
+* **[`provisioning/ssh_hardening.md`](provisioning/ssh_hardening.md)** —— CM5 の実際の SSH 強化手順(パスワード認証を無効化する前に鍵ログインを確認する)。
 * [エコシステムのセキュリティ基準](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
 * [エコシステムの脅威モデル](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
 * [このリポジトリの変更履歴](CHANGELOG.md)

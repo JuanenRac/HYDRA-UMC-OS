@@ -78,23 +78,6 @@ branding, and coordinated updates for HYDRA-UMC components.
   <img src="images/architecture.svg" alt="HYDRA-UMC-OS architecture" width="100%">
 </p>
 
-### Further documentation
-
-- **[`docs/AGENT_REFERENCE.md`](docs/AGENT_REFERENCE.md)** — real command/output reference for `hydra-umc-agent`, the read-only diagnostics CLI.
-- **[`docs/INSTALLATION.md`](docs/INSTALLATION.md)** — installation design: target platform and intended installation sequence.
-- **[`docs/CM5_PROVISIONING.md`](docs/CM5_PROVISIONING.md)** — the full guide for turning Raspberry Pi OS Lite into HYDRA-UMC-OS.
-- **[`docs/CM5_WINDOWS_HOST_FLASHING.md`](docs/CM5_WINDOWS_HOST_FLASHING.md)** — the verified procedure for flashing a CM5 from a Windows host.
-- **[`docs/CM5_FIRST_BOOT_CHECKLIST.md`](docs/CM5_FIRST_BOOT_CHECKLIST.md)** — a BASE-platform checklist for a CM5's first boot.
-- **[`docs/CM5_PACKAGE_MANIFEST.md`](docs/CM5_PACKAGE_MANIFEST.md)** — the real package list per deployment phase.
-- **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** — the phased, independently-rollback-able rollout plan for the rest of the ecosystem onto a CM5.
-- **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** — what has been verified without physical CM5 hardware, and where that verification stops.
-- **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** — how HYDRA-UMC services run: dedicated users, config paths, dependency/readiness ordering.
-- **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** — the separate update channels for the OS, HYDRA-UMC packages, Hailo runtimes, and MCU/URTC firmware.
-- **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** — how this repo consumes HYDRA-UMC-SDK's published contract without vendoring it.
-- **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** — development rules: native-Raspberry-Pi-OS-interfaces-first, the required test order.
-- **[`docs/HEADER_CONVENTION.md`](docs/HEADER_CONVENTION.md)** — the copyright/license header convention for new source and doc files.
-- **[`provisioning/ssh_hardening.md`](provisioning/ssh_hardening.md)** — the real SSH-hardening steps for a CM5 (verify key login before disabling password auth).
-
 ## 🚀 Quick start
 
 The agent tests need Python 3.11 or newer and nothing else; the image itself is built by `HYDRA-UMC-OS-REBUILDER`.
@@ -153,6 +136,8 @@ HYDRA-UMC-OS/
 </details>
 
 ## 🗺️ Roadmap & Known limits
+
+**Known limits today**
 
 **Known limits today**
 
@@ -303,6 +288,20 @@ This project is part of the HYDRA-UMC robotics ecosystem by the same author (Jua
 
 Where to read more:
 
+* **[`docs/AGENT_REFERENCE.md`](docs/AGENT_REFERENCE.md)** — real command/output reference for `hydra-umc-agent`, the read-only diagnostics CLI.
+* **[`docs/INSTALLATION.md`](docs/INSTALLATION.md)** — installation design: target platform and intended installation sequence.
+* **[`docs/CM5_PROVISIONING.md`](docs/CM5_PROVISIONING.md)** — the full guide for turning Raspberry Pi OS Lite into HYDRA-UMC-OS.
+* **[`docs/CM5_WINDOWS_HOST_FLASHING.md`](docs/CM5_WINDOWS_HOST_FLASHING.md)** — the verified procedure for flashing a CM5 from a Windows host.
+* **[`docs/CM5_FIRST_BOOT_CHECKLIST.md`](docs/CM5_FIRST_BOOT_CHECKLIST.md)** — a BASE-platform checklist for a CM5's first boot.
+* **[`docs/CM5_PACKAGE_MANIFEST.md`](docs/CM5_PACKAGE_MANIFEST.md)** — the real package list per deployment phase.
+* **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** — the phased, independently-rollback-able rollout plan for the rest of the ecosystem onto a CM5.
+* **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** — what has been verified without physical CM5 hardware, and where that verification stops.
+* **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** — how HYDRA-UMC services run: dedicated users, config paths, dependency/readiness ordering.
+* **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** — the separate update channels for the OS, HYDRA-UMC packages, Hailo runtimes, and MCU/URTC firmware.
+* **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** — how this repo consumes HYDRA-UMC-SDK's published contract without vendoring it.
+* **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** — development rules: native-Raspberry-Pi-OS-interfaces-first, the required test order.
+* **[`docs/HEADER_CONVENTION.md`](docs/HEADER_CONVENTION.md)** — the copyright/license header convention for new source and doc files.
+* **[`provisioning/ssh_hardening.md`](provisioning/ssh_hardening.md)** — the real SSH-hardening steps for a CM5 (verify key login before disabling password auth).
 * [Security baseline of the ecosystem](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/SECURITY_BASELINE.md)
 * [Threat model of the ecosystem](https://github.com/JuanenRac/HYDRA-UMC-DOCS/blob/main/docs/THREAT_MODEL.md)
 * [Changelog of this repository](CHANGELOG.md)
