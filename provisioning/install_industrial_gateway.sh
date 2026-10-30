@@ -61,6 +61,10 @@ run systemctl enable --now docker
 # never a second copy of the secrets).
 GATEWAY_ENV="${HYDRA_GATEWAY_ENV:-/etc/hydra-umc/gateway.env}"
 LEGACY_ENV="$GATEWAY_DIR/.env"
+# A new installation is one that has no gateway.env yet (neither here nor in the old place): it starts with the broker on TLS. An installation that already has
+# the file keeps exactly what it has. HYDRA_UMC_NEW_INSTALL_TLS=off skips the certificate authority below (the broker then needs MQTT_TLS_DIR from elsewhere).
+NEW_INSTALL=false
+[[ -e "$GATEWAY_ENV" || -e "$LEGACY_ENV" ]] || NEW_INSTALL=true
 # --- gateway env begin
 if $APPLY; then
   [[ -d "$(dirname "$GATEWAY_ENV")" ]] || install -d -o root -g root -m 0750 "$(dirname "$GATEWAY_ENV")"
@@ -78,6 +82,18 @@ else
   python3 "$(dirname "$0")/gateway_env.py" "$GATEWAY_ENV"
 fi
 # --- gateway env end
+
+# --- new install tls begin
+# The certificates of the broker come from the authority of this installation (provisioning/hydra_mqtt_tls.sh): made once, never replaced here.
+if $NEW_INSTALL && [[ "${HYDRA_UMC_NEW_INSTALL_TLS:-}" != off ]]; then
+  TLS_DIR="${HYDRA_TLS_DIR:-/etc/hydra-umc/tls}"
+  if [[ -f "$TLS_DIR/server.pem" && -f "$TLS_DIR/server.key" ]]; then
+    echo "TLS: the certificates in $TLS_DIR are used for the broker."
+  else
+    run "$HERE/hydra_mqtt_tls.sh" init
+  fi
+fi
+# --- new install tls end
 
 # every compose command takes the same --env-file: compose resolves ${GATEWAY_JWT_SECRET:?...} when it reads the file, even for `ps` or `logs`
 COMPOSE="docker compose --env-file $GATEWAY_ENV"

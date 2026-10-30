@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A new installation starts with TLS:** `install_industrial_gateway.sh` treats an installation without a `gateway.env` as new, makes the certificates of its own authority with `hydra_mqtt_tls.sh init` when they are not there, and `gateway_env.py` writes `MQTT_TLS_DIR` into the new file so the broker starts on TLS. An installation that already has the file is not changed; `HYDRA_UMC_NEW_INSTALL_TLS=off` skips the authority step. The server side of the same default is in HYDRA-UMC-SERVER.
+
 - **README in the universal layout:** the README and its seven translations follow the layout that the four families share (22 sections in a fixed order), with an architecture picture and a repository-structure picture drawn from `docs/architecture.json` and `docs/structure.json`; the CI validator checks both pictures and the file tree.
 
 - **The layout of the README is checked in the CI:** the validator runs `tools/universal_readme_check.py` and lists, as a warning, what differs from the universal layout of the README.

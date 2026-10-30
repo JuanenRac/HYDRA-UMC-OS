@@ -4,8 +4,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""Proves provisioning/gateway_env.py: the generated .env is accepted by what the gateway and the broker demand of a production start (secret length, password length, an ACL rule
-that covers every credential), is private, is never overwritten, and gives each bridge its own identity and namespace."""
+"""Proves provisioning/gateway_env.py: the generated .env is accepted by what the gateway and the broker demand of a production start (secret length, password length, an ACL rule\nthat covers every credential), is private, is never overwritten, and gives each bridge its own identity and namespace."""
 from __future__ import annotations
 
 import importlib.util
@@ -49,6 +48,8 @@ def values(text: str) -> dict[str, str]:
 text, passwords = ge.build_env()
 env = values(text)
 check("GATEWAY_JWT_SECRET is 64 hex characters (the gateway wants 32+)", len(env["GATEWAY_JWT_SECRET"]), 64)
+check("a new file points the broker at the folder of its certificates", env["MQTT_TLS_DIR"], "/etc/hydra-umc/tls")
+check("the folder can be chosen", values(ge.build_env("/srv/tls")[0])["MQTT_TLS_DIR"], "/srv/tls")
 credentials = json.loads(env["MQTT_AUTH_JSON"])
 rules = json.loads(env["MQTT_ACL_JSON"])
 check("one credential per bridge", [c["username"] for c in credentials], [f"hydra-umc-bridge-{n}" for n in ge.BRIDGES])
@@ -70,6 +71,9 @@ with tempfile.TemporaryDirectory() as directory:
         check("the file is private", stat.S_IMODE(os.stat(path).st_mode) & 0o077, 0)
     first = path.read_text(encoding="utf-8")
     check("a second apply never overwrites it", (ge.main([str(path), "--apply"]), path.read_text(encoding="utf-8")), (0, first))
+    old = Path(directory) / "old.env"
+    old.write_text("GATEWAY_JWT_SECRET=x\n", encoding="utf-8")
+    check("an installation that already has a file keeps it as it is (no TLS line added)", (ge.main([str(old), "--apply"]), old.read_text(encoding="utf-8")), (0, "GATEWAY_JWT_SECRET=x\n"))
 
 print()
 if failures:
