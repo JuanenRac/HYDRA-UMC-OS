@@ -14,6 +14,7 @@
   ],
   "deployment_target": "cm5",
   "maturity": "functional",
+  "evidence": "bench",
   "family": "Platform Foundation & Contracts",
   "parent": null,
   "build": "Functional read-only CM5 platform agent, validated configuration, systemd unit and host-side tests.",
