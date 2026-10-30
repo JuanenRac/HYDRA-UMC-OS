@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.5.5] - The server environment example with the server port variable, a new installation that starts with TLS and the universal README
+
 - **The server environment example uses `HYDRA_UMC_SERVER_PORT`:** the example `server.env` sets the port of the server with the variable of the service instead of the shared `PORT`; an environment file that still has `PORT` keeps working, with a warning.
 
 - **A new installation starts with TLS:** `install_industrial_gateway.sh` treats an installation without a `gateway.env` as new, makes the certificates of its own authority with `hydra_mqtt_tls.sh init` when they are not there, and `gateway_env.py` writes `MQTT_TLS_DIR` into the new file so the broker starts on TLS. An installation that already has the file is not changed; `HYDRA_UMC_NEW_INSTALL_TLS=off` skips the authority step. The server side of the same default is in HYDRA-UMC-SERVER.
