@@ -44,7 +44,7 @@ check("every placeholder is replaced", gs.problems(filled), [])
 check("the JWT secret is 64 hex characters", len(generated["JWT_SECRET"]), 64)
 check("the bootstrap password is 24 characters", len(generated[gs.ADMIN_PASSWORD_KEY]), 24)
 check("two runs never give the same secret", gs.fill(TEMPLATE)[1]["JWT_SECRET"] != generated["JWT_SECRET"], True)
-check("comments and other variables are untouched", "NODE_ENV=production" in filled and "PORT=3000" in filled and "#HYDRA_UMC_DATALAKE_URL" in filled, True)
+check("comments and other variables are untouched", "NODE_ENV=production" in filled and "HYDRA_UMC_SERVER_PORT=3000" in filled and "#HYDRA_UMC_DATALAKE_URL" in filled, True)
 
 own = "JWT_SECRET=" + "f3a9c07b" * 8 + "\nHYDRA_UMC_BOOTSTRAP_ADMIN_PASSWORD=a-password-of-my-own-1\n"
 check("a value the operator chose is left alone", gs.fill(own)[1], {})
