@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 | Tests | 20 (`python -m unittest discover -s agent/tests`) |
 | Stack | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
-| On real hardware | Not yet: no run on real hardware is recorded for this version |
+| On real hardware | Run on a bench setup: the honesty check above says which parts ran on real hardware |
 
 **Jump to:** [Overview](#-overview) · [Architecture](#-architecture) · [Quick start](#-quick-start) · [Testing](#-testing) · [Repository Structure](#-repository-structure) · [Related Projects](#-related-projects)
 
@@ -53,7 +53,7 @@ Each line is one part of this repository and the light says how far it is today.
 |---|---|---|
 | Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
 | Tests | 🟢 | 20 automated tests, run on every change |
-| Real hardware | 🔴 | Not yet: no run on real hardware is recorded for this version |
+| Real hardware | 🟡 | Run on a bench setup: the honesty check above says which parts ran on real hardware |
 | Documentation | 🟢 | README in eight languages, checked against the manifest on every change |
 
 ## 🎯 Overview

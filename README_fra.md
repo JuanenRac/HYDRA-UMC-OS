@@ -39,7 +39,7 @@ GPL-3.0-or-later - see LICENSE
 | Tests | 20 (`python -m unittest discover -s agent/tests`) |
 | Technologie | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |
 | Cible | Le Raspberry Pi CM5 d'une cellule HYDRA-UMC |
-| Sur matériel réel | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
+| Sur matériel réel | Exécuté sur un banc d'essai : la vérification d'honnêteté ci-dessus indique quelles parties ont tourné sur du matériel réel |
 
 **Aller à :** [Présentation](#-présentation) · [Architecture](#-architecture) · [Démarrage rapide](#-démarrage-rapide) · [Tests](#-tests) · [Structure du dépôt](#-structure-du-dépôt) · [Projets liés](#-projets-liés)
 
@@ -53,7 +53,7 @@ Chaque ligne est une partie de ce dépôt et le feu dit où elle en est aujourd'
 |---|---|---|
 | Logiciel | 🟡 | Fonctionne pour son usage principal ; la vérification d'honnêteté ci-dessus liste ce qui manque encore |
 | Tests | 🟢 | 20 tests automatiques, exécutés à chaque modification |
-| Matériel réel | 🔴 | Pas encore : aucune exécution sur du matériel réel n'est consignée pour cette version |
+| Matériel réel | 🟡 | Exécuté sur un banc d'essai : la vérification d'honnêteté ci-dessus indique quelles parties ont tourné sur du matériel réel |
 | Documentation | 🟢 | README en huit langues, vérifié par rapport au manifeste à chaque modification |
 
 ## 🎯 Présentation
