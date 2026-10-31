@@ -52,6 +52,56 @@ visual identity. The early firmware/kernel phase cannot render animated SVG.
 It is therefore preserved for the post-boot visual handoff; a Plymouth theme
 may use a generated static fallback only when required by the boot stack.
 
+## Local screen: HDMI, DSI or none
+
+The HDMI kiosk of this repository (X11 and Chromium) and the app of
+HYDRA-UMC-DSI (cage and Flutter) both want `tty1` and the seat of the console,
+so only one of them is installed and enabled at a time. The choice is one
+setting, `HYDRA_LOCAL_SCREEN`, read by `provisioning/local_screen.sh`:
+
+| Value | Effect |
+| --- | --- |
+| `hdmi` (default) | `provisioning/install_kiosk.sh` installs the HDMI kiosk; the DSI app, if installed, is switched off |
+| `dsi` | nothing is installed here; the autologin put on `tty1` is taken back and `kiosk/install_kiosk.sh` of HYDRA-UMC-DSI owns the screen |
+| `none` | no local screen: neither of them takes `tty1`, which goes back to the console login |
+
+The value is read from, first one wins, the environment variable
+`HYDRA_LOCAL_SCREEN` (this run only), the line `HYDRA_LOCAL_SCREEN=<value>` of
+`/etc/hydra-umc/local-screen.conf` (`HYDRA_LOCAL_SCREEN_FILE` names another
+file) and then `hdmi`. `sudo provisioning/install_kiosk.sh --apply --screen dsi`
+saves the choice in that file. A value that is none of the three stops the
+installer: nothing is installed on a guess. When the saved choice is `dsi` or
+`none`, the profile of the kiosk account no longer starts X.
+
+The kiosk session runs as its own account, `hydra-umc-kiosk` (no sudo, no
+password, no SSH key); `HYDRA_KIOSK_USER` names another existing account, which
+is then the operator's decision, and `HYDRA_KIOSK_ALLOW_VT_SWITCH=1` leaves the
+switch between virtual terminals alone (the kiosk blocks it by default).
+
+The earlier second HDMI kiosk (a Qt 6 application in the main repository) was
+retired: this one is the only HDMI kiosk of the ecosystem.
+`tools/verify_kiosk_installer.py` tests the installer against stubs and runs in
+the CI. It has not run on a real CM5.
+
+## Settings of the installers
+
+Every installer is a dry run until `--apply`. The settings that change what the
+installers write are:
+
+| Setting | Used by | Meaning |
+| --- | --- | --- |
+| `HYDRA_LOCAL_SCREEN`, `HYDRA_LOCAL_SCREEN_FILE` | `install_kiosk.sh` | which local screen (see above) |
+| `HYDRA_KIOSK_USER`, `HYDRA_KIOSK_ALLOW_VT_SWITCH` | `install_kiosk.sh` | account of the kiosk session and virtual-terminal switching |
+| `HYDRA_GATEWAY_ENV` | `install_industrial_gateway.sh` | the file the gateway reads (default `/etc/hydra-umc/gateway.env`) |
+| `MQTT_TLS_DIR` | `gateway_env.py` | folder with the certificate of the broker (`server.pem`, `server.key`, made by `hydra_mqtt_tls.sh init`) |
+| `HYDRA_UMC_NEW_INSTALL_TLS=off` | `install_industrial_gateway.sh` | on a new installation, skip the certificate authority (the broker then needs `MQTT_TLS_DIR` from elsewhere) |
+| `HYDRA_UMC_LOCAL_TECHNICIAN_RESULT_KEY_FILE` | `install_local_technician.sh` | key that signs the technician's results; `--no-signing` switches it off |
+| `HYDRA_UMC_SERVER_PORT` | `provisioning/server.env.example` | port of HYDRA-UMC-SERVER on this node (default 3000) |
+| `--audit`, `--journal` | `install_local_technician.sh`, `install_node_healing.sh` | the append-only audit journal of the technician and the journal of the watchdog; both are on by default in the installers and the flags are still accepted |
+| `--profile` | `preflight_cm5.py` | the profile file to check (default `config/profiles/base.json`) |
+
+Not run on a real CM5: these are written and tested against stubs.
+
 ## Rollback and recovery
 
 Every provisioning script defaults to dry-run and requires `--apply` for a

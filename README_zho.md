@@ -68,6 +68,8 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 **诚实核查——今天真正能跑起来的部分：** 只读设备代理（`agent/src/hydra_umc_os/agent.py`：`DeviceDescriptor`/`HealthReport`，温度/存储/网络检查，配置档案加载）是真实且经过测试的（20 个单元测试，`agent/tests/test_agent.py`，`python -m unittest discover`）。`provisioning/preflight_cm5.py` 通过一个真实测试验证为幂等且无副作用——运行两次并对比输出（`tools/verify_preflight_idempotent.py`），外加 5 项真实的反向路径检查（`tools/verify_preflight_negative.py`）；`provisioning/rollback.py` 的备份/恢复机制由 8 项真实检查验证，其中包括一个真正的部分失败场景（`tools/verify_rollback.py`）；`provisioning/wifi_provision.py` 的 AP 模式回退状态机由针对一个伪造 NetworkManager 的 46 项真实检查验证，其中包括一次通过真实回环套接字完成的端到端 HTTP 往返（`tools/verify_wifi_provision.py`）——这三者都不需要 root 权限或物理 CM5 即可验证。目前唯一没有被验证过的：真实的 CM5 硬件本身。`image-builder/` 目前只是文档（一份关于可复现性说明的 README，还没有镜像组装代码）；`packages/debian/` 包含软件包 `hydra-umc-platform-base` 的维护者脚本和版权文件，`tools/build_deb.py` 会把它构建成真正的 `.deb`（纯 Python，无需 dpkg，每次字节完全相同），`tools/verify_deb_package.py` 会读回并检查；尚未在真实的 CM5 上安装过。已交付的具体内容见 `CHANGELOG.md`，这里已验证的部分与仍需物理硬件的部分之间的确切界线见 `docs/CM5_SOFTWARE_READINESS.md`。
 
+**一次只用一个本地屏幕：** 设置 `HYDRA_LOCAL_SCREEN`（默认 `hdmi`，另有 `dsi` 和 `none`；用 `provisioning/install_kiosk.sh --screen <值>` 保存到 `/etc/hydra-umc/local-screen.conf`）决定谁拥有 `tty1`：本仓库的 HDMI 展示终端、HYDRA-UMC-DSI 的应用，或者都不用，因此两个展示终端不会同时抢占控制台。参见 `docs/CM5_PROVISIONING.md`。已用桩程序测试，未在真实 CM5 上运行。
+
 ## 🧩 在 HYDRA-UMC 中的角色
 
 **HYDRA-UMC-OS** 是 CM5 节点的平台层：在 Raspberry Pi OS 之上提供配置、服务生命周期、本地身份、诊断、视觉外观和协调更新，并带有只读的设备代理。它不替代 Linux、systemd 或厂商 SDK；镜像由 `HYDRA-UMC-OS-REBUILDER` 构建。
