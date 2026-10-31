@@ -54,6 +54,15 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-datalake.service" /etc/systemd/system
 # the main service itself just above.
 install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-retention.service" /etc/systemd/system/hydra-umc-datalake-retention.service
 install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-retention.timer" /etc/systemd/system/hydra-umc-datalake-retention.timer
+# Periodic downsampling: same policy (installed, never enabled). The unit is a DRY RUN until the operator sets
+# HYDRA_UMC_DATALAKE_DOWNSAMPLE_DRY_RUN=false in /etc/hydra-umc/datalake.env, and it needs the service to run
+# with --enable-downsampling.
+if [[ -f "$SOURCE/systemd/hydra-umc-datalake-downsample.sh" ]]; then
+  install -d -o root -g root -m 0755 "$TARGET/bin"
+  install -m 0755 "$SOURCE/systemd/hydra-umc-datalake-downsample.sh" "$TARGET/bin/downsample.sh"
+  install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-downsample.service" /etc/systemd/system/hydra-umc-datalake-downsample.service
+  install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-downsample.timer" /etc/systemd/system/hydra-umc-datalake-downsample.timer
+fi
 # Real bug found live: every install_*.sh here updated the deployed
 # build/binary but never this project's OWN hydra-umc.project.json -
 # GET /api/ecosystem/status (STUDIO's own Services/AI Family panels)
@@ -68,6 +77,9 @@ echo "Datalake installed. Enable manually after review: systemctl enable --now h
 echo "Then point Server at it: uncomment HYDRA_UMC_DATALAKE_URL in /etc/hydra-umc/server.env and restart hydra-umc-server."
 echo "Optional: if any series has a real retention policy configured, also enable the daily apply timer:"
 echo "  systemctl enable --now hydra-umc-datalake-retention.timer"
+echo "Optional: periodic downsampling (needs the service started with --enable-downsampling; a DRY RUN until"
+echo "  HYDRA_UMC_DATALAKE_DOWNSAMPLE_DRY_RUN=false is set in /etc/hydra-umc/datalake.env):"
+echo "  systemctl enable --now hydra-umc-datalake-downsample.timer"
 
 # Where to look once the service runs: the port and the health route come from the service registry.
 source "$HERE/service_registry.sh"

@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **`install_datalake.sh` also installs the example downsampling units (never enabled):** the script and the `.service`/`.timer` of the data lake are copied next to the retention units; they are a dry run until the operator sets `HYDRA_UMC_DATALAKE_DOWNSAMPLE_DRY_RUN=false`, and the final message tells how to enable the timer.
+
 - **The server install checks that the frontend has its 3D models:** `install_server.sh` stops with the steps to follow when the STUDIO build it would install has no model files (they now come from one verified package and not from the repository), and `CM5_DEPLOYMENT_SEQUENCE.md` has a new step 5b with the exact order to update the CM5 (pull, bring the models with or without Internet, rebuild the frontend, install, restart). Written and checked against stubs; it has not run on a CM5.
 - **One local screen at a time:** `install_kiosk.sh` reads a new setting, `HYDRA_LOCAL_SCREEN` = `hdmi` | `dsi` | `none` (the environment, then `/etc/hydra-umc/local-screen.conf`, then `hdmi`, which is the default and what it did before), through the new `provisioning/local_screen.sh`; `--screen hdmi|dsi|none` saves the choice. It installs the HDMI kiosk only for `hdmi`: for `dsi` or `none` it takes back the autologin it put on `tty1` and installs nothing (for `none` it also switches the DSI app off and gives `tty1` back to the console login), and for `hdmi` it switches the DSI app of HYDRA-UMC-DSI off if it is installed. The kiosk account's profile no longer starts X when the saved choice is `dsi` or `none`. A value that is none of the three stops the installer. `tools/verify_kiosk_installer.py` tests it against stubs; it has not run on a CM5.
 
