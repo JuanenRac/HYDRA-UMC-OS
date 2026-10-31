@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [0.5.6] - One local screen at a time, a server install that checks the 3D models of the frontend and the example downsampling units of the data lake
+
 - **`install_datalake.sh` also installs the example downsampling units (never enabled):** the script and the `.service`/`.timer` of the data lake are copied next to the retention units; they are a dry run until the operator sets `HYDRA_UMC_DATALAKE_DOWNSAMPLE_DRY_RUN=false`, and the final message tells how to enable the timer.
 
 - **The server install checks that the frontend has its 3D models:** `install_server.sh` stops with the steps to follow when the STUDIO build it would install has no model files (they now come from one verified package and not from the repository), and `CM5_DEPLOYMENT_SEQUENCE.md` has a new step 5b with the exact order to update the CM5 (pull, bring the models with or without Internet, rebuild the frontend, install, restart). Written and checked against stubs; it has not run on a CM5.
