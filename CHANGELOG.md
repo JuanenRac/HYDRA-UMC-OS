@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **One local screen at a time:** `install_kiosk.sh` reads a new setting, `HYDRA_LOCAL_SCREEN` = `hdmi` | `dsi` | `none` (the environment, then `/etc/hydra-umc/local-screen.conf`, then `hdmi`, which is the default and what it did before), through the new `provisioning/local_screen.sh`; `--screen hdmi|dsi|none` saves the choice. It installs the HDMI kiosk only for `hdmi`: for `dsi` or `none` it takes back the autologin it put on `tty1` and installs nothing (for `none` it also switches the DSI app off and gives `tty1` back to the console login), and for `hdmi` it switches the DSI app of HYDRA-UMC-DSI off if it is installed. The kiosk account's profile no longer starts X when the saved choice is `dsi` or `none`. A value that is none of the three stops the installer. `tools/verify_kiosk_installer.py` tests it against stubs; it has not run on a CM5.
+
 ## [0.5.5] - The server environment example with the server port variable, a new installation that starts with TLS and the universal README
 
 - **The server environment example uses `HYDRA_UMC_SERVER_PORT`:** the example `server.env` sets the port of the server with the variable of the service instead of the shared `PORT`; an environment file that still has `PORT` keeps working, with a warning.

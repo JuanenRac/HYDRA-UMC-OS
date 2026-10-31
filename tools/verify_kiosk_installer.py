@@ -189,5 +189,128 @@ class AccountBlockTests(unittest.TestCase):
         self.assertIn("[dry-run] remove the kiosk line", result.stdout)
 
 
+@unittest.skipUnless(BASH, "bash is needed")
+class LocalScreenTests(unittest.TestCase):
+    """The setting that says which local screen the CM5 drives (hdmi | dsi | none): the HDMI kiosk and the DSI app both
+    want tty1, so only one of them is installed. The block runs in bash against stubs; nothing is installed."""
+
+    LIBRARY = ROOT / "provisioning" / "local_screen.sh"
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.root = Path(self._tmp.name)
+        self.stubs = self.root / "stubs"
+        self.stubs.mkdir()
+        self.log = self.root / "log.txt"
+        self.systemd = self.root / "systemd"
+        (self.systemd / "getty@tty1.service.d").mkdir(parents=True)
+        self.autologin = self.systemd / "getty@tty1.service.d" / "hydra-umc-autologin.conf"
+        self.autologin.write_text("[Service]\n", encoding="utf-8")
+        self.config = self.root / "etc" / "local-screen.conf"
+        for name in ("systemctl", "install"):
+            path = self.stubs / name
+            path.write_text('#!/usr/bin/env bash\necho "' + name + ' $*" >> "$LOG"\n', encoding="utf-8")
+            path.chmod(path.stat().st_mode | stat.S_IEXEC)
+        # the stub of install must still make a directory, as local_screen_write asks for one
+        (self.stubs / "install").write_text('#!/usr/bin/env bash\necho "install $*" >> "$LOG"\n[[ "$1" == -d ]] && mkdir -p "${@: -1}"\nexit 0\n', encoding="utf-8")
+
+    def run_block(self, apply: bool = True, request: str = "", **variables: str) -> subprocess.CompletedProcess[str]:
+        text = INSTALLER.read_text(encoding="utf-8")
+        script = (
+            'run() { if $APPLY; then "$@"; else printf "[dry-run] "; printf "%q " "$@"; printf "\n"; fi; }\n'
+            + block(text, "local screen")
+            + '\necho CONTINUED\n'
+        )
+        env = {
+            **{key: value for key, value in os.environ.items() if key != "HYDRA_LOCAL_SCREEN"},
+            "PATH": f"{posix(self.stubs)}:{os.environ['PATH']}",
+            "APPLY": "true" if apply else "false",
+            "SCREEN_REQUEST": request,
+            "ROOT": posix(ROOT),
+            "SYSTEMD_DIR": posix(self.systemd),
+            "HYDRA_LOCAL_SCREEN_FILE": posix(self.config),
+            "LOG": posix(self.log),
+            **variables,
+        }
+        return subprocess.run([BASH, "-c", "set -euo pipefail\n" + script], capture_output=True, text=True, env=env, check=False)
+
+    def logged(self) -> str:
+        return self.log.read_text(encoding="utf-8") if self.log.exists() else ""
+
+    def test_without_a_setting_the_screen_is_hdmi_and_the_installer_goes_on(self) -> None:
+        result = self.run_block()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("local screen: hdmi", result.stdout)
+        self.assertIn("CONTINUED", result.stdout)
+        self.assertTrue(self.autologin.exists())
+        self.assertIn("systemctl enable getty@tty1.service", self.logged())
+
+    def test_hdmi_switches_the_dsi_app_off_when_it_is_installed(self) -> None:
+        (self.systemd / "hydra-umc-dsi.service").write_text("[Unit]\n", encoding="utf-8")
+        result = self.run_block()
+        self.assertIn("CONTINUED", result.stdout)
+        self.assertIn("systemctl disable --now hydra-umc-dsi.service", self.logged())
+
+    def test_dsi_installs_no_kiosk_and_hands_tty1_back(self) -> None:
+        result = self.run_block(HYDRA_LOCAL_SCREEN="dsi")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("CONTINUED", result.stdout)
+        self.assertFalse(self.autologin.exists())
+        self.assertIn("kiosk/install_kiosk.sh --screen dsi", result.stdout)
+        self.assertNotIn("hydra-umc-dsi.service", self.logged())
+
+    def test_none_hands_tty1_back_and_switches_the_dsi_app_off(self) -> None:
+        (self.systemd / "hydra-umc-dsi.service").write_text("[Unit]\n", encoding="utf-8")
+        result = self.run_block(HYDRA_LOCAL_SCREEN="none")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("CONTINUED", result.stdout)
+        self.assertFalse(self.autologin.exists())
+        log = self.logged()
+        self.assertIn("systemctl disable --now hydra-umc-dsi.service", log)
+        self.assertIn("systemctl enable getty@tty1.service", log)
+
+    def test_a_value_that_is_not_one_of_the_three_stops_everything(self) -> None:
+        for value in ("both", "HDMI-1", "ninguna", "1"):
+            result = self.run_block(HYDRA_LOCAL_SCREEN=value)
+            self.assertEqual(result.returncode, 2, value)
+            self.assertNotIn("CONTINUED", result.stdout)
+            self.assertIn("hdmi, dsi or none", result.stderr)
+            self.assertTrue(self.autologin.exists(), value)
+
+    def test_the_saved_file_is_read_and_the_environment_wins_over_it(self) -> None:
+        self.config.parent.mkdir(parents=True)
+        self.config.write_text("# comment\nHYDRA_LOCAL_SCREEN=dsi\n", encoding="utf-8")
+        self.assertNotIn("CONTINUED", self.run_block().stdout)
+        result = self.run_block(HYDRA_LOCAL_SCREEN="hdmi")
+        self.assertIn("CONTINUED", result.stdout)
+
+    def test_screen_saves_the_choice_and_a_dry_run_does_not(self) -> None:
+        dry = self.run_block(apply=False, request="dsi")
+        self.assertEqual(dry.returncode, 0, dry.stderr)
+        self.assertFalse(self.config.exists())
+        self.assertIn("[dry-run] save HYDRA_LOCAL_SCREEN=dsi", dry.stdout)
+        self.assertTrue(self.autologin.exists(), "a dry run takes nothing back")
+        result = self.run_block(request="dsi")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("HYDRA_LOCAL_SCREEN=dsi", self.config.read_text(encoding="utf-8"))
+        self.assertEqual(self.run_block(request="").returncode, 0)  # the saved choice is read back without --screen
+
+    def test_a_request_beats_the_environment(self) -> None:
+        result = self.run_block(request="none", HYDRA_LOCAL_SCREEN="hdmi")
+        self.assertIn("local screen: none", result.stdout)
+
+    def test_the_profile_of_the_kiosk_account_does_not_start_x_for_another_screen(self) -> None:
+        text = INSTALLER.read_text(encoding="utf-8")
+        self.assertIn('grep -Eqx "HYDRA_LOCAL_SCREEN=(dsi|none)" /etc/hydra-umc/local-screen.conf', text)
+
+    def test_nothing_in_the_installer_refers_to_the_retired_qt_shell(self) -> None:
+        self.assertNotIn("hmi_qt6", INSTALLER.read_text(encoding="utf-8"))
+        self.assertNotIn("hmi_qt6", (ROOT / "provisioning" / "kiosk" / "kiosk-session.sh").read_text(encoding="utf-8"))
+
+    def test_the_library_has_valid_syntax(self) -> None:
+        self.assertEqual(subprocess.run([BASH, "-n", self.LIBRARY.as_posix()], capture_output=True, text=True).returncode, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

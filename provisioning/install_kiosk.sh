@@ -12,12 +12,28 @@
 # minimal X11 session running exactly one thing - Chromium in kiosk mode -
 # that shows the actual SVG file first (untouched, not re-implemented) and
 # then hands off to HYDRA-UMC-SERVER's own STUDIO UI once it responds, both
-# in the same fullscreen window. Deliberately not the future hmi_qt6 native
-# path (see HYDRA-UMC/src/cm5_host/hmi_qt6) - that needs its own Qt6
-# validation gate; this is the real, working HDMI-out kiosk in the meantime.
+# in the same fullscreen window. This is the only HDMI kiosk of the ecosystem.
+#
+# Usage: install_kiosk.sh [--apply] [--screen hdmi|dsi|none]
+# Which local screen the CM5 drives is one setting (provisioning/local_screen.sh):
+# hdmi (the default) is this kiosk, dsi leaves tty1 to the app of HYDRA-UMC-DSI
+# and none leaves it to nobody. This script installs only for hdmi; for the other
+# two it hands tty1 back, so the two kiosks never claim the console together.
 set -euo pipefail
 APPLY=false
-[[ "${1:-}" == "--apply" ]] && APPLY=true
+SCREEN_REQUEST=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --apply) APPLY=true ;;
+    --screen)
+      shift
+      SCREEN_REQUEST="${1:-}"
+      [[ -n "$SCREEN_REQUEST" ]] || { echo "--screen needs hdmi, dsi or none." >&2; exit 2; }
+      ;;
+    *) echo "Unknown option: $1 (use --apply and/or --screen hdmi|dsi|none)." >&2; exit 2 ;;
+  esac
+  shift
+done
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # The session on the HDMI screen runs as its OWN account, hydra-umc-kiosk: no sudo, no password, no SSH key. It used to
@@ -27,6 +43,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KIOSK_USER="${HYDRA_KIOSK_USER:-hydra-umc-kiosk}"
 PREVIOUS_KIOSK_USER="${SUDO_USER:-}"
 KIOSK_DIR=/opt/hydra-umc/kiosk
+SYSTEMD_DIR="${HYDRA_SYSTEMD_DIR:-/etc/systemd/system}"
 BOOT_CONFIG=/boot/firmware/config.txt
 BOOT_CMDLINE=/boot/firmware/cmdline.txt
 run() { if $APPLY; then "$@"; else printf '[dry-run] '; printf '%q ' "$@"; printf '\n'; fi; }
@@ -37,6 +54,43 @@ echo "  HDMI kiosk: HYDRA_UMC_SPLASHSCREEN.svg, then STUDIO fullscreen."
 echo "  Copyright (C) 2026 JuanenRac (Electro Hobby 3D)"
 echo "  <electrohobby3d@gmail.com> | GPL-3.0-or-later - see LICENSE"
 echo " ==============================================================="
+
+# --- local screen begin
+# One local screen at a time: the HDMI kiosk here and the DSI app (cage) both want tty1 and the seat of the console.
+# --screen saves the choice; without it the saved one (or HYDRA_LOCAL_SCREEN, or hdmi) is used.
+LOCAL_SCREEN_LIB="${LOCAL_SCREEN_LIB:-$ROOT/provisioning/local_screen.sh}"
+# shellcheck source=local_screen.sh
+source "$LOCAL_SCREEN_LIB"
+[[ -z "$SCREEN_REQUEST" ]] || HYDRA_LOCAL_SCREEN="$SCREEN_REQUEST"
+SCREEN="$(local_screen_read)" || exit 2
+echo "local screen: $SCREEN"
+if [[ -n "$SCREEN_REQUEST" ]]; then
+  if $APPLY; then
+    local_screen_write "$SCREEN"
+    echo "saved HYDRA_LOCAL_SCREEN=$SCREEN in $HYDRA_LOCAL_SCREEN_FILE"
+  else
+    echo "[dry-run] save HYDRA_LOCAL_SCREEN=$SCREEN in $HYDRA_LOCAL_SCREEN_FILE"
+  fi
+fi
+if [[ "$SCREEN" != hdmi ]]; then
+  # Not the HDMI kiosk: take back the autologin it put on tty1 (the account and the files stay), and install nothing.
+  run rm -f "$SYSTEMD_DIR/getty@tty1.service.d/hydra-umc-autologin.conf"
+  run systemctl daemon-reload
+  if [[ "$SCREEN" == none ]]; then
+    # No local screen at all: the DSI app does not keep tty1 either, and a plain login prompt is the console again.
+    if [[ -f "$SYSTEMD_DIR/hydra-umc-dsi.service" ]]; then run systemctl disable --now hydra-umc-dsi.service || true; fi
+    run systemctl enable getty@tty1.service || true
+    echo "No local screen: the HDMI kiosk is not installed and the DSI app is switched off."
+  else
+    echo "The DSI screen is chosen: the HDMI kiosk is not installed. Run kiosk/install_kiosk.sh --screen dsi of HYDRA-UMC-DSI to install the app."
+  fi
+  exit 0
+fi
+# The HDMI kiosk is chosen: the DSI app (cage) must not keep tty1, and the console login service is needed again.
+if [[ -f "$SYSTEMD_DIR/hydra-umc-dsi.service" ]]; then run systemctl disable --now hydra-umc-dsi.service || true; fi
+run systemctl enable getty@tty1.service || true
+# --- local screen end
+
 run apt-get update
 run apt-get install -y --no-install-recommends \
   xserver-xorg x11-xserver-utils xinit openbox picom chromium unclutter
@@ -227,16 +281,16 @@ run install -m 0755 "$ROOT/provisioning/kiosk/kiosk-session.sh" "$KIOSK_DIR/kios
 # line itself is agetty's own separate, hardcoded output and briefly
 # shows regardless, autologin or not - real, seen live, and small enough
 # next to the other fixes above to not warrant chasing further.
-run install -d -m 0755 /etc/systemd/system/getty@tty1.service.d
+run install -d -m 0755 "$SYSTEMD_DIR/getty@tty1.service.d"
 run install -d -o "$KIOSK_USER" -g "$KIOSK_USER" -m 0700 "$KIOSK_HOME"
 if $APPLY; then
-  cat > /etc/systemd/system/getty@tty1.service.d/hydra-umc-autologin.conf <<EOF
+  cat > "$SYSTEMD_DIR/getty@tty1.service.d/hydra-umc-autologin.conf" <<EOF
 [Service]
 ExecStart=
 ExecStart=-/sbin/agetty --autologin $KIOSK_USER --noclear --noissue %I \$TERM
 EOF
 else
-  echo "[dry-run] write /etc/systemd/system/getty@tty1.service.d/hydra-umc-autologin.conf (autologin: $KIOSK_USER, --noissue)"
+  echo "[dry-run] write $SYSTEMD_DIR/getty@tty1.service.d/hydra-umc-autologin.conf (autologin: $KIOSK_USER, --noissue)"
 fi
 run systemctl daemon-reload
 
@@ -254,7 +308,7 @@ run install -o "$KIOSK_USER" -g "$KIOSK_USER" -m 0644 /dev/null "$KIOSK_HOME/.hu
 # by console=/quiet/fbcon settings) writes its own startup banner to
 # whatever's on stdout/stderr when startx launches it, and that flashed on
 # screen briefly every boot until this was redirected away.
-PROFILE_LINE='[ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && exec startx /opt/hydra-umc/kiosk/kiosk-session.sh -- -verbose 0 -logverbose 0 &> /dev/null'
+PROFILE_LINE='[ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && ! grep -Eqx "HYDRA_LOCAL_SCREEN=(dsi|none)" /etc/hydra-umc/local-screen.conf 2>/dev/null && exec startx /opt/hydra-umc/kiosk/kiosk-session.sh -- -verbose 0 -logverbose 0 &> /dev/null'
 if $APPLY; then
   touch "$KIOSK_HOME/.bash_profile"
   # Drop any earlier version of this exact line (e.g. before the &> /dev/null

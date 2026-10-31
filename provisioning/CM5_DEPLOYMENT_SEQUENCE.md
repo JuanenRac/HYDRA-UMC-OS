@@ -208,6 +208,13 @@ Chromium policy turns off the developer tools, the password manager and sign-in.
 The browser profile is new, so STUDIO asks for its login once after the change.
 None of this has run on a real HDMI screen yet.
 
+Which local screen the node drives is one setting, `HYDRA_LOCAL_SCREEN` = `hdmi` | `dsi` | `none`, read from the
+environment, then from `/etc/hydra-umc/local-screen.conf`, then `hdmi` (the default). The HDMI kiosk above and the
+DSI app of HYDRA-UMC-DSI (`cage`) both want `tty1`, so only one is installed: `install_kiosk.sh --screen hdmi|dsi|none`
+saves the choice and, for `dsi` or `none`, takes back the autologin it put on `tty1` and installs nothing; the DSI
+installer (`kiosk/install_kiosk.sh --screen dsi`) does the same from its side. A value that is none of the three
+stops the installer. Tested against stubs only; this has not run on a CM5.
+
 **Gate 6:** branding is cosmetic, reversible and cannot block a normal boot.
 
 ## 7. Enable hardware-dependent profiles one at a time
