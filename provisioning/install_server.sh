@@ -17,6 +17,9 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"; SOURCE="$ROOT/HYDRA-UMC-SERVER"; TA
 OS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SERVER_USER="hydra-umc-server"
 [[ -d "$SOURCE/dist" && -d "$SOURCE/public" && -f "$SOURCE/package.json" && -f "$SOURCE/package-lock.json" && -f "$SOURCE/systemd/hydra-umc-server.service" ]] || { echo "HYDRA-UMC-SERVER build or service unit is incomplete: $SOURCE" >&2; exit 2; }
+# The 3D models are not in the STUDIO repository: they are fetched into its build by the verified mesh package
+# (HYDRA-UMC-STUDIO docs/MESH_PACKAGE.md). A frontend without them would install and then show empty viewers.
+[[ -n "$(find "$SOURCE/public/models" -iname '*.stl' -print -quit 2>/dev/null)" ]] || { echo "The frontend in $SOURCE/public has no 3D models. Run: node HYDRA-UMC-STUDIO/scripts/mesh_pack.mjs ensure --source auto (offline: copy the package to ~/.cache/hydra-umc/meshes or set HYDRA_UMC_MESH_PACKAGE), then HYDRA-UMC-SERVER/build-frontend.sh, then rerun this." >&2; exit 2; }
 # The env file is created from the template when it is missing, and every example value of the template
 # (JWT_SECRET, the bootstrap administrator password, the voice relay token) is replaced by a random one of
 # this device: a server must never start with the published placeholders. A value the operator already

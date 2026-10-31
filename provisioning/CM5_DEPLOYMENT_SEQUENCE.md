@@ -175,6 +175,39 @@ Hailo STT/TTS stack.
 **Gate 5:** Server survives a reboot, reports healthy locally and has no
 unintended public network exposure.
 
+## 5b. Update the CM5 when the STUDIO frontend changes (the 3D models)
+
+The STUDIO build served by HYDRA-UMC-SERVER carries the 3D models (STL), but the
+repository of STUDIO no longer holds them: they come from one verified package
+(`meshes.pack.json`, published in HYDRA-UMC-MESHES; see `docs/MESH_PACKAGE.md` of
+HYDRA-UMC-STUDIO). A `git pull` alone therefore does not bring them. Run, in this
+order, on the CM5:
+
+1. `git pull` in `HYDRA-UMC-SDK`, `HYDRA-UMC-STUDIO`, `HYDRA-UMC-SERVER` and
+   `HYDRA-UMC-OS`.
+2. Bring the models: `cd HYDRA-UMC-STUDIO && node scripts/mesh_pack.mjs ensure --source auto`.
+   With Internet it downloads the package (about 45 MB) into
+   `~/.cache/hydra-umc/meshes` and verifies its SHA-256 and that of every mesh; the
+   next update reuses it. **Without Internet:** download `hydra-umc-meshes-1.tgz`
+   (the file named in `meshes.pack.json`) on another computer, check its SHA-256
+   against `pack.sha256`, copy it to `~/.cache/hydra-umc/meshes/` or set
+   `HYDRA_UMC_MESH_PACKAGE=/path/to/the/file`, and run the same command.
+3. Rebuild the frontend: `bash HYDRA-UMC-SERVER/build-frontend.sh` (it repeats the
+   previous step, runs `npm run build` of STUDIO, whose `prebuild` step also
+   prepares the models, and copies `dist/` into the server's `public/`). The same
+   applies to any `rebuild_frontend.sh` wrapper kept in the home folder: it must end
+   up running this build.
+4. `sudo bash provisioning/install_server.sh --apply` (or the
+   `install_cm5_base.sh --apply --with-server` form). It stops with a message when
+   the frontend to install has no models, instead of installing a viewer that shows
+   nothing.
+5. Restart the server (`sudo systemctl restart hydra-umc-server`), and on a full
+   update reboot the CM5 as usual.
+
+**Gate 5b:** `https://<cm5>/` shows a robot and a machine with their 3D models, and
+`curl --fail http://127.0.0.1:3000/models/machine-cnc/juanencnc/base.stl -o /dev/null`
+answers 200.
+
 ## 6. Apply visual branding only after recovery is proven
 
 The canonical asset is `HYDRA_UMC_SPLASHSCREEN.svg`. The boot implementation
