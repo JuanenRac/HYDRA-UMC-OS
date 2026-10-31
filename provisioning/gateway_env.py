@@ -24,7 +24,6 @@ import json
 import os
 import secrets
 import stat
-import sys
 from pathlib import Path
 
 BRIDGES = ("cnc", "laser", "openpnp", "printer3d", "ros2", "amr")

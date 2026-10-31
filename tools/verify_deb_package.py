@@ -127,7 +127,7 @@ def main() -> int:
             expect(f"usr/share/hydra-umc/config/profiles/{profile}" in files, f"profile {profile} must be installed")
         installed_manifest = json.loads(files["opt/hydra-umc/os-agent/hydra-umc.project.json"][1])
         expect(installed_manifest["version"] == manifest["version"], "the installed manifest must carry the version")
-        expect(b"GPL-3.0" in files[f"usr/share/doc/hydra-umc-platform-base/copyright"][1], "the copyright file must name the licence")
+        expect(b"GPL-3.0" in files["usr/share/doc/hydra-umc-platform-base/copyright"][1], "the copyright file must name the licence")
 
         shell = shutil.which("sh")
         if shell:

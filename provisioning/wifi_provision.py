@@ -45,7 +45,6 @@ import json
 import os
 import secrets
 import subprocess
-import sys
 import time
 from pathlib import Path
 from dataclasses import dataclass

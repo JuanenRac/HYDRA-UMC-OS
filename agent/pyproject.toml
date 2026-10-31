@@ -14,3 +14,6 @@ hydra-umc-agent = "hydra_umc_os.agent:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.mypy]
+ignore_missing_imports = true

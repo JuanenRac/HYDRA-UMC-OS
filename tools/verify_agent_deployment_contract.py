@@ -71,7 +71,7 @@ def main() -> int:
 
     if f'SERVICE_USER="{SERVICE_USER}"' not in first_boot:
         fail("first_boot service account differs from the systemd unit")
-    if f'--shell /usr/sbin/nologin "$SERVICE_USER"' not in first_boot:
+    if '--shell /usr/sbin/nologin "$SERVICE_USER"' not in first_boot:
         fail("first_boot must create a non-login service account")
     if f'cat >{AGENT_COMMAND} <<' not in installer:
         fail("installer does not create the command used by systemd")
