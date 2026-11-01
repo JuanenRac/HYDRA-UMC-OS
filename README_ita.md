@@ -54,6 +54,10 @@ Ogni riga è una parte di questo repository e il semaforo dice a che punto è og
 | Software | 🟡 | Funziona per il suo scopo principale; la verifica di onestà qui sopra elenca ciò che manca ancora |
 | Test | 🟢 | 20 test automatici, eseguiti a ogni modifica |
 | Hardware reale | 🟡 | Eseguito su un banco di prova: la verifica di onestà qui sopra indica quali parti hanno girato su hardware reale |
+| Integrazione | 🟡 | I suoi messaggi e le sue rotte sono verificati rispetto ai contratti condivisi dell'SDK; non ha ancora funzionato insieme all'apparecchiatura reale |
+| Sicurezza | 🟠 | Esistono alcune protezioni (un token, limiti su ciò che accetta) ma non sono tutte coperte da test; nessuno al di fuori del progetto le ha riviste |
+| Distribuzione | 🟠 | Pubblicato come release; l'installazione su una macchina pulita è documentata ma non registrata |
+| Esercizio | 🟠 | Scrive log; non ha ancora un endpoint di metriche o di stato |
 | Documentazione | 🟢 | README in otto lingue, verificato rispetto al manifesto a ogni modifica |
 
 ## 🎯 Panoramica

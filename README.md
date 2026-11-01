@@ -54,6 +54,10 @@ Each line is one part of this repository and the light says how far it is today.
 | Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
 | Tests | 🟢 | 20 automated tests, run on every change |
 | Real hardware | 🟡 | Run on a bench setup: the honesty check above says which parts ran on real hardware |
+| Integration | 🟡 | Its messages and routes are checked against the shared contracts of the SDK; it has not run together with the real equipment |
+| Security | 🟠 | Some protections exist (a token, limits on what it accepts) but they are not all covered by tests; nobody outside the project has reviewed them |
+| Deployment | 🟠 | Published as a release; installing it on a clean machine is documented but not recorded |
+| Operation | 🟠 | It writes logs; it has no metrics or health endpoint yet |
 | Documentation | 🟢 | README in eight languages, checked against the manifest on every change |
 
 ## 🎯 Overview
