@@ -40,3 +40,5 @@ systemctl daemon-reload
 deploy_finish HYDRA-UMC-VOICE-UI "$TARGET"
 echo "voice-ui installed. Enable manually after review: systemctl enable --now hydra-umc-voice-ui"
 if declare -F hook_after_install >/dev/null; then hook_after_install; fi
+source "$HERE/service_registry.sh"
+announce_health HYDRA-UMC-VOICE-UI

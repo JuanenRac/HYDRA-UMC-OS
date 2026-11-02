@@ -7,6 +7,7 @@
   "data_dir": "data",
   "hook_dir": "build_hooks",
   "preflights": ["node-healing"],
+  "no_health_announce": ["node-healing"],
   "hooks": [
     "anomaly-detector", "cognitive-node", "dashboard-ai", "datalake", "detection-hef", "docs-qa", "hil-bridge",
     "job-dispatcher", "node-healing", "orchestrator", "production-reports", "safety-zones", "semantic-planner", "server",

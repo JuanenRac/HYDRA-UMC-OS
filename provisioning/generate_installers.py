@@ -157,7 +157,7 @@ def generate(row: dict[str, Any], config: dict[str, Any]) -> str:
         f'echo "{short} installed. Enable manually after review: systemctl enable --now {str(main_unit).removesuffix(".service")}"',
         'if declare -F hook_after_install >/dev/null; then hook_after_install; fi',
     ]
-    if row.get("unit"):  # only a service of the registry has a port and a health route to announce
+    if short not in config["no_health_announce"]:  # the programs that are not a service of the registry have no health route to announce
         lines += ['source "$HERE/service_registry.sh"', f"announce_health {name}"]
     lines.append("")
     return "\n".join(lines)
