@@ -2,6 +2,14 @@
   "format": "hydra-installer-generation/1",
   "allow_replace_existing": false,
   "copy_dirs": ["src"],
+  "no_copy_dirs": ["dashboard-ai", "hil-bridge", "job-dispatcher", "node-healing", "orchestrator", "server", "swarm-sync", "telemetry-collector", "twin"],
+  "home_in_data": ["server"],
   "data_dir": "data",
-  "hook_dir": "build_hooks"
+  "hook_dir": "build_hooks",
+  "preflights": ["node-healing"],
+  "hooks": [
+    "anomaly-detector", "cognitive-node", "dashboard-ai", "datalake", "detection-hef", "docs-qa", "hil-bridge",
+    "job-dispatcher", "node-healing", "orchestrator", "production-reports", "safety-zones", "semantic-planner", "server",
+    "swarm-sync", "telemetry-collector", "twin", "vision-node", "visual-servoing-api", "vla-engine", "voice-ui"
+  ]
 }

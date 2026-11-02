@@ -127,7 +127,7 @@ HYDRA-UMC-OS/
 ├── agent/                     只读的 Python 设备描述符与健康状态代理，含单元测试。
 ├── systemd/                   强化的 `hydra-umc-agent.service` 和 `hydra-umc-wifi-provision.service` 生命周期单元。
 ├── config/                    默认模式和非秘密配置。
-├── provisioning/              CM5 的安装程序 (每个服务一个)、首次启动、诊断、恢复、设置的备份与还原、防火墙、MQTT 的 TLS、展台与启动画面、polkit 规则以及安装检查。
+├── provisioning/              CM5 的安装程序 (每个服务一个，由安装程序表生成，需要编译或下载的部分由构建钩子完成)、首次启动、诊断、恢复、设置的备份与还原、防火墙、MQTT 的 TLS、展台与启动画面、polkit 规则以及安装检查。
 ├── tools/                     打包与发布工具 (`build_deb.py`、`package_component.py`)、配置脚本的 `verify_*.py` 检查以及共享的 CI 检查。
 ├── .github/                   CI 工作流和 Issue 模板
 ├── images/                    横幅和 README 的图片
@@ -159,6 +159,8 @@ HYDRA-UMC-OS/
 安装预检（`provisioning/preflight_cm5.py`）已通过一项真实测试证明其具有幂等性且无副作用——连续运行两次会产生逐字节相同的输出，并且不会触及此仓库中的任何文件——而一个真实的、与主机无关的备份/回滚机制（`provisioning/rollback.py`）保护着 `install_local_agent.sh` 在每次运行时无条件覆盖的那一个系统文件。两者均已在无需 root 权限或 CM5 的情况下完成验证——参见 `tools/verify_preflight_idempotent.py` 和 `tools/verify_rollback.py`。
 
 **WiFi 首次接触配网同样是真实的**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——为尚无已知网络的无头 CM5 提供真实的 NetworkManager AP 模式回退：启动一个真实的热点（`nmcli device wifi hotspot`），操作员的手机/笔记本电脑可以加入该热点，通过一个小型本地 HTTP 表单提交真实的目标 SSID/密码，成功后关闭 AP 并加入真实网络，失败时恢复 AP，使设备永远不会被困住。该状态机针对一个伪造的 NetworkManager 进行了完整的单元测试，包括通过真实回环套接字进行的真实端到端 HTTP 往返——参见 `tools/verify_wifi_provision.py`。由 `install_cm5_base.sh` 安装，但刻意未自动启用，因为它只应在确实需要的设备上运行：其接入点密码和一次性设置码会在每台设备首次启动时生成，并只从日志中读取一次——参见 `provisioning/CM5_DEPLOYMENT_SEQUENCE.md` 第 3 节。
+
+**安装程序由清单生成。** 各程序的 `install_*.sh` 由 `provisioning/generate_installers.py` 根据表 `provisioning/install_plan.json` (它本身读取自清单和服务注册表) 写出，因此共同步骤 (检查、服务用户、程序文件夹、单元文件、项目清单、部署契约) 不会在程序之间产生偏差。程序在此之外需要的内容 (编译、获取工具链、创建设置文件) 放在 `provisioning/build_hooks/<名称>.sh` 中，由生成的脚本载入；当需要钩子的程序没有钩子，或安装程序与生成器写出的内容不同，`tools/verify_installer_generation.py` 就会失败。要修改安装程序，请修改表或其钩子，然后运行 `python provisioning/generate_installers.py --replace`；表中信息过少的程序保留自己的脚本。
 
 **密钥按设备生成，绝不从模板沿用。** `install_server.sh` 和 `install_voice_ui.sh` 在 env 文件缺失时会根据示例创建，并把每个示例值（`JWT_SECRET`、首个管理员密码、语音中继令牌）替换为本设备的随机值（`provisioning/generate_secrets.py`；运维人员已选定的值会保留，管理员密码只显示一次），随后如果仍残留示例值或过短的密钥就拒绝继续；`preflight_cm5.py` 会拒绝仍含有示例值的 `/etc/hydra-umc/*.env`。`install_industrial_gateway.sh` 会把该栈的密钥写到 `/etc/hydra-umc/gateway.env`（仅 root 可读，位于用户的检出之外，由 compose 通过 `--env-file` 读取；旧版本留在检出中的 `.env` 会被移动到那里）（`provisioning/gateway_env.py`：网关密钥，以及每个设备桥接器各一份 MQTT 凭据和 ACL 规则）。Wi-Fi 配置网络的源码中不再有密码：每台设备在首次启动时生成自己的密码和一次性配置码（在日志中读取一次，写到标签上），表单要求输入配置码（连续五次错误后锁定一分钟），配置网络在每次启动后只开放 30 分钟，表单会拒绝过大的请求。由 `tools/verify_generate_secrets.py`、`tools/verify_gateway_env.py` 和 `tools/verify_wifi_provision.py` 验证。 主机名和配网网络名称的末尾也带有取自设备的六个字符（Raspberry Pi 序列号，否则为 MAC 地址），因此用同一镜像烧录的两台设备不再共用同一个名称（`provisioning/device_identity.py`，由 `tools/verify_device_identity.py` 检查）；`HYDRA_UMC_DEVICE_SUFFIX=off` 保留固定名称，您自己选定的名称永远不会被更改。
 

@@ -182,14 +182,14 @@
             "pt": "Instaladores da CM5"
           },
           "tree_desc": {
-            "en": "Installers of the CM5 (one per service), first boot, diagnostics, recovery, backup and restore of the settings, firewall, TLS for MQTT, kiosk and splash screen, polkit rules and the checks of an installation.",
-            "es": "Instaladores de la CM5 (uno por servicio), primer arranque, diagnóstico, recuperación, copia y restauración de los ajustes, cortafuegos, TLS para MQTT, quiosco y pantalla de arranque, reglas de polkit y las comprobaciones de una instalación.",
-            "de": "Installer der CM5 (einer je Dienst), Erststart, Diagnose, Wiederherstellung, Sicherung und Rücksicherung der Einstellungen, Firewall, TLS für MQTT, Kiosk und Startbildschirm, polkit-Regeln und die Prüfungen einer Installation.",
-            "fr": "Installateurs de la CM5 (un par service), premier démarrage, diagnostic, récupération, sauvegarde et restauration des réglages, pare-feu, TLS pour MQTT, kiosque et écran de démarrage, règles polkit et les vérifications d'une installation.",
-            "it": "Installer della CM5 (uno per servizio), primo avvio, diagnostica, ripristino, backup e ripristino delle impostazioni, firewall, TLS per MQTT, kiosk e schermata di avvio, regole polkit e i controlli di un'installazione.",
-            "ja": "CM5 のインストーラー (サービスごとに1つ)、初回起動、診断、復旧、設定のバックアップと復元、ファイアウォール、MQTT 用 TLS、キオスクとスプラッシュ画面、polkit ルール、インストールの検査。",
-            "zh": "CM5 的安装程序 (每个服务一个)、首次启动、诊断、恢复、设置的备份与还原、防火墙、MQTT 的 TLS、展台与启动画面、polkit 规则以及安装检查。",
-            "pt": "Instaladores da CM5 (um por serviço), primeiro arranque, diagnóstico, recuperação, cópia e restauro das definições, firewall, TLS para MQTT, quiosque e ecrã de arranque, regras do polkit e as verificações de uma instalação."
+            "en": "Installers of the CM5 (one per service, generated from the table of installers, with a build hook for what has to be compiled or fetched), first boot, diagnostics, recovery, backup and restore of the settings, firewall, TLS for MQTT, kiosk and splash screen, polkit rules and the checks of an installation.",
+            "es": "Instaladores de la CM5 (uno por servicio, generados desde la tabla de instaladores, con un gancho de compilación para lo que hay que compilar o descargar), primer arranque, diagnóstico, recuperación, copia y restauración de los ajustes, cortafuegos, TLS para MQTT, quiosco y pantalla de arranque, reglas de polkit y las comprobaciones de una instalación.",
+            "de": "Installer der CM5 (einer je Dienst, aus der Tabelle der Installer erzeugt, mit einem Build-Hook für alles, was kompiliert oder geladen werden muss), Erststart, Diagnose, Wiederherstellung, Sicherung und Rücksicherung der Einstellungen, Firewall, TLS für MQTT, Kiosk und Startbildschirm, polkit-Regeln und die Prüfungen einer Installation.",
+            "fr": "Installateurs de la CM5 (un par service, générés à partir de la table des installateurs, avec un crochet de compilation pour ce qui doit être compilé ou téléchargé), premier démarrage, diagnostic, récupération, sauvegarde et restauration des réglages, pare-feu, TLS pour MQTT, kiosque et écran de démarrage, règles polkit et les vérifications d'une installation.",
+            "it": "Installer della CM5 (uno per servizio, generati dalla tabella degli installer, con un hook di compilazione per ciò che va compilato o scaricato), primo avvio, diagnostica, ripristino, backup e ripristino delle impostazioni, firewall, TLS per MQTT, kiosk e schermata di avvio, regole polkit e i controlli di un'installazione.",
+            "ja": "CM5 のインストーラー (サービスごとに1つ。インストーラーの表から生成され、コンパイルやダウンロードが必要なものにはビルドフック付き)、初回起動、診断、復旧、設定のバックアップと復元、ファイアウォール、MQTT 用 TLS、キオスクとスプラッシュ画面、polkit ルール、インストールの検査。",
+            "zh": "CM5 的安装程序 (每个服务一个，由安装程序表生成，需要编译或下载的部分由构建钩子完成)、首次启动、诊断、恢复、设置的备份与还原、防火墙、MQTT 的 TLS、展台与启动画面、polkit 规则以及安装检查。",
+            "pt": "Instaladores da CM5 (um por serviço, gerados a partir da tabela de instaladores, com um gancho de compilação para o que tem de ser compilado ou descarregado), primeiro arranque, diagnóstico, recuperação, cópia e restauro das definições, firewall, TLS para MQTT, quiosque e ecrã de arranque, regras do polkit e as verificações de uma instalação."
           }
         },
         {

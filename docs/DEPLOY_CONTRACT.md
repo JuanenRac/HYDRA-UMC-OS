@@ -63,6 +63,15 @@ with the reason it does not (the agent of the node and the Wi-Fi setup service c
 A change that an installer written for contract 1 could not follow is contract 2: the lib and the command refuse an installer that declares another number, before anything is
 installed, and the table says which installers have moved. Contract 1 is not changed in place.
 
+## How the installers are produced
+
+The `install_*.sh` of the programs that have a complete row in the table (repository, folder, user, units, contract 1) are generated, not edited: `python provisioning/generate_installers.py --replace`
+writes them from `provisioning/install_plan.json` and `config/installer_generation.json`, so the guards, the service user, the program folder, the unit files, the project manifest and the calls
+of the contract are the same in every one. What a program needs beyond that is a hook, `provisioning/build_hooks/<folder>.sh`, sourced as root after the service user and the folder exist and
+before the shared copy step (compile, fetch the toolchain, install packages, create the settings file, lay out the workspace); it may define `hook_after_install`, which runs once the program
+is installed, and it must not call `sudo`. `<folder>.preflight.sh` reads the options of the installer before the dry-run policy. `tools/verify_installer_generation.py` fails when a program that
+needs a hook has none or when an installer differs from what the generator writes. The installers whose row is incomplete (the base system, the kiosk, the splash screen, the local agent, the
+Wi-Fi setup, the industrial gateway, the technician, the vision streamer) keep their own script.
 ## What it does not do
 
 * It does not deploy a signed package: that is `tools/deploy_release.py`, which keeps its own `releases/current` layout and is not wired to the units yet.

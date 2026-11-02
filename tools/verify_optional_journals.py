@@ -23,6 +23,17 @@ HEALING = ROOT / "provisioning" / "install_node_healing.sh"
 BASH = shutil.which("bash")
 
 
+def installer_text(script: Path) -> str:
+    """The text of an installer with its build hook and its preflight (the generated installers keep what is specific to a program there)."""
+    name = script.stem.removeprefix("install_").replace("_", "-")
+    parts = [script.read_text(encoding="utf-8")]
+    for suffix in (".sh", ".preflight.sh"):
+        hook = script.parent / "build_hooks" / f"{name}{suffix}"
+        if hook.is_file():
+            parts.append(hook.read_text(encoding="utf-8"))
+    return "\n".join(parts)
+
+
 def run(script: Path, *arguments: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     import os
 
@@ -49,16 +60,16 @@ class OptionalJournalTests(unittest.TestCase):
 
     def test_both_default_to_on_and_can_be_switched_off(self) -> None:
         self.assertIn('AUDIT="${HYDRA_UMC_LOCAL_TECHNICIAN_AUDIT:-on}"', TECHNICIAN.read_text(encoding="utf-8"))
-        self.assertIn('JOURNAL="${HYDRA_UMC_NODE_HEALING_JOURNAL:-on}"', HEALING.read_text(encoding="utf-8"))
+        self.assertIn('JOURNAL="${HYDRA_UMC_NODE_HEALING_JOURNAL:-on}"', installer_text(HEALING))
         for script, option in ((TECHNICIAN, "--no-audit"), (HEALING, "--no-journal")):
-            self.assertIn(f"{option})", script.read_text(encoding="utf-8"))
+            self.assertIn(f"{option})", installer_text(script))
 
     def test_the_settings_file_is_documented_and_the_line_is_active_unless_switched_off(self) -> None:
         text = TECHNICIAN.read_text(encoding="utf-8")
         self.assertIn("$AUDIT_LINE", text)
         self.assertIn("/etc/hydra-umc-local-technician/local-technician.env", text)
         self.assertIn('echo "$AUDIT_LINE" >>"$SETTINGS_FILE"', text)
-        healing = HEALING.read_text(encoding="utf-8")
+        healing = installer_text(HEALING)
         self.assertIn("$JOURNAL_LINE", healing)
         self.assertIn("/etc/hydra-umc-node-healing/journal.env", healing)
         self.assertIn('echo "$JOURNAL_LINE" >>"$JOURNAL_ENV"', healing)
@@ -66,7 +77,7 @@ class OptionalJournalTests(unittest.TestCase):
     def test_switching_it_off_takes_the_active_line_out_and_keeps_what_was_recorded(self) -> None:
         # the rewrite is a sed that comments the line; it never removes the journal file or its directory
         for script in (TECHNICIAN, HEALING):
-            text = script.read_text(encoding="utf-8")
+            text = installer_text(script)
             self.assertIn("sed -i", text)
             self.assertIn("Records already written are kept", text)
             self.assertNotIn("rm -rf /var/lib", text)

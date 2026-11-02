@@ -127,7 +127,7 @@ HYDRA-UMC-OS/
 ├── agent/                     単体テストを備えた読み取り専用の Python デバイス記述子とヘルスエージェント。
 ├── systemd/                   強化された `hydra-umc-agent.service` と `hydra-umc-wifi-provision.service` のライフサイクルユニット。
 ├── config/                    デフォルトのスキーマと非シークレット構成。
-├── provisioning/              CM5 のインストーラー (サービスごとに1つ)、初回起動、診断、復旧、設定のバックアップと復元、ファイアウォール、MQTT 用 TLS、キオスクとスプラッシュ画面、polkit ルール、インストールの検査。
+├── provisioning/              CM5 のインストーラー (サービスごとに1つ。インストーラーの表から生成され、コンパイルやダウンロードが必要なものにはビルドフック付き)、初回起動、診断、復旧、設定のバックアップと復元、ファイアウォール、MQTT 用 TLS、キオスクとスプラッシュ画面、polkit ルール、インストールの検査。
 ├── tools/                     パッケージとリリースのツール (`build_deb.py`、`package_component.py`)、プロビジョニングスクリプトの `verify_*.py` 検査、共有の CI 検査。
 ├── .github/                   CI ワークフローと Issue テンプレート
 ├── images/                    バナーと README の図
@@ -159,6 +159,8 @@ HYDRA-UMC-OS/
 インストールのプリフライト（`provisioning/preflight_cm5.py`）は、実際のテストによって冪等性があり副作用がないことが証明されている——2回連続で実行してもバイト単位で同一の出力が得られ、このリポジトリ内のファイルには一切触れない——そして、実際のホスト非依存なバックアップ/ロールバック機構（`provisioning/rollback.py`）が、`install_local_agent.sh` が実行のたびに無条件で上書きする唯一のシステムファイルを保護する。どちらも root 権限や CM5 なしで検証されている——`tools/verify_preflight_idempotent.py` と `tools/verify_rollback.py` を参照。
 
 **WiFi 初回接続プロビジョニングも実際に動作する**（`provisioning/wifi_provision.py` / `hydra-umc-wifi-provision.service`）——まだ既知のネットワークを持たないヘッドレス CM5 のための、実際の NetworkManager AP モードのフォールバック。実際のホットスポット（`nmcli device wifi hotspot`）を起動し、オペレーターの携帯電話やノート PC がそれに接続して、小さなローカル HTTP フォームを通じて実際のターゲット SSID/パスワードを送信できるようにする。成功時には AP を停止して実際のネットワークに参加し、失敗時には AP を復元してデバイスが孤立しないようにする。この状態機械は、疑似的な NetworkManager に対して完全に単体テストされており、実際のループバックソケット上での実際のエンドツーエンド HTTP 往復も含まれる——`tools/verify_wifi_provision.py` を参照。`install_cm5_base.sh` によってインストールされるが、実際に必要とするデバイスでのみ動かすべきであるため、意図的に自動有効化はされない——アクセスポイントのパスワードと一度限りのセットアップコードは、デバイスごとに初回起動時に生成され、ジャーナルから一度だけ読み取る。`provisioning/CM5_DEPLOYMENT_SEQUENCE.md` のセクション 3 を参照。
+
+**インストーラーはマニフェストから生成されます。** 各プログラムの `install_*.sh` は、`provisioning/install_plan.json` の表 (マニフェストとサービスレジストリから読み取ったもの) をもとに `provisioning/generate_installers.py` が書き出します。共通の手順 (ガード、サービスユーザー、プログラムのフォルダー、ユニットファイル、プロジェクトマニフェスト、デプロイ契約) がプログラムごとにずれることはありません。それ以外にプログラムが必要とするもの (コンパイル、ツールチェーンの取得、設定ファイルの作成) は `provisioning/build_hooks/<名前>.sh` にあり、生成されたスクリプトが読み込みます。`tools/verify_installer_generation.py` は、フックが必要なプログラムにフックがない場合や、インストーラーが生成結果と異なる場合に失敗します。インストーラーを変えるには、表またはフックを変更して `python provisioning/generate_installers.py --replace` を実行します。表の情報が足りないプログラムは自分のスクリプトを保ちます。
 
 **シークレットはデバイスごとに生成され、テンプレートから流用されることはありません。** `install_server.sh` と `install_voice_ui.sh` は、env ファイルがなければ例から作成し、例の値（`JWT_SECRET`、最初の管理者パスワード、音声リレートークン）をすべてこのデバイス固有のランダム値に置き換えます（`provisioning/generate_secrets.py`。運用者がすでに選んだ値は残り、管理者パスワードは一度だけ表示されます）。例の値や短すぎるシークレットが残っていれば先へ進みません。`preflight_cm5.py` は、まだそれらを含む `/etc/hydra-umc/*.env` を拒否します。`install_industrial_gateway.sh` はスタックのシークレットを `/etc/hydra-umc/gateway.env` に書きます(root のみ、ユーザーのチェックアウトの外、compose が `--env-file` で読み込む。以前のバージョンがチェックアウトに残した `.env` はそこへ移動されます)（`provisioning/gateway_env.py`：ゲートウェイのシークレットと、マシンブリッジごとの MQTT 認証情報と ACL ルール）。Wi-Fi セットアップネットワークはソースコード内にパスワードを持たなくなりました。各デバイスが初回起動時に自分のパスワードと使い捨てのセットアップコードを生成し（ジャーナルで一度だけ読み取り、ラベルに書く）、フォームはコードを要求し（5 回間違えると 1 分間ロック）、セットアップネットワークは起動のたびに 30 分間だけ開き、フォームは大きすぎるリクエストを拒否します。`tools/verify_generate_secrets.py`、`tools/verify_gateway_env.py`、`tools/verify_wifi_provision.py` で検証しています。 ホスト名とセットアップ用ネットワーク名の末尾にも、デバイスから取った 6 文字（Raspberry Pi のシリアル番号、なければ MAC アドレス）が付くため、同じイメージから書き込んだ 2 台が同じ名前を共有することはなくなりました（`provisioning/device_identity.py`、`tools/verify_device_identity.py` で検証）。`HYDRA_UMC_DEVICE_SUFFIX=off` で固定名に戻せ、ご自身で決めた名前は変更されません。
 

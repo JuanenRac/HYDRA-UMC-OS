@@ -29,6 +29,17 @@ GO_INSTALLERS = ("install_job_dispatcher.sh", "install_node_healing.sh", "instal
 BASH = shutil.which("bash")
 
 
+def installer_text(script: Path) -> str:
+    """The text of an installer with its build hook and its preflight (the generated installers keep what is specific to a program there)."""
+    name = script.stem.removeprefix("install_").replace("_", "-")
+    parts = [script.read_text(encoding="utf-8")]
+    for suffix in (".sh", ".preflight.sh"):
+        hook = script.parent / "build_hooks" / f"{name}{suffix}"
+        if hook.is_file():
+            parts.append(hook.read_text(encoding="utf-8"))
+    return "\n".join(parts)
+
+
 def pinned() -> tuple[str, str, str]:
     text = HELPER.read_text(encoding="utf-8")
     version = re.search(r'^GO_VERSION="([^"]+)"', text, re.M)
@@ -65,7 +76,7 @@ class GoToolchainTests(unittest.TestCase):
 
     def test_every_go_installer_uses_it_and_none_installs_the_packaged_go(self) -> None:
         for name in GO_INSTALLERS:
-            text = (PROVISIONING / name).read_text(encoding="utf-8")
+            text = installer_text(PROVISIONING / name)
             self.assertNotIn("golang-go", text.replace("golang-go archive", ""), name)
             self.assertIn('source "$HERE/go_toolchain.sh"', text, name)
             self.assertIn("ensure_go", text, name)
@@ -73,7 +84,7 @@ class GoToolchainTests(unittest.TestCase):
             self.assertNotRegex(text, r"(?m)^\s*\(\s*cd [^)]*&&\s*go build", name)
             self.assertRegex(text, r'(?m)^HERE=', name)
             self.assertEqual(subprocess.run([BASH, "-n", (PROVISIONING / name).as_posix()], capture_output=True).returncode, 0, name)
-        self.assertNotIn("GO_SHA256=", (PROVISIONING / "install_job_dispatcher.sh").read_text(encoding="utf-8"), "the pin lives in one place")
+        self.assertNotIn("GO_SHA256=", installer_text(PROVISIONING / "install_job_dispatcher.sh"), "the pin lives in one place")
 
     def run_helper(self, tarball: bytes, sha: str, root: Path, bin_dir: Path, calls: Path) -> subprocess.CompletedProcess[str]:
         payload = bin_dir / "payload.tgz"

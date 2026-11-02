@@ -31,6 +31,12 @@ VOICE_URL = "http://127.0.0.1:8091"
 VOICE_ENV = "/etc/hydra-umc/voice-ui.env"
 
 
+def installer_text(script: Path) -> str:
+    """The text of an installer with its build hook (the generated installers keep what is specific to a program there)."""
+    hook = script.parent / "build_hooks" / (script.stem.removeprefix("install_").replace("_", "-") + ".sh")
+    return script.read_text(encoding="utf-8") + ("\n" + hook.read_text(encoding="utf-8") if hook.is_file() else "")
+
+
 def fail(message: str) -> None:
     print(f"VOICE_GATEWAY_DEPLOYMENT_CONTRACT=FAIL {message}", file=sys.stderr)
     raise SystemExit(1)
@@ -52,7 +58,7 @@ def main() -> int:
     try:
         unit = VOICE_UNIT.read_text(encoding="utf-8")
         voice_env = VOICE_ENV_TEMPLATE.read_text(encoding="utf-8")
-        installer = INSTALLER.read_text(encoding="utf-8")
+        installer = installer_text(INSTALLER)
         base_installer = BASE_INSTALLER.read_text(encoding="utf-8")
         runtime_check = RUNTIME_CHECK.read_text(encoding="utf-8")
         server_env = SERVER_ENV_TEMPLATE.read_text(encoding="utf-8")
@@ -75,10 +81,10 @@ def main() -> int:
             fail(f"Voice UI systemd {name} must be {expected!r}")
 
     require(voice_env, "HYDRA_UMC_VOICE_UI_TOKEN=", "Voice UI environment template lacks its token")
-    require(installer, f'VOICE_USER="{VOICE_USER}"', "Voice UI installer uses a different service account")
+    require(installer, f'SVC_USER="{VOICE_USER}"', "Voice UI installer uses a different service account")
     require(installer, f"ENV_FILE={VOICE_ENV}", "Voice UI installer uses a different environment file")
     require(installer, 'chmod 0640 "$ENV_FILE"', "Voice UI token file must have restricted permissions")
-    require(installer, 'chown root:"$VOICE_USER" "$ENV_FILE"', "Voice UI token must be owned by root and its service group")
+    require(installer, 'chown root:"$SVC_USER" "$ENV_FILE"', "Voice UI token must be owned by root and its service group")
     require(base_installer, "--with-voice-ui", "CM5 base installer does not expose the Voice UI stage")
     require(base_installer, "--with-voice-ui requires --with-server", "Voice UI stage must require the Server boundary")
     require(base_installer, "systemctl enable --now hydra-umc-voice-ui", "CM5 base installer does not enable Voice UI")

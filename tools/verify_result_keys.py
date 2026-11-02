@@ -28,6 +28,12 @@ ROOT = Path(__file__).resolve().parent.parent
 PROVISIONING = ROOT / "provisioning"
 
 
+def installer_text(script: Path) -> str:
+    """The text of an installer with its build hook (the generated installers keep what is specific to a program there)."""
+    hook = script.parent / "build_hooks" / (script.stem.removeprefix("install_").replace("_", "-") + ".sh")
+    return script.read_text(encoding="utf-8") + ("\n" + hook.read_text(encoding="utf-8") if hook.is_file() else "")
+
+
 def load(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec and spec.loader
@@ -208,8 +214,8 @@ class TechnicianKeyTests(unittest.TestCase):
 
 class InstallerTextTests(unittest.TestCase):
     def test_the_installers_pass_the_arguments_these_tests_assume(self) -> None:
-        server = (PROVISIONING / "install_server.sh").read_text(encoding="utf-8")
-        voice = (PROVISIONING / "install_voice_ui.sh").read_text(encoding="utf-8")
+        server = installer_text(PROVISIONING / "install_server.sh")
+        voice = installer_text(PROVISIONING / "install_voice_ui.sh")
         for fragment in (f"--ensure {KEY}", f'--adopt "{KEY}=/etc/hydra-umc/voice-ui.env:{KEY}"', f'--mirror "{KEY}=/etc/hydra-umc/voice-ui.env:{KEY}"', f"--ensure {REQUIRE}=1"):
             self.assertIn(fragment, server, fragment)
         for fragment in (f"--ensure {KEY}", f'--adopt "{KEY}=/etc/hydra-umc/server.env:{KEY}"', f"--ensure {SUBJECT}=1"):
