@@ -18,6 +18,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-SAFETY-ZONES"
 TARGET=/opt/hydra-umc/safety-zones
+# Deployment contract (docs/DEPLOY_CONTRACT.md): keep the program installed now, so that a unit that does not come back can be put back.
+DEPLOY_CONTRACT=1
+source "${HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/deploy_lib.sh"
+deploy_begin HYDRA-UMC-SAFETY-ZONES "$TARGET"
 ZONES_USER="hydra-umc-safety-zones"
 
 echo " ==============================================================="
@@ -50,6 +54,8 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-safety-zones.service" /etc/systemd/sy
 # reflects the exact SOURCE that was actually just installed.
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
+# Keep the new program, restart the unit if it runs, check its health and put the old program back if it does not come back.
+deploy_finish HYDRA-UMC-SAFETY-ZONES "$TARGET"
 echo "Safety-Zones installed. Enable manually after review: systemctl enable --now hydra-umc-safety-zones"
 
 # Where to look once the service runs: the port and the health route come from the service registry.

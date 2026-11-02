@@ -26,6 +26,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-JOB-DISPATCHER"
 TARGET=/opt/hydra-umc/job-dispatcher
+# Deployment contract (docs/DEPLOY_CONTRACT.md): keep the program installed now, so that a unit that does not come back can be put back.
+DEPLOY_CONTRACT=1
+source "${HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/deploy_lib.sh"
+deploy_begin HYDRA-UMC-JOB-DISPATCHER "$TARGET"
 DISPATCHER_USER="hydra-umc-job-dispatcher"
 # The pinned, checksum-verified upstream Go release (go.dev/dl) is in go_toolchain.sh, shared with the other Go services.
 source "$HERE/go_toolchain.sh"
@@ -64,6 +68,8 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-job-dispatcher.service" /etc/systemd/
 # reflects the exact SOURCE that was actually just installed.
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
+# Keep the new program, restart the unit if it runs, check its health and put the old program back if it does not come back.
+deploy_finish HYDRA-UMC-JOB-DISPATCHER "$TARGET"
 echo "Job-Dispatcher installed. Enable manually after review: systemctl enable --now hydra-umc-job-dispatcher"
 
 # Where to look once the service runs: the port and the health route come from the service registry.

@@ -26,6 +26,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-VISION-STREAMER"
 TARGET=/opt/hydra-umc/vision-streamer
+# Deployment contract (docs/DEPLOY_CONTRACT.md): keep the program installed now, so that a unit that does not come back can be put back.
+DEPLOY_CONTRACT=1
+source "${HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/deploy_lib.sh"
+deploy_begin HYDRA-UMC-VISION-STREAMER "$TARGET"
 STREAMER_USER="hydra-umc-vision-streamer"
 
 echo " ==============================================================="
@@ -64,6 +68,8 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-vision-streamer@.service" /etc/system
 # reflects the exact SOURCE that was actually just installed.
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
+# Keep the new program, restart the unit if it runs, check its health and put the old program back if it does not come back.
+deploy_finish HYDRA-UMC-VISION-STREAMER "$TARGET"
 
 echo "Vision-Streamer capability installed (no camera slot enabled yet)."
 echo "To bring up a physical USB camera as slot N (1-8, matching the cameraId"

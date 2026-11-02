@@ -9,6 +9,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 [[ "${1:-}" == "--apply" ]] || { echo "Dry-run policy: rerun with --apply after review."; exit 0; }
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"; SOURCE="$ROOT/HYDRA-UMC-SERVER"; TARGET=/opt/hydra-umc/server
+# Deployment contract (docs/DEPLOY_CONTRACT.md): keep the program installed now, so that a unit that does not come back can be put back.
+DEPLOY_CONTRACT=1
+source "${HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/deploy_lib.sh"
+deploy_begin HYDRA-UMC-SERVER "$TARGET"
 # $ROOT above is deliberately the PARENT of this repo (the sibling-repos
 # checkout root, so SOURCE can reach HYDRA-UMC-SERVER next to it) - this
 # repo's OWN root (for files that live in it, like the polkit rule below)
@@ -82,6 +86,8 @@ install -m 0644 "$OS_ROOT/provisioning/polkit/50-hydra-umc-server-service-contro
 # reflects the exact SOURCE that was actually just installed.
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
+# Keep the new program, restart the unit if it runs, check its health and put the old program back if it does not come back.
+deploy_finish HYDRA-UMC-SERVER "$TARGET"
 echo "Server installed. Enable manually after review: systemctl enable --now hydra-umc-server"
 
 # Where to look once the service runs: the port and the health route come from the service registry.

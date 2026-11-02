@@ -26,6 +26,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-DETECTION-HEF"
 TARGET=/opt/hydra-umc/detection-hef
+# Deployment contract (docs/DEPLOY_CONTRACT.md): keep the program installed now, so that a unit that does not come back can be put back.
+DEPLOY_CONTRACT=1
+source "${HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/deploy_lib.sh"
+deploy_begin HYDRA-UMC-DETECTION-HEF "$TARGET"
 HEF_USER="hydra-umc-detection-hef"
 
 echo " ==============================================================="
@@ -62,6 +66,8 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-detection-hef.service" /etc/systemd/s
 # reflects the exact SOURCE that was actually just installed.
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
+# Keep the new program, restart the unit if it runs, check its health and put the old program back if it does not come back.
+deploy_finish HYDRA-UMC-DETECTION-HEF "$TARGET"
 echo "Detection-HEF installed, serving an empty registry. Enable manually after review: systemctl enable --now hydra-umc-detection-hef"
 echo "Add real entries to /etc/hydra-umc-detection-hef/registry.json and .hef files to $TARGET/models as they exist."
 

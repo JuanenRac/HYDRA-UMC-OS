@@ -137,12 +137,14 @@ class Component:
         try:
             raw = json.loads(self.state_file.read_text(encoding="utf-8"))
         except (OSError, ValueError):
-            return {"current": None, "previous": None, "history": []}
+            return {"current": None, "previous": None, "history": [], "pending": None}
         if not isinstance(raw, dict):
-            return {"current": None, "previous": None, "history": []}
+            return {"current": None, "previous": None, "history": [], "pending": None}
         history = raw.get("history") if isinstance(raw.get("history"), list) else []
         return {"current": raw.get("current") if isinstance(raw.get("current"), dict) else None,
-                "previous": raw.get("previous") if isinstance(raw.get("previous"), dict) else None, "history": history[-HISTORY_LIMIT:]}
+                "previous": raw.get("previous") if isinstance(raw.get("previous"), dict) else None, "history": history[-HISTORY_LIMIT:],
+                # the program kept by deploy_tree.py `begin` for `settle` to put back; a package install never sets it
+                "pending": raw.get("pending") if isinstance(raw.get("pending"), dict) else None}
 
     def write_state(self, state: dict[str, Any]) -> None:
         self.base.mkdir(parents=True, exist_ok=True)

@@ -287,6 +287,7 @@ CM5 硬件验证）：
 * **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** —— 在 CM5 上分阶段部署生态系统其余部分的计划，每个阶段均可独立回滚。
 * **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** —— 在没有物理 CM5 硬件的情况下已验证的内容，以及验证止步之处。
 * **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** —— HYDRA-UMC 服务的运行方式：专用用户、配置路径、依赖/就绪顺序。
+* **[`docs/DEPLOY_CONTRACT.md`](docs/DEPLOY_CONTRACT.md)** — 安装程序的部署契约：保存正在使用的程序，单元在运行时重启它，检查其健康状况，撑不住时换回旧程序；以及 `hydra-umc-os deploy` 命令。
 * **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** —— 操作系统、HYDRA-UMC 软件包、Hailo 运行时与 MCU/URTC 固件各自独立的更新通道。
 * **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** —— 本仓库如何在不内嵌 HYDRA-UMC-SDK 源码的情况下使用其已发布的契约。
 * **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** —— 开发规则：优先使用 Raspberry Pi OS 原生接口，以及必须遵循的测试顺序。

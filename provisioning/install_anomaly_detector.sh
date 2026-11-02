@@ -21,6 +21,10 @@ APPLY=false
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-ANOMALY-DETECTOR"
 TARGET=/opt/hydra-umc/anomaly-detector
+# Deployment contract (docs/DEPLOY_CONTRACT.md): keep the program installed now, so that a unit that does not come back can be put back.
+DEPLOY_CONTRACT=1
+source "${HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/deploy_lib.sh"
+if $APPLY; then deploy_begin HYDRA-UMC-ANOMALY-DETECTOR "$TARGET"; fi
 ANOMALY_USER="hydra-umc-anomaly"
 run() { if $APPLY; then "$@"; else printf '[dry-run] '; printf '%q ' "$@"; printf '\n'; fi; }
 
@@ -63,6 +67,8 @@ run install -m 0644 "$SOURCE/systemd/hydra-umc-anomaly-detector.service" /etc/sy
 # reflects the exact SOURCE that was actually just installed.
 run install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 run systemctl daemon-reload
+# Keep the new program, restart the unit if it runs, check its health and put the old program back if it does not come back.
+if $APPLY; then deploy_finish HYDRA-UMC-ANOMALY-DETECTOR "$TARGET"; fi
 echo "Anomaly-Detector installed. Enable manually after review: systemctl enable --now hydra-umc-anomaly-detector"
 
 # Where to look once the service runs: the port and the health route come from the service registry.

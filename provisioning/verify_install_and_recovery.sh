@@ -40,6 +40,8 @@ id hydra-umc-agent >/dev/null 2>&1 || { echo "VERIFY_INSTALL=FAIL: hydra-umc-age
 [[ -d /var/lib/hydra-umc ]] || { echo "VERIFY_INSTALL=FAIL: /var/lib/hydra-umc was not created" >&2; exit 1; }
 [[ -d /opt/hydra-umc ]] || { echo "VERIFY_INSTALL=FAIL: /opt/hydra-umc was not created" >&2; exit 1; }
 [[ -f /etc/systemd/system/hydra-umc-agent.service ]] || { echo "VERIFY_INSTALL=FAIL: hydra-umc-agent.service was not installed" >&2; exit 1; }
+[[ -x /usr/local/bin/hydra-umc-os ]] || { echo "VERIFY_INSTALL=FAIL: the hydra-umc-os command was not installed" >&2; exit 1; }
+/usr/local/bin/hydra-umc-os plan server >/dev/null || { echo "VERIFY_INSTALL=FAIL: hydra-umc-os cannot read the table of installers" >&2; exit 1; }
 # Real, current hostnamectl state - not left at whatever the base image
 # happened to have before this ran.
 # The default name ends with a part taken from this machine (provisioning/device_identity.py);

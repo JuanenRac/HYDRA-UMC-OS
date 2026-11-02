@@ -307,6 +307,7 @@ Dove leggere di più:
 * **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** — il piano di distribuzione a fasi, ciascuna revocabile indipendentemente, del resto dell'ecosistema su una CM5.
 * **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** — cosa è stato verificato senza hardware CM5 fisico, e dove si ferma tale verifica.
 * **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** — come funzionano i servizi HYDRA-UMC: utenti dedicati, percorsi di configurazione, ordine di dipendenza/disponibilità.
+* **[`docs/DEPLOY_CONTRACT.md`](docs/DEPLOY_CONTRACT.md)** — il contratto di distribuzione degli installer: conservare il programma in uso, riavviare l'unità se è in esecuzione, controllarne la salute e rimettere il programma precedente se non regge; il comando `hydra-umc-os deploy`.
 * **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** — i canali di aggiornamento separati per il SO, i pacchetti HYDRA-UMC, i runtime Hailo e il firmware MCU/URTC.
 * **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** — come questo repo consuma il contratto pubblicato di HYDRA-UMC-SDK senza vendorizzarlo.
 * **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** — regole di sviluppo: interfacce native di Raspberry Pi OS prima di tutto, l'ordine di test richiesto.

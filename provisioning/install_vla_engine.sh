@@ -32,6 +32,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-VLA-ENGINE"
 TARGET=/opt/hydra-umc/vla-engine
+# Deployment contract (docs/DEPLOY_CONTRACT.md): keep the program installed now, so that a unit that does not come back can be put back.
+DEPLOY_CONTRACT=1
+source "${HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/deploy_lib.sh"
+deploy_begin HYDRA-UMC-VLA-ENGINE "$TARGET"
 ENGINE_USER="hydra-umc-vla-engine"
 
 echo " ==============================================================="
@@ -69,6 +73,8 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-vla-engine.service" /etc/systemd/syst
 # reflects the exact SOURCE that was actually just installed.
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
+# Keep the new program, restart the unit if it runs, check its health and put the old program back if it does not come back.
+deploy_finish HYDRA-UMC-VLA-ENGINE "$TARGET"
 echo "VLA-Engine installed. Enable manually after review: systemctl enable --now hydra-umc-vla-engine"
 
 # Where to look once the service runs: the port and the health route come from the service registry.

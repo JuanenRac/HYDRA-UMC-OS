@@ -309,6 +309,7 @@ Hier steht mehr:
 * **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** — der phasenweise, jeweils unabhängig rückrollbare Rollout-Plan für den Rest des Ökosystems auf einer CM5.
 * **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** — was ohne physische CM5-Hardware verifiziert wurde, und wo diese Verifikation endet.
 * **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** — wie HYDRA-UMC-Dienste laufen: dedizierte Benutzer, Konfigurationspfade, Abhängigkeits-/Bereitschaftsreihenfolge.
+* **[`docs/DEPLOY_CONTRACT.md`](docs/DEPLOY_CONTRACT.md)** — der Deployment-Vertrag der Installer: das laufende Programm aufbewahren, die Unit neu starten, wenn sie läuft, ihre Gesundheit prüfen und das alte Programm zurückspielen, wenn es nicht hält; der Befehl `hydra-umc-os deploy`.
 * **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** — die getrennten Update-Kanäle für das OS, HYDRA-UMC-Pakete, Hailo-Runtimes und MCU/URTC-Firmware.
 * **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** — wie dieses Repo den veröffentlichten Vertrag von HYDRA-UMC-SDK nutzt, ohne ihn zu vendoren.
 * **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** — Entwicklungsregeln: native Raspberry-Pi-OS-Schnittstellen zuerst, die vorgeschriebene Testreihenfolge.

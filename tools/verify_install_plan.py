@@ -25,9 +25,14 @@ GOOD = """#!/usr/bin/env bash
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-TWIN"
 TARGET=/opt/hydra-umc/twin
+DEPLOY_CONTRACT=1
+deploy_begin HYDRA-UMC-TWIN "$TARGET"
 TWIN_USER="hydra-umc-twin"
+install -d -o "$TWIN_USER" -g "$TWIN_USER" -m 0750 "$TARGET/data"
 install -m 0644 "$SOURCE/systemd/hydra-umc-twin.service" /etc/systemd/system/hydra-umc-twin.service
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
+systemctl daemon-reload
+deploy_finish HYDRA-UMC-TWIN "$TARGET"
 """
 PORTS = {"HYDRA-UMC-TWIN": {"port": "8101", "health_path": "/health", "systemd_unit": "hydra-umc-twin.service"}}
 
@@ -47,6 +52,30 @@ class InstallPlanTests(unittest.TestCase):
                          ("HYDRA-UMC-TWIN", "/opt/hydra-umc/twin", "hydra-umc-twin", ["hydra-umc-twin.service"], False, True))
         self.assertEqual((row["port"], row["health_path"], row["unit"]), (8101, "/health", "hydra-umc-twin.service"))
         self.assertEqual(plan.problems(table, PORTS), [])
+
+    def problems_of(self, text: str) -> str:
+        return "\n".join(plan.problems(plan.build(self.folder({"install_twin.sh": text}), PORTS), PORTS))
+
+    def test_the_deployment_contract_is_read_and_a_script_that_does_not_follow_it_is_reported(self) -> None:
+        row = plan.build(self.folder({"install_twin.sh": GOOD}), PORTS)["installers"][0]
+        self.assertEqual((row["contract"], row["begins"], row["finishes"], row["finish_after_reload"], row["user_dirs"]),
+                         (1, "HYDRA-UMC-TWIN", "HYDRA-UMC-TWIN", True, ["data"]))
+        bare = GOOD.replace("DEPLOY_CONTRACT=1\n", "").replace('deploy_begin HYDRA-UMC-TWIN "$TARGET"\n', "").replace('deploy_finish HYDRA-UMC-TWIN "$TARGET"\n', "")
+        self.assertIn("does not follow the deployment contract", self.problems_of(bare))
+        self.assertIn("declares the deployment contract 2", self.problems_of(GOOD.replace("DEPLOY_CONTRACT=1", "DEPLOY_CONTRACT=2")))
+        early = GOOD.replace('systemctl daemon-reload\ndeploy_finish HYDRA-UMC-TWIN "$TARGET"\n', 'deploy_finish HYDRA-UMC-TWIN "$TARGET"\nsystemctl daemon-reload\n')
+        self.assertIn("must come after the last systemctl daemon-reload", self.problems_of(early))
+        self.assertIn("must name the same service", self.problems_of(GOOD.replace("deploy_finish HYDRA-UMC-TWIN", "deploy_finish HYDRA-UMC-SERVER")))
+        self.assertIn("which a release would replace", self.problems_of(GOOD.replace('"$TARGET/data"', '"$TARGET/cache"')))
+
+    def test_every_installer_of_this_repository_that_puts_a_unit_in_place_follows_the_contract_or_says_why_not(self) -> None:
+        table = plan.build(plan.HERE, plan.registry())
+        followed = 0
+        for row in table["installers"]:
+            if row["target"] and (row["units"] or row.get("unit")):
+                self.assertTrue(row["contract"] == plan.SUPPORTED_CONTRACT or row["deploy_exempt"], row["script"])
+                followed += row["contract"] == plan.SUPPORTED_CONTRACT
+        self.assertGreaterEqual(followed, 20)
 
     def test_a_script_that_clones_on_the_device_is_marked(self) -> None:
         row = plan.build(self.folder({"install_twin.sh": GOOD + "git clone https://example.invalid/x\n"}), PORTS)["installers"][0]

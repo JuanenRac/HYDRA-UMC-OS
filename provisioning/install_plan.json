@@ -1,8 +1,13 @@
 {
-  "format": "hydra-install-plan/1",
+  "format": "hydra-install-plan/2",
   "installers": [
     {
+      "begins": "HYDRA-UMC-ANOMALY-DETECTOR",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-ANOMALY-DETECTOR",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8097,
@@ -13,19 +18,31 @@
       "units": [
         "hydra-umc-anomaly-detector.service"
       ],
-      "user": "hydra-umc-anomaly"
+      "user": "hydra-umc-anomaly",
+      "user_dirs": []
     },
     {
+      "begins": null,
       "clones": true,
+      "contract": null,
+      "deploy_exempt": null,
+      "finish_after_reload": false,
+      "finishes": null,
       "installs_manifest": false,
       "script": "install_cm5_base.sh",
       "source": null,
       "target": null,
       "units": [],
-      "user": null
+      "user": null,
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-COGNITIVE-NODE",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-COGNITIVE-NODE",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8096,
@@ -36,10 +53,16 @@
       "units": [
         "hydra-umc-cognitive-node.service"
       ],
-      "user": "hydra-umc-cognitive-node"
+      "user": "hydra-umc-cognitive-node",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-DASHBOARD-AI",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-DASHBOARD-AI",
       "health_path": "/",
       "installs_manifest": true,
       "port": 8115,
@@ -50,10 +73,16 @@
       "units": [
         "hydra-umc-dashboard-ai.service"
       ],
-      "user": "hydra-umc-dashboard-ai"
+      "user": "hydra-umc-dashboard-ai",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-DATALAKE",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-DATALAKE",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8095,
@@ -68,10 +97,18 @@
         "hydra-umc-datalake-retention.timer",
         "hydra-umc-datalake.service"
       ],
-      "user": "hydra-umc-datalake"
+      "user": "hydra-umc-datalake",
+      "user_dirs": [
+        "data"
+      ]
     },
     {
+      "begins": "HYDRA-UMC-DETECTION-HEF",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-DETECTION-HEF",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8093,
@@ -82,10 +119,16 @@
       "units": [
         "hydra-umc-detection-hef.service"
       ],
-      "user": "hydra-umc-detection-hef"
+      "user": "hydra-umc-detection-hef",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-DOCS-QA",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-DOCS-QA",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8110,
@@ -96,10 +139,16 @@
       "units": [
         "hydra-umc-docs-qa.service"
       ],
-      "user": "hydra-umc-docs-qa"
+      "user": "hydra-umc-docs-qa",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-HIL-BRIDGE",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-HIL-BRIDGE",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8113,
@@ -110,19 +159,31 @@
       "units": [
         "hydra-umc-hil-bridge.service"
       ],
-      "user": "hydra-umc-hil-bridge"
+      "user": "hydra-umc-hil-bridge",
+      "user_dirs": []
     },
     {
+      "begins": null,
       "clones": false,
+      "contract": null,
+      "deploy_exempt": null,
+      "finish_after_reload": false,
+      "finishes": null,
       "installs_manifest": false,
       "script": "install_industrial_gateway.sh",
       "source": null,
       "target": null,
       "units": [],
-      "user": null
+      "user": null,
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-JOB-DISPATCHER",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-JOB-DISPATCHER",
       "health_path": "/health",
       "installs_manifest": true,
       "port": 8090,
@@ -133,19 +194,33 @@
       "units": [
         "hydra-umc-job-dispatcher.service"
       ],
-      "user": "hydra-umc-job-dispatcher"
+      "user": "hydra-umc-job-dispatcher",
+      "user_dirs": [
+        "data"
+      ]
     },
     {
+      "begins": null,
       "clones": false,
+      "contract": null,
+      "deploy_exempt": null,
+      "finish_after_reload": false,
+      "finishes": null,
       "installs_manifest": false,
       "script": "install_kiosk.sh",
       "source": null,
       "target": null,
       "units": [],
-      "user": null
+      "user": null,
+      "user_dirs": []
     },
     {
+      "begins": null,
       "clones": false,
+      "contract": null,
+      "deploy_exempt": "the agent of the node comes from this repository and is not restarted by an installer (it reports the state of the node)",
+      "finish_after_reload": false,
+      "finishes": null,
       "installs_manifest": true,
       "script": "install_local_agent.sh",
       "source": null,
@@ -153,19 +228,31 @@
       "units": [
         "hydra-umc-agent.service"
       ],
-      "user": null
+      "user": null,
+      "user_dirs": []
     },
     {
+      "begins": null,
       "clones": false,
+      "contract": null,
+      "deploy_exempt": null,
+      "finish_after_reload": false,
+      "finishes": null,
       "installs_manifest": true,
       "script": "install_local_technician.sh",
       "source": "HYDRA-UMC-LOCAL-TECHNICIAN",
       "target": "/opt/hydra-umc/local-technician",
       "units": [],
-      "user": null
+      "user": null,
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-NODE-HEALING",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-NODE-HEALING",
       "installs_manifest": true,
       "script": "install_node_healing.sh",
       "source": "HYDRA-UMC-NODE-HEALING",
@@ -173,10 +260,16 @@
       "units": [
         "hydra-umc-node-healing.service"
       ],
-      "user": "hydra-umc-node-healing"
+      "user": "hydra-umc-node-healing",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-ORCHESTRATOR",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-ORCHESTRATOR",
       "health_path": "/health",
       "installs_manifest": true,
       "port": 8114,
@@ -187,10 +280,16 @@
       "units": [
         "hydra-umc-orchestrator.service"
       ],
-      "user": "hydra-umc-orchestrator"
+      "user": "hydra-umc-orchestrator",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-PRODUCTION-REPORTS",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-PRODUCTION-REPORTS",
       "health_path": "/health",
       "installs_manifest": true,
       "port": 8099,
@@ -201,10 +300,16 @@
       "units": [
         "hydra-umc-production-reports.service"
       ],
-      "user": "hydra-umc-production-reports"
+      "user": "hydra-umc-production-reports",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-SAFETY-ZONES",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-SAFETY-ZONES",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8108,
@@ -215,10 +320,16 @@
       "units": [
         "hydra-umc-safety-zones.service"
       ],
-      "user": "hydra-umc-safety-zones"
+      "user": "hydra-umc-safety-zones",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-SEMANTIC-PLANNER",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-SEMANTIC-PLANNER",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8109,
@@ -229,30 +340,53 @@
       "units": [
         "hydra-umc-semantic-planner.service"
       ],
-      "user": "hydra-umc-semantic-planner"
+      "user": "hydra-umc-semantic-planner",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-SERVER",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-SERVER",
+      "health_path": "/api/system/metrics",
       "installs_manifest": true,
+      "port": 3000,
       "script": "install_server.sh",
-      "source": null,
-      "target": null,
+      "source": "HYDRA-UMC-SERVER",
+      "target": "/opt/hydra-umc/server",
+      "unit": "hydra-umc-server.service",
       "units": [
         "hydra-umc-server.service"
       ],
-      "user": "hydra-umc-server"
+      "user": "hydra-umc-server",
+      "user_dirs": [
+        "data"
+      ]
     },
     {
+      "begins": null,
       "clones": false,
+      "contract": null,
+      "deploy_exempt": null,
+      "finish_after_reload": false,
+      "finishes": null,
       "installs_manifest": false,
       "script": "install_splashscreen.sh",
       "source": null,
       "target": null,
       "units": [],
-      "user": null
+      "user": null,
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-SWARM-SYNC",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-SWARM-SYNC",
       "health_path": "/health",
       "installs_manifest": true,
       "port": 8112,
@@ -263,10 +397,18 @@
       "units": [
         "hydra-umc-swarm-sync.service"
       ],
-      "user": "hydra-umc-swarm-sync"
+      "user": "hydra-umc-swarm-sync",
+      "user_dirs": [
+        "data"
+      ]
     },
     {
+      "begins": "HYDRA-UMC-TELEMETRY-COLLECTOR",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-TELEMETRY-COLLECTOR",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8092,
@@ -277,10 +419,16 @@
       "units": [
         "hydra-umc-telemetry-collector.service"
       ],
-      "user": "hydra-umc-telemetry-collector"
+      "user": "hydra-umc-telemetry-collector",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-TWIN",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-TWIN",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8111,
@@ -291,10 +439,16 @@
       "units": [
         "hydra-umc-twin.service"
       ],
-      "user": "hydra-umc-twin"
+      "user": "hydra-umc-twin",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-VISION-NODE",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-VISION-NODE",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8094,
@@ -305,19 +459,31 @@
       "units": [
         "hydra-umc-vision-node.service"
       ],
-      "user": "hydra-umc-vision-node"
+      "user": "hydra-umc-vision-node",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-VISION-STREAMER",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-VISION-STREAMER",
       "installs_manifest": true,
       "script": "install_vision_streamer.sh",
       "source": "HYDRA-UMC-VISION-STREAMER",
       "target": "/opt/hydra-umc/vision-streamer",
       "units": [],
-      "user": "hydra-umc-vision-streamer"
+      "user": "hydra-umc-vision-streamer",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-VISUAL-SERVOING-API",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-VISUAL-SERVOING-API",
       "health_path": "/stats",
       "installs_manifest": true,
       "port": 8116,
@@ -328,10 +494,16 @@
       "units": [
         "hydra-umc-visual-servoing-api.service"
       ],
-      "user": "hydra-umc-visual-servoing-api"
+      "user": "hydra-umc-visual-servoing-api",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-VLA-ENGINE",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-VLA-ENGINE",
       "health_path": "/health",
       "installs_manifest": true,
       "port": 8098,
@@ -342,10 +514,16 @@
       "units": [
         "hydra-umc-vla-engine.service"
       ],
-      "user": "hydra-umc-vla-engine"
+      "user": "hydra-umc-vla-engine",
+      "user_dirs": []
     },
     {
+      "begins": "HYDRA-UMC-VOICE-UI",
       "clones": false,
+      "contract": 1,
+      "deploy_exempt": null,
+      "finish_after_reload": true,
+      "finishes": "HYDRA-UMC-VOICE-UI",
       "health_path": "/health",
       "installs_manifest": true,
       "port": 8091,
@@ -356,10 +534,16 @@
       "units": [
         "hydra-umc-voice-ui.service"
       ],
-      "user": "hydra-umc-voice-ui"
+      "user": "hydra-umc-voice-ui",
+      "user_dirs": []
     },
     {
+      "begins": null,
       "clones": false,
+      "contract": null,
+      "deploy_exempt": "the Wi-Fi setup service comes from this repository and a restart in the middle of a setup would cut the way in",
+      "finish_after_reload": false,
+      "finishes": null,
       "installs_manifest": false,
       "script": "install_wifi_provision.sh",
       "source": null,
@@ -367,7 +551,14 @@
       "units": [
         "hydra-umc-wifi-provision.service"
       ],
-      "user": null
+      "user": null,
+      "user_dirs": []
     }
-  ]
+  ],
+  "state_dirs": [
+    "data",
+    "models",
+    "workspace"
+  ],
+  "supported_contract": 1
 }

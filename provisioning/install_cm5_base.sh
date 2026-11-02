@@ -56,6 +56,13 @@ if $APPLY; then
   bash provisioning/first_boot.sh --apply
   bash provisioning/install_local_agent.sh --apply
   bash provisioning/install_wifi_provision.sh --apply
+  # The command the updater (and the operator) uses to deploy one program the way its installer says (docs/DEPLOY_CONTRACT.md).
+  # It points at this checkout; rerun this script when the checkout moves.
+  cat >/usr/local/bin/hydra-umc-os <<EOF
+#!/usr/bin/env sh
+exec /usr/bin/python3 "$ROOT/provisioning/hydra_umc_os.py" "\$@"
+EOF
+  chmod 0755 /usr/local/bin/hydra-umc-os
   if $WITH_SERVER; then
     bash provisioning/install_server.sh --apply
   fi

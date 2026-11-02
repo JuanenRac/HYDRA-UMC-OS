@@ -19,6 +19,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-TELEMETRY-COLLECTOR"
 TARGET=/opt/hydra-umc/telemetry-collector
+# Deployment contract (docs/DEPLOY_CONTRACT.md): keep the program installed now, so that a unit that does not come back can be put back.
+DEPLOY_CONTRACT=1
+source "${HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/deploy_lib.sh"
+deploy_begin HYDRA-UMC-TELEMETRY-COLLECTOR "$TARGET"
 COLLECTOR_USER="hydra-umc-telemetry-collector"
 
 echo " ==============================================================="
@@ -54,6 +58,8 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-telemetry-collector.service" /etc/sys
 # reflects the exact SOURCE that was actually just installed.
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
+# Keep the new program, restart the unit if it runs, check its health and put the old program back if it does not come back.
+deploy_finish HYDRA-UMC-TELEMETRY-COLLECTOR "$TARGET"
 echo "Telemetry-Collector installed. Enable manually after review: systemctl enable --now hydra-umc-telemetry-collector"
 echo "Depends on HYDRA-UMC-DATALAKE already running for -datalake-url to actually deliver samples."
 

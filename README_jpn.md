@@ -287,6 +287,7 @@ HYDRA-UMC-OS/
 * **[`docs/CM5_ECOSYSTEM_DEPLOYMENT.md`](docs/CM5_ECOSYSTEM_DEPLOYMENT.md)** —— CM5 上にエコシステムの残りをフェーズごとに展開する、各フェーズが個別にロールバック可能な計画。
 * **[`docs/CM5_SOFTWARE_READINESS.md`](docs/CM5_SOFTWARE_READINESS.md)** —— 物理的な CM5 ハードウェアなしで何が検証済みか、その検証がどこで止まるか。
 * **[`docs/SERVICE_MODEL.md`](docs/SERVICE_MODEL.md)** —— HYDRA-UMC サービスの実行方法:専用ユーザー、設定パス、依存/準備状態の順序。
+* **[`docs/DEPLOY_CONTRACT.md`](docs/DEPLOY_CONTRACT.md)** — インストーラのデプロイ契約: 使用中のプログラムを保管し、ユニットが動いていれば再起動し、ヘルスを確認して、保たなければ元のプログラムに戻します。`hydra-umc-os deploy` コマンドも説明します。
 * **[`docs/UPDATE_MODEL.md`](docs/UPDATE_MODEL.md)** —— OS、HYDRA-UMC パッケージ、Hailo ランタイム、MCU/URTC ファームウェアそれぞれの独立した更新チャネル。
 * **[`docs/SDK_INTEGRATION_BOUNDARY.md`](docs/SDK_INTEGRATION_BOUNDARY.md)** —— このリポジトリが HYDRA-UMC-SDK の公開された契約をベンダリングせずに利用する方法。
 * **[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)** —— 開発ルール:Raspberry Pi OS のネイティブインターフェースを優先し、必須のテスト順序に従う。

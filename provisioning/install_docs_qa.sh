@@ -21,6 +21,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-DOCS-QA"
 TARGET=/opt/hydra-umc/docs-qa
+# Deployment contract (docs/DEPLOY_CONTRACT.md): keep the program installed now, so that a unit that does not come back can be put back.
+DEPLOY_CONTRACT=1
+source "${HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/deploy_lib.sh"
+deploy_begin HYDRA-UMC-DOCS-QA "$TARGET"
 QA_USER="hydra-umc-docs-qa"
 
 echo " ==============================================================="
@@ -58,6 +62,8 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-docs-qa.service" /etc/systemd/system/
 # reflects the exact SOURCE that was actually just installed.
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
+# Keep the new program, restart the unit if it runs, check its health and put the old program back if it does not come back.
+deploy_finish HYDRA-UMC-DOCS-QA "$TARGET"
 echo "Docs-QA installed, serving its own README.md/CHANGELOG.md as a demo corpus."
 echo "Enable manually after review: systemctl enable --now hydra-umc-docs-qa"
 

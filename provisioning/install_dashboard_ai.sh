@@ -22,6 +22,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # absolute, before any cd
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SOURCE="$ROOT/HYDRA-UMC-DASHBOARD-AI"
 TARGET=/opt/hydra-umc/dashboard-ai
+# Deployment contract (docs/DEPLOY_CONTRACT.md): keep the program installed now, so that a unit that does not come back can be put back.
+DEPLOY_CONTRACT=1
+source "${HERE:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}/deploy_lib.sh"
+deploy_begin HYDRA-UMC-DASHBOARD-AI "$TARGET"
 DASH_USER="hydra-umc-dashboard-ai"
 
 echo " ==============================================================="
@@ -63,6 +67,8 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-dashboard-ai.service" /etc/systemd/sy
 # reflects the exact SOURCE that was actually just installed.
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
+# Keep the new program, restart the unit if it runs, check its health and put the old program back if it does not come back.
+deploy_finish HYDRA-UMC-DASHBOARD-AI "$TARGET"
 echo "Dashboard-AI installed. Enable manually after review: systemctl enable --now hydra-umc-dashboard-ai"
 
 # Where to look once the service runs: the port and the health route come from the service registry.

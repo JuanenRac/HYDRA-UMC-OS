@@ -33,10 +33,22 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 PLAN_FILE = HERE / "install_plan.json"
 PORTS_FILE = HERE / "ports.yaml"
-SOURCE = re.compile(r'^[A-Z_]*SOURCE="\$ROOT/(HYDRA-UMC-[A-Z0-9-]+)"', re.M)
-TARGET = re.compile(r"^TARGET=(/opt/hydra-umc/[a-z0-9-]+)", re.M)
+SOURCE = re.compile(r'(?:^|;\s*)[A-Z_]*SOURCE="\$ROOT/(HYDRA-UMC-[A-Z0-9-]+)"', re.M)
+TARGET = re.compile(r"(?:^|;\s*)TARGET=(/opt/hydra-umc/[a-z0-9-]+)", re.M)
 USER = re.compile(r'^[A-Z_]*USER="(hydra-umc-[a-z0-9-]+)"', re.M)
 UNITS = re.compile(r"systemd/(hydra-umc-[a-z0-9-]+\.(?:service|timer))")
+CONTRACT = re.compile(r"^DEPLOY_CONTRACT=(\d+)", re.M)
+BEGIN = re.compile(r"deploy_begin (HYDRA-UMC-[A-Z0-9-]+) ", re.M)
+FINISH = re.compile(r"deploy_finish (HYDRA-UMC-[A-Z0-9-]+) ", re.M)
+RELOAD = re.compile(r"^\s*(?:run )?systemctl daemon-reload", re.M)
+STATE_DIRS = ("data", "models", "workspace")  # what deploy_tree.py never touches; a folder the service user owns must be one of them
+USER_DIR = re.compile(r'install -d -o "\$[A-Z_]*USER"[^\n]*"\$TARGET/([a-z0-9._-]+)"')
+SUPPORTED_CONTRACT = 1
+# Installers that put a unit in place but do not follow the contract, and why (the table says so instead of leaving a silent gap).
+EXEMPT = {
+    "install_local_agent.sh": "the agent of the node comes from this repository and is not restarted by an installer (it reports the state of the node)",
+    "install_wifi_provision.sh": "the Wi-Fi setup service comes from this repository and a restart in the middle of a setup would cut the way in",
+}
 MANIFEST_INSTALLED = re.compile(r'hydra-umc\.project\.json"\s+"\$TARGET/hydra-umc\.project\.json"')
 
 
@@ -60,6 +72,10 @@ def read_script(path: Path) -> dict[str, object]:
     source = SOURCE.search(text)
     target = TARGET.search(text)
     user = USER.search(text)
+    contract = CONTRACT.search(text)
+    begin = BEGIN.search(text)
+    finish = FINISH.search(text)
+    reloads = list(RELOAD.finditer(text))
     return {
         "script": path.name,
         "source": source.group(1) if source else None,
@@ -68,6 +84,12 @@ def read_script(path: Path) -> dict[str, object]:
         "units": sorted(set(UNITS.findall(text))),
         "clones": "git clone" in text,
         "installs_manifest": bool(MANIFEST_INSTALLED.search(text)),
+        "contract": int(contract.group(1)) if contract else None,
+        "begins": begin.group(1) if begin else None,
+        "finishes": finish.group(1) if finish else None,
+        "finish_after_reload": bool(finish and reloads and text.rfind("deploy_finish") > reloads[-1].start()),
+        "user_dirs": sorted(set(USER_DIR.findall(text))),
+        "deploy_exempt": EXEMPT.get(path.name),
     }
 
 
@@ -82,13 +104,27 @@ def build(directory: Path = HERE, ports: dict[str, dict[str, str]] | None = None
             row["health_path"] = known.get("health_path") or None
             row["unit"] = known.get("systemd_unit") or None
         rows.append(row)
-    return {"format": "hydra-install-plan/1", "installers": rows}
+    return {"format": "hydra-install-plan/2", "supported_contract": SUPPORTED_CONTRACT, "state_dirs": list(STATE_DIRS), "installers": rows}
 
 
 def problems(plan: dict[str, object], ports: dict[str, dict[str, str]]) -> list[str]:
     found: list[str] = []
     for row in plan["installers"]:  # type: ignore[union-attr]
         name = str(row["script"])
+        if row["contract"] is not None or row["begins"] or row["finishes"]:
+            if row["contract"] != SUPPORTED_CONTRACT:
+                found.append(f"{name}: declares the deployment contract {row['contract']} and this table supports {SUPPORTED_CONTRACT}")
+            if not row["begins"] or row["begins"] != row["finishes"]:
+                found.append(f"{name}: deploy_begin ({row['begins']}) and deploy_finish ({row['finishes']}) must name the same service")
+            if row["source"] and row["begins"] and row["begins"] != row["source"]:
+                found.append(f"{name}: deploy_begin names {row['begins']} but the script installs {row['source']}")
+            if not row["finish_after_reload"]:
+                found.append(f"{name}: deploy_finish must come after the last systemctl daemon-reload, so that the unit it restarts is the new one")
+            for folder in row["user_dirs"]:
+                if folder not in STATE_DIRS:
+                    found.append(f"{name}: the service user writes in $TARGET/{folder}, which a release would replace: add it to the state folders")
+        elif row["target"] and (row.get("unit") or row["units"]) and not row["deploy_exempt"]:
+            found.append(f"{name}: installs a unit into {row['target']} but does not follow the deployment contract (DEPLOY_CONTRACT, deploy_begin, deploy_finish)")
         unit = row.get("unit")
         if not unit:
             continue
