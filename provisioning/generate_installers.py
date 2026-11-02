@@ -206,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     made, skipped = build_all(plan_module, config, args.only)
     out.mkdir(parents=True, exist_ok=True)
-    for script, text in made.items():
+    for script in made:
         target = out / script
         if target.exists():
             print(f"REFUSED: {target} already exists: not overwriting", file=sys.stderr)
