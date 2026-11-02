@@ -10,14 +10,28 @@ set -euo pipefail
 WITH_SERVER=false
 WITH_VOICE_UI=false
 WITH_SERVICES=false
+WITH_SECRETS=false
+AS_JSON=false
+PASSTHROUGH=()
 for argument in "$@"; do
+  [[ "$argument" == "--json" ]] || PASSTHROUGH+=("$argument")
   case "$argument" in
     --with-server) WITH_SERVER=true ;;
     --with-voice-ui) WITH_VOICE_UI=true ;;
     --with-services) WITH_SERVICES=true ;;
-    *) echo "Usage: $0 [--with-server] [--with-voice-ui] [--with-services]" >&2; exit 2 ;;
+    --secrets) WITH_SECRETS=true ;;
+    --json) AS_JSON=true ;;
+    *) echo "Usage: $0 [--with-server] [--with-voice-ui] [--with-services] [--secrets] [--json]" >&2; exit 2 ;;
   esac
 done
+# --json: run the same checks and print them as one JSON document (for STUDIO and the operations agent); the exit code is the same.
+if $AS_JSON; then
+  panel_flag=(); $WITH_SECRETS && panel_flag=(--panel)
+  json_status=0
+  json_text="$("$0" "${PASSTHROUGH[@]}" 2>&1)" || json_status=$?
+  printf '%s\n' "$json_text" | python3 "$(dirname "$0")/secrets_panel.py" --wrap-runtime "$json_status" "${panel_flag[@]}"
+  exit "$json_status"
+fi
 $WITH_VOICE_UI && ! $WITH_SERVER && { echo "--with-voice-ui requires --with-server." >&2; exit 2; }
 failures=0
 check() { if "$@"; then echo "RUNTIME_CHECK=PASS $*"; else echo "RUNTIME_CHECK=FAIL $*" >&2; failures=$((failures + 1)); fi; }
@@ -97,8 +111,17 @@ if $WITH_SERVICES; then
   done < <(registry_services)
 fi
 
+# The secrets and permissions panel: owner, group and mode of the files of /etc/hydra-umc that hold secrets (config/secrets_policy.json).
+# It never opens a file. A file looser than the policy allows is a failure; read-only, like the rest.
+if $WITH_SECRETS; then
+  while IFS= read -r secret_line; do
+    echo "$secret_line"
+    [[ "$secret_line" == RUNTIME_CHECK=FAIL* ]] && failures=$((failures + 1))
+  done < <(python3 "$(dirname "$0")/secrets_panel.py" --lines || true)
+fi
+
 if (( failures > 0 )); then
   echo "CM5_RUNTIME=FAIL failures=$failures" >&2
   exit 1
 fi
-echo "CM5_RUNTIME=PASS profile=$($WITH_SERVER && printf control || printf base) voice_ui=$WITH_VOICE_UI services=$WITH_SERVICES changes=none"
+echo "CM5_RUNTIME=PASS profile=$($WITH_SERVER && printf control || printf base) voice_ui=$WITH_VOICE_UI services=$WITH_SERVICES secrets=$WITH_SECRETS changes=none"

@@ -1,0 +1,7 @@
+{
+  "format": "hydra-installer-generation/1",
+  "allow_replace_existing": false,
+  "copy_dirs": ["src"],
+  "data_dir": "data",
+  "hook_dir": "build_hooks"
+}
