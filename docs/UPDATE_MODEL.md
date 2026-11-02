@@ -29,5 +29,12 @@ dependency-range check, a health gate or an automatic rollback, and
 Read it as the direction of the work, not as a description of what runs on a
 device.
 
+**Built, not yet on a device.** `tools/deploy_release.py` is the core of that flow, tested in
+temporary folders: it verifies a signed package, refuses the same or an older version, installs it
+as a numbered release, switches `current`, runs the restart and health commands of
+`<root>/deploy.json`, puts the earlier release back (exit status 3) when either fails, and offers
+`rollback`, `prune` and `status`. No installer calls it yet and no rollback has been exercised on a
+CM5.
+
 Firmware retains its own tested update and recovery process. Do not couple a
 Raspberry Pi OS upgrade to a firmware change without a maintenance plan.

@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A tool that installs a signed package as a numbered release and goes back when it does not hold:** `tools/deploy_release.py` verifies the package (`package_component.py`: hash, Ed25519 signature of the component, version and hash, only paths of the layout), refuses the same or an older version unless asked, extracts it into `<root>/<component>/releases/<version>-<n>`, switches `current` (a link where the host can make one, `state.json` always) and runs the restart and health commands of `<root>/deploy.json` (empty by default, so nothing outside the root is touched); when the restart or the health check fails the earlier release is put back and restarted and the exit status is 3. `rollback`, `prune` (never the release in use nor the previous one) and `status` complete it, and 19 tests run it in temporary folders with no systemd and no network (`tools/verify_deploy_release.py`, in the CI). The installers of the programs do not use it yet and it has not been run on a CM5.
+
 ## [0.5.6] - One local screen at a time, a server install that checks the 3D models of the frontend and the example downsampling units of the data lake
 
 - **`install_datalake.sh` also installs the example downsampling units (never enabled):** the script and the `.service`/`.timer` of the data lake are copied next to the retention units; they are a dry run until the operator sets `HYDRA_UMC_DATALAKE_DOWNSAMPLE_DRY_RUN=false`, and the final message tells how to enable the timer.
