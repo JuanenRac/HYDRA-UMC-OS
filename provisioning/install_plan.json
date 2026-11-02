@@ -1,0 +1,373 @@
+{
+  "format": "hydra-install-plan/1",
+  "installers": [
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8097,
+      "script": "install_anomaly_detector.sh",
+      "source": "HYDRA-UMC-ANOMALY-DETECTOR",
+      "target": "/opt/hydra-umc/anomaly-detector",
+      "unit": "hydra-umc-anomaly-detector.service",
+      "units": [
+        "hydra-umc-anomaly-detector.service"
+      ],
+      "user": "hydra-umc-anomaly"
+    },
+    {
+      "clones": true,
+      "installs_manifest": false,
+      "script": "install_cm5_base.sh",
+      "source": null,
+      "target": null,
+      "units": [],
+      "user": null
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8096,
+      "script": "install_cognitive_node.sh",
+      "source": "HYDRA-UMC-COGNITIVE-NODE",
+      "target": "/opt/hydra-umc/cognitive-node",
+      "unit": "hydra-umc-cognitive-node.service",
+      "units": [
+        "hydra-umc-cognitive-node.service"
+      ],
+      "user": "hydra-umc-cognitive-node"
+    },
+    {
+      "clones": false,
+      "health_path": "/",
+      "installs_manifest": true,
+      "port": 8115,
+      "script": "install_dashboard_ai.sh",
+      "source": "HYDRA-UMC-DASHBOARD-AI",
+      "target": "/opt/hydra-umc/dashboard-ai",
+      "unit": "hydra-umc-dashboard-ai.service",
+      "units": [
+        "hydra-umc-dashboard-ai.service"
+      ],
+      "user": "hydra-umc-dashboard-ai"
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8095,
+      "script": "install_datalake.sh",
+      "source": "HYDRA-UMC-DATALAKE",
+      "target": "/opt/hydra-umc/datalake",
+      "unit": "hydra-umc-datalake.service",
+      "units": [
+        "hydra-umc-datalake-downsample.service",
+        "hydra-umc-datalake-downsample.timer",
+        "hydra-umc-datalake-retention.service",
+        "hydra-umc-datalake-retention.timer",
+        "hydra-umc-datalake.service"
+      ],
+      "user": "hydra-umc-datalake"
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8093,
+      "script": "install_detection_hef.sh",
+      "source": "HYDRA-UMC-DETECTION-HEF",
+      "target": "/opt/hydra-umc/detection-hef",
+      "unit": "hydra-umc-detection-hef.service",
+      "units": [
+        "hydra-umc-detection-hef.service"
+      ],
+      "user": "hydra-umc-detection-hef"
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8110,
+      "script": "install_docs_qa.sh",
+      "source": "HYDRA-UMC-DOCS-QA",
+      "target": "/opt/hydra-umc/docs-qa",
+      "unit": "hydra-umc-docs-qa.service",
+      "units": [
+        "hydra-umc-docs-qa.service"
+      ],
+      "user": "hydra-umc-docs-qa"
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8113,
+      "script": "install_hil_bridge.sh",
+      "source": "HYDRA-UMC-HIL-BRIDGE",
+      "target": "/opt/hydra-umc/hil-bridge",
+      "unit": "hydra-umc-hil-bridge.service",
+      "units": [
+        "hydra-umc-hil-bridge.service"
+      ],
+      "user": "hydra-umc-hil-bridge"
+    },
+    {
+      "clones": false,
+      "installs_manifest": false,
+      "script": "install_industrial_gateway.sh",
+      "source": null,
+      "target": null,
+      "units": [],
+      "user": null
+    },
+    {
+      "clones": false,
+      "health_path": "/health",
+      "installs_manifest": true,
+      "port": 8090,
+      "script": "install_job_dispatcher.sh",
+      "source": "HYDRA-UMC-JOB-DISPATCHER",
+      "target": "/opt/hydra-umc/job-dispatcher",
+      "unit": "hydra-umc-job-dispatcher.service",
+      "units": [
+        "hydra-umc-job-dispatcher.service"
+      ],
+      "user": "hydra-umc-job-dispatcher"
+    },
+    {
+      "clones": false,
+      "installs_manifest": false,
+      "script": "install_kiosk.sh",
+      "source": null,
+      "target": null,
+      "units": [],
+      "user": null
+    },
+    {
+      "clones": false,
+      "installs_manifest": true,
+      "script": "install_local_agent.sh",
+      "source": null,
+      "target": "/opt/hydra-umc/os-agent",
+      "units": [
+        "hydra-umc-agent.service"
+      ],
+      "user": null
+    },
+    {
+      "clones": false,
+      "installs_manifest": true,
+      "script": "install_local_technician.sh",
+      "source": "HYDRA-UMC-LOCAL-TECHNICIAN",
+      "target": "/opt/hydra-umc/local-technician",
+      "units": [],
+      "user": null
+    },
+    {
+      "clones": false,
+      "installs_manifest": true,
+      "script": "install_node_healing.sh",
+      "source": "HYDRA-UMC-NODE-HEALING",
+      "target": "/opt/hydra-umc/node-healing",
+      "units": [
+        "hydra-umc-node-healing.service"
+      ],
+      "user": "hydra-umc-node-healing"
+    },
+    {
+      "clones": false,
+      "health_path": "/health",
+      "installs_manifest": true,
+      "port": 8114,
+      "script": "install_orchestrator.sh",
+      "source": "HYDRA-UMC-ORCHESTRATOR",
+      "target": "/opt/hydra-umc/orchestrator",
+      "unit": "hydra-umc-orchestrator.service",
+      "units": [
+        "hydra-umc-orchestrator.service"
+      ],
+      "user": "hydra-umc-orchestrator"
+    },
+    {
+      "clones": false,
+      "health_path": "/health",
+      "installs_manifest": true,
+      "port": 8099,
+      "script": "install_production_reports.sh",
+      "source": "HYDRA-UMC-PRODUCTION-REPORTS",
+      "target": "/opt/hydra-umc/production-reports",
+      "unit": "hydra-umc-production-reports.service",
+      "units": [
+        "hydra-umc-production-reports.service"
+      ],
+      "user": "hydra-umc-production-reports"
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8108,
+      "script": "install_safety_zones.sh",
+      "source": "HYDRA-UMC-SAFETY-ZONES",
+      "target": "/opt/hydra-umc/safety-zones",
+      "unit": "hydra-umc-safety-zones.service",
+      "units": [
+        "hydra-umc-safety-zones.service"
+      ],
+      "user": "hydra-umc-safety-zones"
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8109,
+      "script": "install_semantic_planner.sh",
+      "source": "HYDRA-UMC-SEMANTIC-PLANNER",
+      "target": "/opt/hydra-umc/semantic-planner",
+      "unit": "hydra-umc-semantic-planner.service",
+      "units": [
+        "hydra-umc-semantic-planner.service"
+      ],
+      "user": "hydra-umc-semantic-planner"
+    },
+    {
+      "clones": false,
+      "installs_manifest": true,
+      "script": "install_server.sh",
+      "source": null,
+      "target": null,
+      "units": [
+        "hydra-umc-server.service"
+      ],
+      "user": "hydra-umc-server"
+    },
+    {
+      "clones": false,
+      "installs_manifest": false,
+      "script": "install_splashscreen.sh",
+      "source": null,
+      "target": null,
+      "units": [],
+      "user": null
+    },
+    {
+      "clones": false,
+      "health_path": "/health",
+      "installs_manifest": true,
+      "port": 8112,
+      "script": "install_swarm_sync.sh",
+      "source": "HYDRA-UMC-SWARM-SYNC",
+      "target": "/opt/hydra-umc/swarm-sync",
+      "unit": "hydra-umc-swarm-sync.service",
+      "units": [
+        "hydra-umc-swarm-sync.service"
+      ],
+      "user": "hydra-umc-swarm-sync"
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8092,
+      "script": "install_telemetry_collector.sh",
+      "source": "HYDRA-UMC-TELEMETRY-COLLECTOR",
+      "target": "/opt/hydra-umc/telemetry-collector",
+      "unit": "hydra-umc-telemetry-collector.service",
+      "units": [
+        "hydra-umc-telemetry-collector.service"
+      ],
+      "user": "hydra-umc-telemetry-collector"
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8111,
+      "script": "install_twin.sh",
+      "source": "HYDRA-UMC-TWIN",
+      "target": "/opt/hydra-umc/twin",
+      "unit": "hydra-umc-twin.service",
+      "units": [
+        "hydra-umc-twin.service"
+      ],
+      "user": "hydra-umc-twin"
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8094,
+      "script": "install_vision_node.sh",
+      "source": "HYDRA-UMC-VISION-NODE",
+      "target": "/opt/hydra-umc/vision-node",
+      "unit": "hydra-umc-vision-node.service",
+      "units": [
+        "hydra-umc-vision-node.service"
+      ],
+      "user": "hydra-umc-vision-node"
+    },
+    {
+      "clones": false,
+      "installs_manifest": true,
+      "script": "install_vision_streamer.sh",
+      "source": "HYDRA-UMC-VISION-STREAMER",
+      "target": "/opt/hydra-umc/vision-streamer",
+      "units": [],
+      "user": "hydra-umc-vision-streamer"
+    },
+    {
+      "clones": false,
+      "health_path": "/stats",
+      "installs_manifest": true,
+      "port": 8116,
+      "script": "install_visual_servoing_api.sh",
+      "source": "HYDRA-UMC-VISUAL-SERVOING-API",
+      "target": "/opt/hydra-umc/visual-servoing-api",
+      "unit": "hydra-umc-visual-servoing-api.service",
+      "units": [
+        "hydra-umc-visual-servoing-api.service"
+      ],
+      "user": "hydra-umc-visual-servoing-api"
+    },
+    {
+      "clones": false,
+      "health_path": "/health",
+      "installs_manifest": true,
+      "port": 8098,
+      "script": "install_vla_engine.sh",
+      "source": "HYDRA-UMC-VLA-ENGINE",
+      "target": "/opt/hydra-umc/vla-engine",
+      "unit": "hydra-umc-vla-engine.service",
+      "units": [
+        "hydra-umc-vla-engine.service"
+      ],
+      "user": "hydra-umc-vla-engine"
+    },
+    {
+      "clones": false,
+      "health_path": "/health",
+      "installs_manifest": true,
+      "port": 8091,
+      "script": "install_voice_ui.sh",
+      "source": "HYDRA-UMC-VOICE-UI",
+      "target": "/opt/hydra-umc/voice-ui",
+      "unit": null,
+      "units": [
+        "hydra-umc-voice-ui.service"
+      ],
+      "user": "hydra-umc-voice-ui"
+    },
+    {
+      "clones": false,
+      "installs_manifest": false,
+      "script": "install_wifi_provision.sh",
+      "source": null,
+      "target": "/opt/hydra-umc/wifi-provision",
+      "units": [
+        "hydra-umc-wifi-provision.service"
+      ],
+      "user": null
+    }
+  ]
+}
