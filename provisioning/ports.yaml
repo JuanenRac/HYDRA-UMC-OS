@@ -37,6 +37,8 @@ services:
     port: 8090
     health_path: /health
     systemd_unit: hydra-umc-job-dispatcher.service
+    grpc_port: 50090
+    grpc_service: hydra.common.v1.HealthService
   - name: HYDRA-UMC-MQTT-BROKER
     port: 1883
     health_path: null
@@ -53,6 +55,8 @@ services:
     port: 8114
     health_path: /health
     systemd_unit: hydra-umc-orchestrator.service
+    grpc_port: 50114
+    grpc_service: hydra.common.v1.HealthService
   - name: HYDRA-UMC-PRODUCTION-REPORTS
     port: 8099
     health_path: /health
