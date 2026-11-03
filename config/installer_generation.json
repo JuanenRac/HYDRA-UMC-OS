@@ -8,6 +8,10 @@
   "hook_dir": "build_hooks",
   "preflights": ["node-healing"],
   "no_health_announce": ["node-healing"],
+  "health_open": [
+    "anomaly-detector", "cognitive-node", "datalake", "detection-hef", "docs-qa", "production-reports", "safety-zones", "semantic-planner",
+    "vision-node", "visual-servoing-api"
+  ],
   "hooks": [
     "anomaly-detector", "cognitive-node", "dashboard-ai", "datalake", "detection-hef", "docs-qa", "hil-bridge",
     "job-dispatcher", "node-healing", "orchestrator", "production-reports", "safety-zones", "semantic-planner", "server",

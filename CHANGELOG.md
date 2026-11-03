@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The installers open the common `GET /health` of ten services on the CM5:** the services that answer `404` on `GET /health` until the operator opens it (the anomaly detector, cognitive node, data lake, detection HEF, docs QA, production reports, safety zones, semantic planner, vision node and visual servoing API; the data lake and the production reports used to answer it to anybody) get from their `install_*.sh` the drop-in `10-health-open.conf` of their main unit with `HYDRA_UMC_<SERVICE>_HEALTH_OPEN=1`. The list is `health_open` in `config/installer_generation.json`; the generator writes the lines, the ten installers are regenerated and `tools/verify_installer_generation.py` checks them. The health paths of `provisioning/ports.yaml` are unchanged.
 - **Bench test script:** `docs/BENCH_TESTS.md` lists the checks of the installers, the update and recovery scripts, the agent and the kiosk that need a Compute Module 5, all marked not executed, with the known gaps.
 
 ## [0.5.8] - The installers are generated from the manifests with a build hook for each program that needs one, a panel of the permissions of the secrets and the check of the generation in the build

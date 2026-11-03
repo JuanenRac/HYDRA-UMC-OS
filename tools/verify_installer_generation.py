@@ -81,6 +81,22 @@ class GenerateInstallersTests(unittest.TestCase):
             on_disk = (PROVISIONING / script).read_text(encoding="utf-8").replace("\r\n", "\n")
             self.assertEqual(on_disk, text, f"{script} differs from what generate_installers.py writes (edit the table or its hook, then run it with --replace)")
 
+    def test_the_services_with_a_closed_health_route_get_the_drop_in_that_opens_it(self) -> None:
+        opened = set(self.config["health_open"])
+        self.assertEqual(len(opened), 10)
+        rows = self.rows()
+        for script, text in gen.build_all(self.plan, self.config)[0].items():
+            short = gen.short_name(rows[script])
+            variable = gen.health_open_variable(short)
+            if short in opened:
+                unit = rows[script].get("unit") or rows[script]["units"][0]
+                self.assertIn(f"/etc/systemd/system/{unit}.d/10-health-open.conf", text, script)
+                self.assertIn(f"Environment={variable}=1", text, script)
+                self.assertLess(text.index("10-health-open.conf"), text.index("systemctl daemon-reload"), script)
+            else:
+                self.assertNotIn("health-open", text, script)
+        self.assertEqual(gen.health_open_variable("visual-servoing-api"), "HYDRA_UMC_VISUAL_SERVOING_API_HEALTH_OPEN")
+
     def test_what_the_hand_written_ones_did_is_kept_by_the_hooks(self) -> None:
         facts = {
             "cargo build --release": ("hil-bridge", "orchestrator", "swarm-sync", "twin"),

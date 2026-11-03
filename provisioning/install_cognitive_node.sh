@@ -35,6 +35,9 @@ if [[ -d "$SOURCE/src" ]]; then
   chmod -R go-w "$TARGET/src"
 fi
 install -m 0644 "$SOURCE/systemd/hydra-umc-cognitive-node.service" /etc/systemd/system/hydra-umc-cognitive-node.service
+install -d -m 0755 /etc/systemd/system/hydra-umc-cognitive-node.service.d
+printf '[Service]\nEnvironment=HYDRA_UMC_COGNITIVE_NODE_HEALTH_OPEN=1\n' > /etc/systemd/system/hydra-umc-cognitive-node.service.d/10-health-open.conf
+chmod 0644 /etc/systemd/system/hydra-umc-cognitive-node.service.d/10-health-open.conf
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 deploy_finish HYDRA-UMC-COGNITIVE-NODE "$TARGET"

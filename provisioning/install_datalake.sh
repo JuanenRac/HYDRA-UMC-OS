@@ -44,6 +44,9 @@ install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-downsample.timer" /etc/syste
 install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-retention.service" /etc/systemd/system/hydra-umc-datalake-retention.service
 install -m 0644 "$SOURCE/systemd/hydra-umc-datalake-retention.timer" /etc/systemd/system/hydra-umc-datalake-retention.timer
 install -m 0644 "$SOURCE/systemd/hydra-umc-datalake.service" /etc/systemd/system/hydra-umc-datalake.service
+install -d -m 0755 /etc/systemd/system/hydra-umc-datalake.service.d
+printf '[Service]\nEnvironment=HYDRA_UMC_DATALAKE_HEALTH_OPEN=1\n' > /etc/systemd/system/hydra-umc-datalake.service.d/10-health-open.conf
+chmod 0644 /etc/systemd/system/hydra-umc-datalake.service.d/10-health-open.conf
 install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"
 systemctl daemon-reload
 deploy_finish HYDRA-UMC-DATALAKE "$TARGET"

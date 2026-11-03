@@ -62,6 +62,11 @@ def short_name(row: dict[str, Any]) -> str:
     return Path(str(row["target"])).name
 
 
+def health_open_variable(short: str) -> str:
+    """The environment variable that opens the common GET /health of a service (the package name in capitals, as health_route.py reads it)."""
+    return "HYDRA_UMC_" + short.upper().replace("-", "_") + "_HEALTH_OPEN"
+
+
 def needs_hook(row: dict[str, Any], config: dict[str, Any]) -> bool:
     """True when the program does more than the shared shape (it compiles, fetches, installs packages or sets up more than its folder)."""
     return bool(row.get("target")) and short_name(row) in config["hooks"]
@@ -147,6 +152,16 @@ def generate(row: dict[str, Any], config: dict[str, Any]) -> str:
         lines.append(f'install -d -o "$SVC_USER" -g "$SVC_USER" -m 0750 "$TARGET/{data}"')
     for unit in units:
         lines.append(f'install -m 0644 "$SOURCE/systemd/{unit}" /etc/systemd/system/{unit}')
+    if short in config.get("health_open", []):
+        # The common GET /health of these services is closed unless the operator opens it; on the CM5 it is opened with a drop-in of the
+        # main unit, so the unit file of the repository is not edited and the service stays closed anywhere else.
+        main = str(row.get("unit") or units[0])
+        dropin = f"/etc/systemd/system/{main}.d"
+        lines += [
+            f"install -d -m 0755 {dropin}",
+            f"printf '[Service]\\nEnvironment={health_open_variable(short)}=1\\n' > {dropin}/10-health-open.conf",
+            f"chmod 0644 {dropin}/10-health-open.conf",
+        ]
     lines += [
         'install -m 0644 "$SOURCE/hydra-umc.project.json" "$TARGET/hydra-umc.project.json"',
         "systemctl daemon-reload",

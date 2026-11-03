@@ -72,6 +72,11 @@ before the shared copy step (compile, fetch the toolchain, install packages, cre
 is installed, and it must not call `sudo`. `<folder>.preflight.sh` reads the options of the installer before the dry-run policy. `tools/verify_installer_generation.py` fails when a program that
 needs a hook has none or when an installer differs from what the generator writes. The installers whose row is incomplete (the base system, the kiosk, the splash screen, the local agent, the
 Wi-Fi setup, the industrial gateway, the technician, the vision streamer) keep their own script.
+
+**The common `GET /health` is opened on the CM5 by the installer.** The Python services that carry the common health route (the anomaly detector, cognitive node, data lake, detection HEF, docs QA, production reports,
+safety zones, semantic planner, vision node and visual servoing API) answer `404` on `GET /health` unless the operator opens it. The names under `health_open` in `config/installer_generation.json` get, from their
+installer, the drop-in `/etc/systemd/system/<unit>.d/10-health-open.conf` with `Environment=HYDRA_UMC_<SERVICE>_HEALTH_OPEN=1`, so the route answers on loopback (and, from elsewhere, only with the bearer token of the
+service) and the unit file of the repository stays closed anywhere else. The health path that the registry gives to the watchdog and the probes (`provisioning/ports.yaml`) is not changed by this.
 ## What it does not do
 
 * It does not deploy a signed package: that is `tools/deploy_release.py`, which keeps its own `releases/current` layout and is not wired to the units yet.
