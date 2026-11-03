@@ -149,9 +149,9 @@ class InstallerTests(unittest.TestCase):
 
 class RegistryContentTests(unittest.TestCase):
     def test_every_service_that_serves_http_declares_its_route(self) -> None:
-        # Only a message broker and a binary protocol server have no HTTP route on the port of the registry.
+        # Only the kiosk app (it serves no HTTP), a message broker and a binary protocol server have no HTTP route on the port of the registry.
         without = sorted(name for name, fields in registry().items() if fields["health_path"] is None)
-        self.assertEqual(without, ["HYDRA-UMC-MQTT-BROKER", "HYDRA-UMC-OPCUA-SERVER"])
+        self.assertEqual(without, ["HYDRA-UMC-DSI", "HYDRA-UMC-MQTT-BROKER", "HYDRA-UMC-OPCUA-SERVER"])
 
     def test_the_copy_is_the_one_of_the_sdk_when_it_is_checked_out(self) -> None:
         sdk = ROOT.parent / "HYDRA-UMC-SDK" / "contracts" / "ports.yaml"
