@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **Bench test script:** `docs/BENCH_TESTS.md` lists the checks of the installers, the update and recovery scripts, the agent and the kiosk that need a Compute Module 5, all marked not executed, with the known gaps.
+
 ## [0.5.8] - The installers are generated from the manifests with a build hook for each program that needs one, a panel of the permissions of the secrets and the check of the generation in the build
 
 - **Installers generated from the table:** `provisioning/generate_installers.py` writes an `install_*.sh` from each row of `install_plan.json` (guards, system user, program folder, unit files, project manifest and the deployment contract); whatever a program does beyond the shared shape goes in `provisioning/build_hooks/<name>.sh`, which the generated script sources, and the options that must be read even in a dry run in `<name>.preflight.sh`. `--check` proves every generated script reads back as its row, that every program that needs a hook has it and that bash parses all of them; nothing is executed. Writing over the scripts of `provisioning/` is only done by the explicit `--replace` command, after the whole check passes (the option `allow_replace_existing` of `config/installer_generation.json` stays off). New verification: `tools/verify_installer_generation.py`, which also fails when an installer of the folder differs from what the generator writes.
