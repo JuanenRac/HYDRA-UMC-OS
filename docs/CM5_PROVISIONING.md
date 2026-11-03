@@ -93,7 +93,7 @@ installers write are:
 | `HYDRA_LOCAL_SCREEN`, `HYDRA_LOCAL_SCREEN_FILE` | `install_kiosk.sh` | which local screen (see above) |
 | `HYDRA_KIOSK_USER`, `HYDRA_KIOSK_ALLOW_VT_SWITCH` | `install_kiosk.sh` | account of the kiosk session and virtual-terminal switching |
 | `HYDRA_GATEWAY_ENV` | `install_industrial_gateway.sh` | the file the gateway reads (default `/etc/hydra-umc/gateway.env`) |
-| `print_once` (`--print-once`, `HYDRA_UMC_PRINT_ONCE=1`, or `print_once = true` in `/etc/hydra-umc/provisioning.conf`) | `gateway_env.py`, `wifi_provision.py` | off by default: a generated password goes to a file only root can read (0600, in a folder with mode 0700) and the tool prints that path, never the value. On makes the tool also print the value once, when it creates it, for a device without a screen |
+| `print_once` (`--print-once`, `HYDRA_UMC_PRINT_ONCE=1`, or `print_once = true` in `/etc/hydra-umc/provisioning.conf`) | `gateway_env.py`, `wifi_provision.py`, `generate_secrets.py` | off by default: a generated password goes to a file only root can read (0600, in a folder with mode 0700) and the tool prints that path, never the value. On makes the tool also print the value once, when it creates it, for a device without a screen |
 | `MQTT_TLS_DIR` | `gateway_env.py` | folder with the certificate of the broker (`server.pem`, `server.key`, made by `hydra_mqtt_tls.sh init`) |
 | `HYDRA_UMC_NEW_INSTALL_TLS=off` | `install_industrial_gateway.sh` | on a new installation, skip the certificate authority (the broker then needs `MQTT_TLS_DIR` from elsewhere) |
 | `HYDRA_UMC_LOCAL_TECHNICIAN_RESULT_KEY_FILE` | `install_local_technician.sh` | key that signs the technician's results; `--no-signing` switches it off |
@@ -118,7 +118,8 @@ repositories, read [CM5 ecosystem deployment](CM5_ECOSYSTEM_DEPLOYMENT.md).
 | Password | File (root only, 0600; never versioned) | Read it | Rotate it |
 | --- | --- | --- | --- |
 | MQTT credentials of the machine bridges | `/etc/hydra-umc/credentials/gateway-bridges.txt` (the same values are in `gateway.env`) | `sudo cat /etc/hydra-umc/credentials/gateway-bridges.txt` | move `gateway.env` and that file out of the way, run `install_industrial_gateway.sh --apply` again and give each bridge its new password |
+| Password of the first administrator of HYDRA-UMC-SERVER (`HYDRA_UMC_BOOTSTRAP_ADMIN_PASSWORD`) | `/etc/hydra-umc/credentials/server-admin.txt` (the same value is in `server.env`; `--admin-credentials-file` changes the path) | `sudo cat /etc/hydra-umc/credentials/server-admin.txt` | after the first sign-in change it in the application and remove the variable from `server.env`; to generate a new one before the first start, move `server.env` and that file away and run `install_server.sh --apply` again |
 | Wi-Fi setup network password and setup code | `/var/lib/hydra-umc/wifi-provision/credentials.json` | `sudo cat /var/lib/hydra-umc/wifi-provision/credentials.json` | stop `hydra-umc-wifi-provision`, move that file away, start it again |
 
-An installation made before this setting keeps its files as they are (an existing file is never overwritten) and a mode more open than 0600 is corrected at the next run. To keep the old
+`generate_secrets.py` stops (exit code 1, nothing written) when `server-admin.txt` already exists or is a link, so a password is never lost nor placed in a file somebody else controls. An installation made before this setting keeps its files as they are (an existing file is never overwritten) and a mode more open than 0600 is corrected at the next run. To keep the old
 behaviour (the password printed once in the journal) switch `print_once` on before the first start; a password that was already printed in an older journal stays there, so rotate it.

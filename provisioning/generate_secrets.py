@@ -16,7 +16,10 @@ This script fills every placeholder of an env file with a random value of its ow
 * `--ensure KEY` adds `KEY=<placeholder>` to the file when it has no active line for KEY, so that it is generated like the others (the key that signs the confirmations of the voice relay is
   added to files made from an older template); `--ensure KEY=VALUE` adds that exact value instead (a setting that is on by default, such as requiring the signature), and a line that is
   already there, the operator's own choice included, is never changed;
-* the generated bootstrap administrator password is printed once (it is also in the file, which is 0600 root: remove the variable after the first start, as the template says).
+* the generated bootstrap administrator password is written to a file only root can read (mode 0600, in a folder with mode 0700, written atomically, never overwritten, a symbolic link is
+  refused; by default `credentials/server-admin.txt` next to the env file, or `--admin-credentials-file`) and the tool prints the PATH of that file and the command that reads it, never
+  the value. `print_once` (`--print-once`, `HYDRA_UMC_PRINT_ONCE`, or `print_once = true` in `/etc/hydra-umc/provisioning.conf`; off by default, see secret_output.py) also prints it once
+  for a device without a screen. The password is also in the env file: remove that variable after the first start, as the template says.
 
 Dry-run by default; `--apply` writes. Standard library only.
 """
@@ -31,12 +34,16 @@ import sys
 import tempfile
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import secret_output  # noqa: E402 - the sibling module, found next to this file
+
 PLACEHOLDER = re.compile(r"(set[_ -]?locally|change[_ -]?me|replace[_ -]?me|your[_ -]?(secret|password)|example|placeholder|remove[_ -]?after|hydra_industrial_secret|hydraumc-setup)", re.IGNORECASE)
 LINE = re.compile(r"^(?P<key>[A-Za-z_][A-Za-z0-9_]*)=(?P<value>.*)$")
 SECRET_NAME = re.compile(r"(SECRET|TOKEN|PASSWORD|KEY)", re.IGNORECASE)
 MIN_SECRET_LENGTH = 32
 MIN_PASSWORD_LENGTH = 12
 ADMIN_PASSWORD_KEY = "HYDRA_UMC_BOOTSTRAP_ADMIN_PASSWORD"
+ADMIN_USER_KEY = "HYDRA_UMC_BOOTSTRAP_ADMIN_USERNAME"
 
 
 def is_placeholder(value: str) -> bool:
@@ -134,6 +141,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--adopt", action="append", default=[], metavar="KEY=OTHER_FILE:OTHER_KEY", help="use the real value another env file already has instead of generating one")
     parser.add_argument("--ensure", action="append", default=[], metavar="KEY[=VALUE]", help="add the line when the file has none (a placeholder to be generated, or the given value); never changes an existing line")
     parser.add_argument("--apply", action="store_true", help="write the changes (default: dry run)")
+    parser.add_argument("--admin-credentials-file", help="the root-only file that receives the first administrator's password (default: credentials/server-admin.txt next to the env file)")
+    parser.add_argument(
+        "--print-once",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="also print the first administrator's password once, when it is generated (default: off; HYDRA_UMC_PRINT_ONCE or print_once in /etc/hydra-umc/provisioning.conf)",
+    )
     args = parser.parse_args(argv)
 
     path = Path(args.env_file)
@@ -177,6 +191,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[dry-run] would {'create' if not path.exists() else 'update'} {path} and generate: {names}")
         return 0
 
+    credentials_path = Path(args.admin_credentials_file) if args.admin_credentials_file else path.parent / "credentials" / "server-admin.txt"
+    if ADMIN_PASSWORD_KEY in generated:
+        # before anything is written: a link or an existing file stops the run, so the password is never lost nor placed in a file somebody else controls
+        if credentials_path.exists() or credentials_path.is_symlink():
+            try:
+                secret_output.ensure_private_file(credentials_path)
+            except PermissionError as error:
+                print(f"SECRETS=REFUSED {error}", file=sys.stderr)
+                return 1
+            print(f"SECRETS=REFUSED {credentials_path} already exists and is never overwritten: move it away and run again", file=sys.stderr)
+            return 1
+        # the credentials first: if the env file then fails, nothing refers to a password that is not recorded anywhere
+        user = next((v for _, k, v in parse(new_text) if k == ADMIN_USER_KEY), "")
+        secret_output.write_private_atomic(credentials_path, f"# First administrator of HYDRA-UMC-SERVER (root only)\nusername: {user}\npassword: {generated[ADMIN_PASSWORD_KEY]}\n")
     write_private(path, new_text)
     print(f"SECRETS=GENERATED {path}: {names}")
     for spec in args.mirror:
@@ -201,9 +229,10 @@ def main(argv: list[str] | None = None) -> int:
                     pass
             print(f"SECRETS=MIRRORED {key} -> {other}:{other_key}")
     if ADMIN_PASSWORD_KEY in generated:
-        print("")
-        print("  First administrator (shown ONCE - it is also in the root-only env file; remove the variable after the first start):")
-        print(f"    password: {generated[ADMIN_PASSWORD_KEY]}")
+        print(f"SECRETS_ADMIN_CREDENTIALS={credentials_path} (root only; read it with: sudo cat {credentials_path})")
+        if secret_output.print_once_enabled(args.print_once):
+            print("  print_once is on: first administrator (shown ONCE - it is also in the root-only file and the env file; remove the variable from the env file after the first start):")
+            print(f"    password: {generated[ADMIN_PASSWORD_KEY]}")
     return 0
 
 
