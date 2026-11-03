@@ -68,21 +68,34 @@ def parse(text: str) -> list[tuple[int, str, str]]:
     return found
 
 
-def problems(text: str) -> list[str]:
-    """Why this env file must not be used (empty when it is fine)."""
+REASONS = {
+    "empty": "is empty",
+    "example": "is still an example value",
+    "short_password": f"has fewer than {MIN_PASSWORD_LENGTH} characters",
+    "short_secret": f"has fewer than {MIN_SECRET_LENGTH} characters",
+}
+
+
+def problem_codes(text: str) -> list[tuple[int, str, str]]:
+    """(line number, key, reason code) of every secret setting that must not be used; the reason codes are the keys of REASONS."""
     out = []
-    for _, key, value in parse(text):
+    for index, key, value in parse(text):
         if not SECRET_NAME.search(key):
             continue
         if not value and key.upper() in ("JWT_SECRET", "GATEWAY_JWT_SECRET"):
-            out.append(f"{key} is empty")
+            out.append((index + 1, key, "empty"))
         elif is_placeholder(value):
-            out.append(f"{key} is still an example value")
+            out.append((index + 1, key, "example"))
         elif value and "PASSWORD" in key.upper() and len(value) < MIN_PASSWORD_LENGTH:
-            out.append(f"{key} has fewer than {MIN_PASSWORD_LENGTH} characters")
+            out.append((index + 1, key, "short_password"))
         elif value and (key.upper() in ("JWT_SECRET", "GATEWAY_JWT_SECRET") or key.upper().endswith("RESULT_KEY")) and len(value) < MIN_SECRET_LENGTH:
-            out.append(f"{key} has fewer than {MIN_SECRET_LENGTH} characters")
+            out.append((index + 1, key, "short_secret"))
     return out
+
+
+def problems(text: str) -> list[str]:
+    """Why this env file must not be used (empty when it is fine)."""
+    return [f"{key} {REASONS[code]}" for _, key, code in problem_codes(text)]
 
 
 def fill(text: str, mirrored: dict[str, str] | None = None) -> tuple[str, dict[str, str]]:
@@ -155,10 +168,11 @@ def main(argv: list[str] | None = None) -> int:
         if not path.exists():
             print(f"SECRETS_CHECK=FAIL {path} does not exist", file=sys.stderr)
             return 1
-        found = problems(path.read_text(encoding="utf-8"))
+        found = problem_codes(path.read_text(encoding="utf-8"))
         if found:
-            for item in found:
-                print(f"SECRETS_CHECK=FAIL {path}: {item}", file=sys.stderr)
+            # The line number and the reason are enough to find the setting; the report never builds a sentence from the text of the file.
+            for line_number, _, code in found:
+                print(f"SECRETS_CHECK=FAIL {path}: line {line_number} {REASONS[code]}", file=sys.stderr)
             return 1
         print(f"SECRETS_CHECK=PASS {path}")
         return 0

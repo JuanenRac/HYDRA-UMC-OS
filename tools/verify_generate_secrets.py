@@ -85,6 +85,12 @@ with tempfile.TemporaryDirectory() as directory:
     bad.write_text(TEMPLATE, encoding="utf-8")
     check("the check refuses a copy of the template", gs.main([str(bad), "--check"]), 1)
     check("the check refuses a missing file", gs.main([str(base / "missing.env"), "--check"]), 1)
+    report_io = io.StringIO()
+    with contextlib.redirect_stderr(report_io):
+        code = gs.main([str(bad), "--check"])
+    report = report_io.getvalue()
+    check("the report names the line and the reason, not the setting", code == 1 and "line " in report and "is still an example value" in report and "JWT_SECRET" not in report, True)
+    check("the codes give the line, the setting and the reason", gs.problem_codes("A=1" + chr(10) + "JWT_SECRET=short" + chr(10)), [(2, "JWT_SECRET", "short_secret")])
 
 # --- the first administrator's password: a root-only file, the path printed, the value not printed unless print_once is on ---------
 NO_CONF = {"HYDRA_UMC_PROVISIONING_CONF": "/nonexistent/provisioning.conf"}
