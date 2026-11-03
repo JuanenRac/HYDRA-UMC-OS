@@ -76,6 +76,7 @@ class TlsScriptTests(unittest.TestCase):
 
     def handshake(self, client_context: ssl.SSLContext, hostname: str = "localhost") -> tuple[object, object]:
         server_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        server_context.minimum_version = ssl.TLSVersion.TLSv1_2
         server_context.load_cert_chain(self.dir / "server.pem", self.dir / "server.key")
         server_context.load_verify_locations(self.dir / "ca.pem")
         server_context.verify_mode = ssl.CERT_REQUIRED

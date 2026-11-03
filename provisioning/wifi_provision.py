@@ -129,7 +129,10 @@ def resolve_ap_credentials(state_dir: Path, explicit_password: str | None = None
         code = f"{secrets.randbelow(10 ** 8):08d}"
         generated = True
     if generated or not path.exists():
-        path.write_text(json.dumps({"password": password, "code": code}), encoding="utf-8")
+        # created with mode 0600, so the file is never readable by others, not even for an instant
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(json.dumps({"password": password, "code": code}))
         try:
             os.chmod(path, 0o600)
         except OSError:
