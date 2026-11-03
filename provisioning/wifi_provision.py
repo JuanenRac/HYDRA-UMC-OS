@@ -487,9 +487,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
 
-    problem = ap_password_problem(args.ap_password) if args.ap_password else None
-    if problem:
-        print(f"WIFI_PROVISION=WARNING {problem}: a password of this device's own is used instead")
+    if args.ap_password and ap_password_problem(args.ap_password):
+        print(f"WIFI_PROVISION=WARNING the configured AP password is the publicly known default or has fewer than {MIN_AP_PASSWORD_LENGTH} characters: a password of this device's own is used instead")
     password, code, generated = resolve_ap_credentials(Path(args.state_dir), args.ap_password)
     credentials_file = Path(args.state_dir) / "credentials.json"
     # By default the journal receives the PATH of the root-only file, never the password or the code; print_once (off by default) prints them once, when they are generated.
