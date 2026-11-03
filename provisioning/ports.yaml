@@ -25,6 +25,10 @@ services:
     port: 8110
     health_path: /stats
     systemd_unit: hydra-umc-docs-qa.service
+  - name: HYDRA-UMC-DSI
+    port: null
+    health_path: null
+    systemd_unit: hydra-umc-dsi.service
   - name: HYDRA-UMC-GATEWAY-INDUSTRIAL
     port: 8000
     health_path: /health
