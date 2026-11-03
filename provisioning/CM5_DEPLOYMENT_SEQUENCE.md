@@ -112,14 +112,19 @@ other hardware profiles. Services remain an explicit activation decision.
 
 For the optional Wi-Fi access-point fallback, enable the service only when it is
 actually required. The setup network's password and a one-time setup code are generated
-for that device on its first start (nothing comes from the source code); read them once
-from the journal, to write on the device label. The network stays open 30 minutes after
+for that device on its first start (nothing comes from the source code) and kept in a file
+only root can read; the journal receives the path of that file, never the values. Read them
+with `sudo cat` to write them on the device label. The network stays open 30 minutes after
 each start, and the setup form asks for the code:
 
 ```bash
 sudo systemctl enable --now hydra-umc-wifi-provision
-sudo journalctl -u hydra-umc-wifi-provision | grep WIFI_PROVISION=CREDENTIALS
+sudo cat /var/lib/hydra-umc/wifi-provision/credentials.json
 ```
+
+To rotate them, stop the service, move that file away and start it again. A device without a
+screen may switch `print_once` on (see `docs/CM5_PROVISIONING.md`): the values are then also
+printed once, when they are generated.
 
 **Gate 3:** preflight, reviewed dry run and BASE installation succeed without
 enabling a physical-control profile.

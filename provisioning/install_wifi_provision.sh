@@ -24,6 +24,7 @@ run() { if $APPLY; then "$@"; else printf '[dry-run] '; printf '%q ' "$@"; print
 
 run install -d -o root -g root -m 0755 "$TARGET"
 run install -m 0755 "$ROOT/provisioning/wifi_provision.py" "$TARGET/wifi_provision.py"
+run install -m 0644 "$ROOT/provisioning/secret_output.py" "$TARGET/secret_output.py"
 run install -m 0644 "$ROOT/provisioning/device_identity.py" "$TARGET/device_identity.py"
 run python3 "$ROOT/provisioning/rollback.py" backup /etc/systemd/system/hydra-umc-wifi-provision.service \
   --backup-dir /var/lib/hydra-umc/rollback --manifest /var/lib/hydra-umc/rollback/manifest.json
@@ -32,9 +33,13 @@ run systemctl daemon-reload
 
 echo "WiFi provisioning installed."
 echo "The setup network's password and a one-time setup code are generated for THIS device on its first start"
-echo "(nothing is taken from the source code). Read them once, to write on the device label:"
+echo "(nothing is taken from the source code). They are kept in /var/lib/hydra-umc/wifi-provision/credentials.json"
+echo "(root only, mode 0600) and the journal receives only that path, never the values. To write them on the device label:"
+echo "  sudo cat /var/lib/hydra-umc/wifi-provision/credentials.json"
+echo "To rotate them, stop the service, move that file away and start it again (new values are generated)."
+echo "For a device without a screen you may turn print_once on (print_once = true in /etc/hydra-umc/provisioning.conf,"
+echo "or HYDRA_UMC_PRINT_ONCE=1 in /etc/hydra-umc/wifi-provision.env): the values are then also printed once, when generated:"
 echo "  journalctl -u hydra-umc-wifi-provision | grep WIFI_PROVISION=CREDENTIALS"
-echo "They are also kept in /var/lib/hydra-umc/wifi-provision/credentials.json (root only)."
 echo "The setup network stays open for 30 minutes after each start (HYDRA_UMC_AP_WINDOW_S in"
 echo "/etc/hydra-umc/wifi-provision.env changes it); the form asks for the setup code."
 echo "Then: systemctl enable --now hydra-umc-wifi-provision"

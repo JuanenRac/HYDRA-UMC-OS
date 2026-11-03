@@ -45,12 +45,16 @@ import json
 import os
 import secrets
 import subprocess
+import sys
 import time
 from pathlib import Path
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Protocol
 from urllib.parse import parse_qs
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import secret_output  # noqa: E402 - the sibling module, installed next to this file
 
 DEFAULT_IFNAME = "wlan0"
 DEFAULT_AP_SSID = "HYDRA-UMC-SETUP"
@@ -107,10 +111,11 @@ def resolve_ap_credentials(state_dir: Path, explicit_password: str | None = None
     and kept in `state_dir/credentials.json` (0600, root), so a restart keeps the same values and the label or the log line stays valid. The setup code is always generated: the form
     asks for it, so joining the setup network is not enough to hand the device a network.
     """
-    state_dir.mkdir(parents=True, exist_ok=True)
+    secret_output.ensure_private_dir(state_dir)
     path = state_dir / "credentials.json"
     stored: dict[str, str] = {}
     if path.exists():
+        secret_output.ensure_private_file(path)  # a lax mode is corrected; a link is refused
         try:
             loaded = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(loaded, dict):
@@ -129,14 +134,8 @@ def resolve_ap_credentials(state_dir: Path, explicit_password: str | None = None
         code = f"{secrets.randbelow(10 ** 8):08d}"
         generated = True
     if generated or not path.exists():
-        # created with mode 0600, so the file is never readable by others, not even for an instant
-        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
-            stream.write(json.dumps({"password": password, "code": code}))
-        try:
-            os.chmod(path, 0o600)
-        except OSError:
-            pass
+        # a temporary file of mode 0600 put in place in one step: never readable by others, never half written
+        secret_output.write_private_atomic(path, json.dumps({"password": password, "code": code}), overwrite=True)
     return password, code, generated
 POLL_INTERVAL_S = 5.0
 NMCLI_TIMEOUT_S = 30
@@ -469,6 +468,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--window-seconds", type=float, default=_window_from_environment())
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument(
+        "--print-once",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="also print the generated password and code once, when they are created (default: off; HYDRA_UMC_PRINT_ONCE or print_once in /etc/hydra-umc/provisioning.conf)",
+    )
     args = parser.parse_args(argv)
 
     runner = RealNetworkManager()
@@ -486,11 +491,12 @@ def main(argv: list[str] | None = None) -> int:
     if problem:
         print(f"WIFI_PROVISION=WARNING {problem}: a password of this device's own is used instead")
     password, code, generated = resolve_ap_credentials(Path(args.state_dir), args.ap_password)
-    # Root-only journal: this line is how the person at the device learns the password and the code (also kept in state-dir/credentials.json, 0600).
-    if generated:
-        print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} password={password} code={code} (generated now)")
+    credentials_file = Path(args.state_dir) / "credentials.json"
+    # By default the journal receives the PATH of the root-only file, never the password or the code; print_once (off by default) prints them once, when they are generated.
+    if generated and secret_output.print_once_enabled(args.print_once):
+        print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} password={password} code={code} (generated now; print_once is on)")
     else:
-        print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} (password and code are in {Path(args.state_dir) / 'credentials.json'})")
+        print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} (password and code are in {credentials_file}; read them with: sudo cat {credentials_file})")
     serve_until_joined(runner, args.ifname, args.ap_ssid, password, args.host, args.port, setup_code=code, window_s=args.window_seconds)
     return 0
 

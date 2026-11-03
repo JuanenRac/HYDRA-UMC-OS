@@ -13,9 +13,13 @@ device:
   existing file is never touched, so an installation that already runs keeps what it has. The folder is /etc/hydra-umc/tls, or $HYDRA_TLS_DIR, or `--tls-dir`;
 * one MQTT credential per machine bridge (username and client ID prefix `hydra-umc-bridge-<name>`, a random 24-character password) and the ACL rule of that identity
   (`hydra/bridges/<name>/#` to publish, `hydra/bridges/<name>/cmd/#` to subscribe). The bridge connects with HYDRA_MQTT_USERNAME / HYDRA_MQTT_PASSWORD of its credential
-  (HYDRA-UMC-SDK's docs/BRIDGE_CONTRACT.md); the passwords are printed once, when the file is created.
+  (HYDRA-UMC-SDK's docs/BRIDGE_CONTRACT.md). The passwords are also written to a file only root can read (`credentials/gateway-bridges.txt` next to the `.env`, mode 0600 in a
+  folder with mode 0700, or `--credentials-file`); the tool prints the PATH of that file and never the passwords. A device without a screen can turn `print_once` on (`--print-once`,
+  HYDRA_UMC_PRINT_ONCE=1 or `print_once = true` in /etc/hydra-umc/provisioning.conf; off by default): the passwords are then also printed once, when the file is created.
+  Read them later with `sudo cat /etc/hydra-umc/credentials/gateway-bridges.txt`; to rotate them, move the `.env` and that file out of the way and run the installer again (a new file
+  gets new secrets; the bridges must then be given the new passwords). Neither file is ever versioned.
 
-An existing `.env` is never overwritten (its secrets stay), and the file is private (0600). Dry-run by default; `--apply` writes. Standard library only.
+An existing `.env` or credentials file is never overwritten (its secrets stay) and a lax mode (more than 0600) is corrected. Dry-run by default; `--apply` writes. Standard library only.
 """
 from __future__ import annotations
 
@@ -23,8 +27,11 @@ import argparse
 import json
 import os
 import secrets
-import stat
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import secret_output  # noqa: E402 - the sibling module, found next to this file
 
 BRIDGES = ("cnc", "laser", "openpnp", "printer3d", "ros2", "amr")
 
@@ -61,28 +68,60 @@ def build_env(tls_dir: str | None = None) -> tuple[str, dict[str, str]]:
     return "\n".join(lines), passwords
 
 
+def credentials_text(passwords: dict[str, str]) -> str:
+    lines = ["# Credentials of the machine bridges of this device - root only (0600). Do not commit. Rotate: see provisioning/gateway_env.py."]
+    for name, password in passwords.items():
+        lines.append(f"hydra-umc-bridge-{name}: HYDRA_MQTT_USERNAME=hydra-umc-bridge-{name} HYDRA_MQTT_PASSWORD={password}")
+    lines.append("")
+    return chr(10).join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("env_file", help="where to write the file: /etc/hydra-umc/gateway.env on a device (compose reads it with --env-file)")
     parser.add_argument("--apply", action="store_true", help="write the file (default: dry run)")
     parser.add_argument("--tls-dir", help="the folder with server.pem and server.key of the broker (default: $HYDRA_TLS_DIR or /etc/hydra-umc/tls)")
+    parser.add_argument("--credentials-file", help="the root-only file that receives the bridge passwords (default: credentials/gateway-bridges.txt next to the .env)")
+    parser.add_argument(
+        "--print-once",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="also print the bridge passwords once, when the file is created (default: off; HYDRA_UMC_PRINT_ONCE or print_once in /etc/hydra-umc/provisioning.conf)",
+    )
     args = parser.parse_args(argv)
     path = Path(args.env_file)
     if path.exists():
-        print(f"GATEWAY_ENV=UNCHANGED {path} already exists: its secrets stay")
+        try:
+            fixed = secret_output.ensure_private_file(path)
+        except PermissionError as error:
+            print(f"GATEWAY_ENV=REFUSED {error}", file=sys.stderr)
+            return 1
+        note = " (its mode was too open: now 0600)" if fixed else ""
+        print(f"GATEWAY_ENV=UNCHANGED {path} already exists: its secrets stay{note}")
         return 0
     if not args.apply:
         print(f"[dry-run] would create {path} with GATEWAY_JWT_SECRET, MQTT_TLS_DIR, MQTT_AUTH_JSON and MQTT_ACL_JSON for {', '.join(BRIDGES)}")
         return 0
     text, passwords = build_env(args.tls_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    handle = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, stat.S_IRUSR | stat.S_IWUSR)
-    with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
-        stream.write(text)
+    credentials_path = Path(args.credentials_file) if args.credentials_file else path.parent / "credentials" / "gateway-bridges.txt"
+    if credentials_path.exists():
+        try:
+            secret_output.ensure_private_file(credentials_path)
+        except PermissionError as error:
+            print(f"GATEWAY_ENV=REFUSED {error}", file=sys.stderr)
+            return 1
+    # the credentials first: if the .env then fails, nothing refers to passwords that are not recorded anywhere
+    # (the .env does not exist, so a credentials file left over belongs to secrets that are gone: it is replaced in one step)
+    secret_output.write_private_atomic(credentials_path, credentials_text(passwords), overwrite=True)
+    if not secret_output.write_private_atomic(path, text):
+        print(f"GATEWAY_ENV=UNCHANGED {path} already exists: its secrets stay")
+        return 0
     print(f"GATEWAY_ENV=CREATED {path}")
-    print("  Each machine bridge connects with its own credential (shown ONCE; they are also in the root-only file):")
-    for name, password in passwords.items():
-        print(f"    hydra-umc-bridge-{name}: HYDRA_MQTT_USERNAME=hydra-umc-bridge-{name} HYDRA_MQTT_PASSWORD={password}")
+    print(f"GATEWAY_BRIDGE_CREDENTIALS={credentials_path} (root only; read it with: sudo cat {credentials_path})")
+    if secret_output.print_once_enabled(args.print_once):
+        print("  print_once is on: each machine bridge connects with its own credential (shown ONCE; they are also in the root-only file):")
+        for name, password in passwords.items():
+            print(f"    hydra-umc-bridge-{name}: HYDRA_MQTT_USERNAME=hydra-umc-bridge-{name} HYDRA_MQTT_PASSWORD={password}")
     return 0
 
 
