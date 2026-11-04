@@ -1,0 +1,107 @@
+# =============================================================================
+# HYDRA-UMC-OS - Installer smoke test (manual)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only (workflow_dispatch): it never runs on a push or a pull request, so it cannot turn the checks of a push red.
+#
+# dry_run = true (the default): runs provisioning/install_cm5_base.sh WITHOUT --apply (with the Server and the Voice UI) as root on the runner, then
+# lists the unit files the installers would write. Nothing is installed.
+#
+# dry_run = false: runs the installer with --apply inside a throw-away Debian container that has systemd as its first process (privileged, on the
+# runner only), checks that the units it wrote pass `systemd-analyze verify`, and prints `systemd-analyze security` for each. The container is removed
+# at the end. This is the check that a real CM5 would otherwise be the only place to run.
+#
+# It holds no key, uploads nothing and publishes nothing.
+
+name: Installer smoke test (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "true: run the installer without --apply and install nothing. false: install into a throw-away systemd container"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: install-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Installer (${{ inputs.dry_run && 'dry run' || 'applied in a container' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      ACTOR: ${{ github.actor }}
+      OWNER: ${{ github.repository_owner }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - name: Only the owner starts it
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ "$ACTOR" = "$OWNER" ] || { echo "::error::only the owner of the repository starts this check"; exit 1; }
+
+      - name: Check out this repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - name: Dry run of the installer (nothing is installed)
+        if: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo bash provisioning/install_cm5_base.sh --with-server --with-voice-ui
+          echo "### Dry run of install_cm5_base.sh finished (nothing installed)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Start a Debian container with systemd as its first process
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name smoke --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            -v "$GITHUB_WORKSPACE:/opt/hydra-umc/HYDRA-UMC-OS" \
+            --tmpfs /run --tmpfs /run/lock \
+            debian:trixie /bin/sh -c 'apt-get update -qq && apt-get install -y -qq --no-install-recommends systemd systemd-sysv python3 sudo ca-certificates >/dev/null && exec /sbin/init'
+          for _ in $(seq 1 60); do
+            state="$(docker exec smoke systemctl is-system-running 2>/dev/null || true)"
+            case "$state" in running|degraded) break ;; esac
+            sleep 5
+          done
+          echo "systemd state: ${state:-unknown}"
+          [ "${state:-}" = "running" ] || [ "${state:-}" = "degraded" ] || { echo "::error::systemd did not come up in the container"; docker logs smoke | tail -n 40; exit 1; }
+
+      - name: Run the installer with --apply inside the container
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec smoke bash /opt/hydra-umc/HYDRA-UMC-OS/provisioning/install_cm5_base.sh --apply --with-server --with-voice-ui
+
+      - name: Verify the units that were written
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          units="$(docker exec smoke sh -c 'ls /etc/systemd/system/hydra-umc-*.service 2>/dev/null' || true)"
+          [ -n "$units" ] || { echo "::error::the installer wrote no hydra-umc unit"; exit 1; }
+          for unit in $units; do
+            echo "== $unit"
+            docker exec smoke systemd-analyze verify "$unit"
+            docker exec smoke systemd-analyze security --no-pager "$(basename "$unit")" | tail -n 3 || true
+          done
+          echo "### Units verified: $(echo "$units" | wc -l)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the container
+        if: ${{ always() && !inputs.dry_run }}
+        shell: bash
+        run: docker rm -f smoke >/dev/null 2>&1 || true
