@@ -91,6 +91,14 @@ jobs:
           echo "systemd state: ${state:-unknown}"
           [ "${state:-}" = "running" ] || [ "${state:-}" = "degraded" ] || { echo "::error::systemd did not come up in the container"; docker logs smoke | tail -n 40; exit 1; }
 
+      # Docker bind-mounts /etc/hostname, so the installer's hostname change is refused there; a real device has a plain file.
+      - name: Make the hostname of the container changeable
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec smoke sh -c 'cp /etc/hostname /tmp/hostname.keep; umount /etc/hostname; cp /tmp/hostname.keep /etc/hostname'
+
       - name: Run the installer with --apply inside the container
         if: ${{ !inputs.dry_run }}
         shell: bash
