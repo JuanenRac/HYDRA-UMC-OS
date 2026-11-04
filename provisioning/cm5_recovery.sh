@@ -38,8 +38,9 @@ if [[ "$ACTION" == backup ]]; then
   install -d -m 0700 "$(dirname "$ARCHIVE")"
   # The scope is what is installed (configuration, state, the data folder of every program, units, polkit rules), not a fixed list.
   mapfile -t PATHS < <(python3 "$SCOPE" list --root "$RECOVERY_ROOT")
-  STAGE="$(mktemp -d)"
-  PLAIN="$(mktemp)"
+  # The work files live next to the archive (a folder this script just made private), not in a shared /tmp that may not be writable.
+  STAGE="$(mktemp -d "$ARCHIVE.stage.XXXXXX")"
+  PLAIN="$(mktemp "$ARCHIVE.plain.XXXXXX")"
   trap 'rm -rf "$STAGE"; rm -f "$PLAIN"' EXIT
   # SQLite databases: a consistent copy of each one (the backup API), never the live file that a service may be writing.
   mapfile -t STAGED < <(python3 "$SCOPE" snapshot --root "$RECOVERY_ROOT" --stage "$STAGE")
