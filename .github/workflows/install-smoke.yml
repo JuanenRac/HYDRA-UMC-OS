@@ -49,9 +49,19 @@ jobs:
           set -euo pipefail
           [ "$ACTOR" = "$OWNER" ] || { echo "::error::only the owner of the repository starts this check"; exit 1; }
 
+      # The installer's preflight reads the SDK as a sibling folder, so both checkouts live side by side under repos/.
       - name: Check out this repository
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          path: repos/HYDRA-UMC-OS
+          persist-credentials: false
+
+      - name: Check out the SDK next to it
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: ${{ github.repository_owner }}/HYDRA-UMC-SDK
+          ref: v0.5.2
+          path: repos/HYDRA-UMC-SDK
           persist-credentials: false
 
       - name: Dry run of the installer (nothing is installed)
@@ -59,6 +69,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          cd repos/HYDRA-UMC-OS
           sudo bash provisioning/install_cm5_base.sh --with-server --with-voice-ui
           echo "### Dry run of install_cm5_base.sh finished (nothing installed)" >> "$GITHUB_STEP_SUMMARY"
 
@@ -69,7 +80,7 @@ jobs:
           set -euo pipefail
           docker run -d --name smoke --privileged --cgroupns=host \
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
-            -v "$GITHUB_WORKSPACE:/opt/hydra-umc/HYDRA-UMC-OS" \
+            -v "$GITHUB_WORKSPACE/repos:/opt/hydra-umc" \
             --tmpfs /run --tmpfs /run/lock \
             debian:trixie /bin/sh -c 'apt-get update -qq && apt-get install -y -qq --no-install-recommends systemd systemd-sysv python3 sudo ca-certificates >/dev/null && exec /sbin/init'
           for _ in $(seq 1 60); do
