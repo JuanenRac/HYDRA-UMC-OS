@@ -87,3 +87,42 @@ deploy_finish() {
   fi
   echo "Deploy: $name - $(printf '%s\n' "$output" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("result", "done"))' 2>/dev/null || echo done)."
 }
+
+# -----------------------------------------------------------------------------
+# npm in the installers
+#
+# The install scripts of the dependencies (npm lifecycle scripts) are NOT run by default: a dependency that is changed upstream could otherwise run code as root on the device.
+# The setting `npm_scripts = on` in /etc/hydra-umc/provisioning.conf (or HYDRA_UMC_NPM_SCRIPTS=on in the environment) lets them run, for a program whose build needs them.
+# The build runs as the user who owns the checkout (not as root), so the checkout is not left with files of root that the updater cannot clean.
+# -----------------------------------------------------------------------------
+
+# Prints --ignore-scripts unless the scripts were allowed (the setting is off by default).
+hydra_npm_install_flags() {
+  local value="${HYDRA_UMC_NPM_SCRIPTS:-}" conf="${HYDRA_UMC_PROVISIONING_CONF:-/etc/hydra-umc/provisioning.conf}"
+  if [[ -z "$value" && -f "$conf" ]]; then
+    value="$(sed -n 's/^[[:space:]]*npm_scripts[[:space:]]*=[[:space:]]*//p' "$conf" | tail -n 1 | tr -d '[:space:]"')"
+  fi
+  case "${value,,}" in
+    on | 1 | true | yes) ;;
+    *) printf '%s' "--ignore-scripts" ;;
+  esac
+}
+
+# hydra_npm_in DIR npm-arguments...   runs npm in DIR as the owner of DIR when this script runs as root and DIR belongs to somebody else.
+hydra_npm_in() {
+  local dir="$1" owner="" home=""
+  shift
+  if [[ $EUID -eq 0 ]]; then
+    owner="$(stat -c %U "$dir" 2>/dev/null || true)"
+  fi
+  if [[ -n "$owner" && "$owner" != "root" && "$owner" != "UNKNOWN" ]]; then
+    home="$(getent passwd "$owner" | cut -d: -f6)"
+    if command -v runuser >/dev/null 2>&1; then
+      (cd "$dir" && runuser -u "$owner" -- env "PATH=$PATH" "HOME=${home:-/tmp}" npm "$@")
+    else
+      (cd "$dir" && sudo -H -u "$owner" env "PATH=$PATH" npm "$@")
+    fi
+  else
+    (cd "$dir" && npm "$@")
+  fi
+}

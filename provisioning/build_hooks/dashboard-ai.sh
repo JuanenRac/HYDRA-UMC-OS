@@ -12,7 +12,9 @@
 command -v node >/dev/null || { echo "HYDRA-UMC-DASHBOARD-AI requires Node.js (build-time only)." >&2; exit 2; }
 command -v npm >/dev/null || { echo "HYDRA-UMC-DASHBOARD-AI requires npm (build-time only)." >&2; exit 2; }
 command -v python3 >/dev/null || { echo "HYDRA-UMC-DASHBOARD-AI static server needs python3." >&2; exit 2; }
-( cd "$SOURCE" && npm ci && npm run build )
+# `npm ci` (versions from the lock file): the dependencies are installed without running their install scripts (npm_scripts = on in /etc/hydra-umc/provisioning.conf allows them) and the build runs as the owner of the checkout.
+# shellcheck disable=SC2046
+hydra_npm_in "$SOURCE" ci $(hydra_npm_install_flags) && hydra_npm_in "$SOURCE" run build || { echo "The build of HYDRA-UMC-DASHBOARD-AI failed. If a dependency needs its install script, set npm_scripts = on in /etc/hydra-umc/provisioning.conf and rerun." >&2; exit 1; }
 rm -rf "$TARGET/dist"
 cp -a "$SOURCE/dist" "$TARGET/dist"
 install -m 0644 "$SOURCE/scripts/serve_static.py" "$TARGET/serve_static.py"

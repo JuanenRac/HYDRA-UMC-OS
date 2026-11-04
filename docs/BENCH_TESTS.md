@@ -21,7 +21,7 @@ Every test below is **not executed**. The installers, the agent and the units ar
 | 2 | Run an installer twice, as a user that does not own the checkout. | It builds as the owner of the checkout, switches the current release and keeps the previous one for a rollback. | not executed |
 | 3 | Break a build on purpose and run the installer again. | The update stops, the running release is untouched and the rollback command returns to the previous one. | not executed |
 | 4 | Run the recovery script and restore the backup on a clean board. | The backup holds the database taken with `sqlite3 .backup`, the settings and the keys named in its list; the restored board starts. | not executed |
-| 5 | Feed the Wi-Fi provisioning page a wrong password, then a right one. | The wrong one is reported without losing the previous connection; the right one joins. | not executed |
+| 5 | Feed the Wi-Fi provisioning page a wrong password, then a right one, from a phone. | The page answers at once (trying to join), the setup network goes down a few seconds later; after the phone reconnects to the setup network the page (or `/status`) shows the failure of the wrong one; the right one joins. | not executed |
 | 6 | Start the agent in serve mode and look at the journal for ten minutes. | It writes only when the state changes plus the heartbeat every five minutes. | not executed |
 | 7 | Read the agent report with the accelerator present and under load. | Temperature and throttling (`vcgencmd`) appear when the checks are built; until then record that they are missing. | not executed |
 | 8 | Check the hardened agent and Wi-Fi units with `systemd-analyze security`. | Record the exposure level and any directive the image refuses. | not executed |

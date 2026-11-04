@@ -17,8 +17,10 @@ gpiod, mavlink, bosdyn-client, ...).
 from __future__ import annotations
 
 import importlib.util
+import json as _jsonmod
 import sys
 import threading
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -41,6 +43,21 @@ def _import_wifi_provision():
 wp = _import_wifi_provision()
 
 failures = 0
+
+
+def wait_state(base: str, wanted: str, seconds: float = 5.0) -> dict:
+    """Polls GET /status until the join attempt reached `wanted` (the attempt runs after the answer was sent)."""
+    deadline = time.monotonic() + seconds
+    last: dict = {}
+    while time.monotonic() < deadline:
+        try:
+            last = _jsonmod.loads(urllib.request.urlopen(base + "/status", timeout=5).read())
+        except (urllib.error.URLError, OSError):
+            return last
+        if last.get("state") == wanted:
+            return last
+        time.sleep(0.05)
+    return last
 
 
 def check(label: str, actual: object, expected: object) -> None:
@@ -185,13 +202,16 @@ try:
     bad_body = "ssid=HomeNetwork&password=wrong".encode("ascii")
     bad_req = urllib.request.Request("http://127.0.0.1:18765/wifi", data=bad_body, method="POST")
     bad_resp = urllib.request.urlopen(bad_req, timeout=5)
-    check("HTTP POST /wifi with a wrong password still responds 200 (form re-shown)", bad_resp.status, 200)
+    check("HTTP POST /wifi answers 202 at once, before the join runs", bad_resp.status, 202)
+    failed = wait_state("http://127.0.0.1:18765", "failed")
+    check("the failed attempt is read at /status with its reason", (failed.get("state"), failed.get("ssid"), "Secrets" in failed.get("reason", "")), ("failed", "HomeNetwork", True))
+    check("the page shows the last failure when the phone comes back", b"failed" in urllib.request.urlopen("http://127.0.0.1:18765/", timeout=5).read(), True)
     check("serve_until_joined loop still running after a failed attempt", server_thread.is_alive(), True)
 
     good_body = "ssid=HomeNetwork&password=setup-secret".encode("ascii")
     good_req = urllib.request.Request("http://127.0.0.1:18765/wifi", data=good_body, method="POST")
     good_resp = urllib.request.urlopen(good_req, timeout=5)
-    check("HTTP POST /wifi with the real correct password responds 200", good_resp.status, 200)
+    check("HTTP POST /wifi with the real correct password answers 202", good_resp.status, 202)
 
     server_thread.join(timeout=5)
     check("serve_until_joined returns once a real join succeeds", server_thread.is_alive(), False)
@@ -247,7 +267,7 @@ try:
     check("a missing code is refused (403)", _post("http://127.0.0.1:18766/wifi", b"ssid=HomeNetwork&password=setup-secret"), 403)
     check("nothing was joined with a wrong code", coded_fake.active_wifi_connection("wlan0"), None)
     check("a body over the limit is refused (413)", _post("http://127.0.0.1:18766/wifi", b"ssid=" + b"a" * (wp.MAX_BODY_BYTES + 10)), 413)
-    check("the right code joins", _post("http://127.0.0.1:18766/wifi", b"ssid=HomeNetwork&password=setup-secret&code=12345678"), 200)
+    check("the right code is accepted (answer first, join after)", _post("http://127.0.0.1:18766/wifi", b"ssid=HomeNetwork&password=setup-secret&code=12345678"), 202)
     coded_thread.join(timeout=5)
     check("the loop ends after the join", coded_thread.is_alive(), False)
 except (urllib.error.URLError, OSError) as exc:
@@ -293,6 +313,59 @@ check("a non-numeric window falls back to the default instead of crashing", wp._
 _os.environ["HYDRA_UMC_AP_WINDOW_S"] = "90"
 check("a numeric window is honoured", wp._window_from_environment(), 90.0)
 _os.environ.pop("HYDRA_UMC_AP_WINDOW_S")
+
+# --- the answer reaches the phone BEFORE the setup network goes down (HOS-BUG-013) ------------------------------------------
+
+import tempfile as _tempfile
+
+
+class OrderedFake(FakeNetworkManager):
+    """Records when the radio was touched, to prove the join starts only after the answer was written."""
+
+    def __init__(self) -> None:
+        super().__init__(known_good_password="setup-secret")
+        self.stopped_at: float | None = None
+
+    def stop_hotspot(self, ifname: str) -> None:
+        self.stopped_at = time.monotonic()
+        super().stop_hotspot(ifname)
+
+
+with _tempfile.TemporaryDirectory() as _state_dir:
+    ordered = OrderedFake()
+    ordered_thread = threading.Thread(
+        target=wp.serve_until_joined,
+        args=(ordered, "wlan0", "HYDRA-UMC-SETUP", "setup-pass"),
+        kwargs={"host": "127.0.0.1", "port": 18769, "poll_interval_s": 0.1, "state_dir": Path(_state_dir), "join_delay_s": 1.5},
+        daemon=True,
+    )
+    ordered_thread.start()
+    try:
+        time.sleep(0.3)
+        sent = time.monotonic()
+        answer = urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:18769/wifi", data=b"ssid=HomeNetwork&password=nope", method="POST"), timeout=5)
+        answered = time.monotonic()
+        check("the answer arrives with status 202", answer.status, 202)
+        check("the setup network is still up when the answer is read", ordered.stopped_at is None, True)
+        check("a second attempt while one runs is refused (409)", _post("http://127.0.0.1:18769/wifi", b"ssid=HomeNetwork&password=nope"), 409)
+        failed2 = wait_state("http://127.0.0.1:18769", "failed", 10.0)
+        check("the attempt ran afterwards and failed", failed2.get("state"), "failed")
+        check("the radio was only touched after the answer plus the delay", ordered.stopped_at is not None and ordered.stopped_at >= sent + 1.4, True)
+        saved = _jsonmod.loads((Path(_state_dir) / wp.LAST_JOIN_FILE).read_text(encoding="utf-8"))
+        check("the outcome is kept in the state folder (no password in it)", (saved["state"], "nope" in _jsonmod.dumps(saved)), ("failed", False))
+        check("after a failure the next attempt is accepted again", _post("http://127.0.0.1:18769/wifi", b"ssid=HomeNetwork&password=setup-secret"), 202)
+        ordered_thread.join(timeout=15)
+        check("...and joins", ordered_thread.is_alive(), False)
+    except (urllib.error.URLError, OSError) as exc:
+        print(f"FAIL HTTP round-trip against the ordered server: {exc}")
+        failures += 1
+
+_os_env = __import__("os").environ
+_os_env["HYDRA_UMC_JOIN_DELAY_S"] = "soon"
+check("a non-numeric join delay falls back to the default", wp._join_delay_from_environment(), wp.DEFAULT_JOIN_DELAY_SECONDS)
+_os_env["HYDRA_UMC_JOIN_DELAY_S"] = "7"
+check("a numeric join delay is honoured", wp._join_delay_from_environment(), 7.0)
+_os_env.pop("HYDRA_UMC_JOIN_DELAY_S")
 
 print()
 if failures:

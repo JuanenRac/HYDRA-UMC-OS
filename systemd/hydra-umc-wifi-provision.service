@@ -45,6 +45,21 @@ ProtectHome=true
 ProtectKernelModules=true
 ProtectControlGroups=true
 LockPersonality=true
+# The unit runs as root and serves a form over HTTP, so it is narrowed to what it does: it writes only its state folder (StateDirectory above),
+# talks to NetworkManager over the system bus (AF_UNIX), serves the form (AF_INET/AF_INET6) and starts nmcli (which reads the netlink sockets).
+ProtectSystem=strict
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelLogs=true
+ProtectClock=true
+ProtectProc=invisible
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+# Seconds between the answer to the phone and the moment the setup network goes down to join (HYDRA_UMC_JOIN_DELAY_S in the file above).
 
 # A real, initial cgroup memory ceiling - conservative defaults, meant to be refined once real telemetry from this service running on the CM5 exists, never removed back to unlimited.
 MemoryAccounting=yes

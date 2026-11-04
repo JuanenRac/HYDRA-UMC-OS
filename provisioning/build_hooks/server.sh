@@ -22,7 +22,8 @@ chown root:"$SVC_USER" /etc/hydra-umc/server.env
 chmod 0640 /etc/hydra-umc/server.env
 rm -rf "$TARGET/dist" "$TARGET/public"
 cp -a "$SOURCE/dist" "$SOURCE/public" "$SOURCE/package.json" "$SOURCE/package-lock.json" "$TARGET/"
-( cd "$TARGET" && npm ci --omit=dev )
+# shellcheck disable=SC2046
+( cd "$TARGET" && npm ci --omit=dev $(hydra_npm_install_flags) )
 install -d -m 0755 /etc/polkit-1/rules.d
 install -m 0644 "$OS_ROOT/provisioning/polkit/49-hydra-umc-server-power.rules" /etc/polkit-1/rules.d/49-hydra-umc-server-power.rules
 install -m 0644 "$OS_ROOT/provisioning/polkit/50-hydra-umc-server-service-control.rules" /etc/polkit-1/rules.d/50-hydra-umc-server-service-control.rules

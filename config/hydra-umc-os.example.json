@@ -6,6 +6,7 @@
   },
   "diagnostics": {
     "minimum_free_bytes": 1073741824,
+    "storage_path": "/var/lib/hydra-umc",
     "maximum_temperature_celsius": 80.0
   }
 }

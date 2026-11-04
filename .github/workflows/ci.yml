@@ -96,6 +96,9 @@ jobs:
         run: |
           python -m unittest discover -s agent/tests -v
           python tools/verify_agent_deployment_contract.py
+          python tools/verify_unit_hardening.py
+          python tools/verify_recovery_scope.py
+          python tools/verify_npm_installer.py
       - name: Test signed packages, the certificate authority script, the firewall rules and the encrypted backup
         if: ${{ hashFiles('tools/verify_package_component.py') != '' }}
         shell: bash

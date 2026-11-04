@@ -221,6 +221,32 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(main(["--interval", "nan", "serve"]), 2)
         self.assertEqual(main(["--heartbeat", "0", "--report-on-change", "serve"]), 2)
 
+    def test_the_disk_check_measures_the_configured_folder(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config = json.loads(json.dumps(DEFAULT_CONFIG))
+            config["diagnostics"]["storage_path"] = folder
+            with unittest.mock.patch("hydra_umc_os.agent.shutil.disk_usage") as usage:
+                usage.return_value.free = 5_000_000_000
+                report = health(config, interfaces=["eth0"], temperature_celsius=40.0)
+            usage.assert_called_once_with(Path(folder))
+            self.assertEqual(report.checks["storage"]["free_bytes"], 5_000_000_000)
+
+    def test_a_missing_storage_path_falls_back_to_the_working_folder(self):
+        config = json.loads(json.dumps(DEFAULT_CONFIG))
+        config["diagnostics"]["storage_path"] = "/nonexistent/hydra-umc-test"
+        with unittest.mock.patch("hydra_umc_os.agent.shutil.disk_usage") as usage:
+            usage.return_value.free = 5_000_000_000
+            health(config, interfaces=["eth0"], temperature_celsius=40.0)
+        usage.assert_called_once_with(Path.cwd())
+
+    def test_storage_path_must_be_a_non_empty_string(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "config.json"
+            for bad in ("", 5, ["x"]):
+                path.write_text(json.dumps({"schema_version": "1.0", "node": {"id": "n"}, "diagnostics": {"minimum_free_bytes": 1, "storage_path": bad}}), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    load_config(path)
+
 
 if __name__ == "__main__":
     unittest.main()

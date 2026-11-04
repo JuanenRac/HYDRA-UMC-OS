@@ -131,7 +131,19 @@ def load_config(path: Path | None) -> dict[str, Any]:
         or maximum_temperature <= 0
     ):
         raise ValueError("configuration diagnostics.maximum_temperature_celsius must be a positive finite number")
+    # Optional: the folder whose volume the disk check measures (default: the working folder of the process, which the unit sets to the data folder).
+    storage_path = diagnostics.get("storage_path")
+    if storage_path is not None and (not isinstance(storage_path, str) or not storage_path.strip()):
+        raise ValueError("configuration diagnostics.storage_path must be a non-empty string when present")
     return candidate
+
+
+def storage_probe_path(diagnostics: dict[str, Any]) -> Path:
+    """The folder whose volume the storage check measures: diagnostics.storage_path when it exists, otherwise the working folder."""
+    configured = diagnostics.get("storage_path")
+    if isinstance(configured, str) and configured.strip() and Path(configured).is_dir():
+        return Path(configured)
+    return Path.cwd()
 
 
 def network_interfaces(sys_class_net: Path = Path("/sys/class/net")) -> list[str]:
@@ -189,10 +201,10 @@ def health(
     temperature_celsius: float | None = None,
 ) -> HealthReport:
     """Produce a deterministic health state from non-invasive local checks."""
-    available = shutil.disk_usage(Path.cwd()).free if free_bytes is None else free_bytes
+    diagnostics = config["diagnostics"]
+    available = shutil.disk_usage(storage_probe_path(diagnostics)).free if free_bytes is None else free_bytes
     active_interfaces = network_interfaces() if interfaces is None else interfaces
     temperature = read_temperature_celsius() if temperature_celsius is None else temperature_celsius
-    diagnostics = config["diagnostics"]
     minimum = diagnostics["minimum_free_bytes"]
     maximum_temperature = diagnostics.get(
         "maximum_temperature_celsius",

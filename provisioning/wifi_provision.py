@@ -46,6 +46,7 @@ import os
 import secrets
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from dataclasses import dataclass
@@ -90,6 +91,10 @@ MAX_BODY_BYTES = 4096
 MAX_CODE_FAILURES = 5
 CODE_LOCKOUT_SECONDS = 60
 DEFAULT_STATE_DIR = "/var/lib/hydra-umc/wifi-provision"
+# The seconds between sending the answer to the phone and taking the setup network down to join: the answer must reach the phone first.
+# Configurable (--join-delay-seconds or HYDRA_UMC_JOIN_DELAY_S in /etc/hydra-umc/wifi-provision.env).
+DEFAULT_JOIN_DELAY_SECONDS = 3.0
+LAST_JOIN_FILE = "last_join.json"
 _PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"  # no look-alike characters (0/o, 1/l/i)
 
 
@@ -278,6 +283,44 @@ def _restart_hotspot_best_effort(runner: NetworkManagerRunner, ifname: str, ap_s
         pass  # best-effort recovery only - a failure here is reported by the NEXT status poll, not raised here
 
 
+class JoinTracker:
+    """The state of the one join attempt that may run at a time, shared by the web handler and the thread that joins.
+
+    The attempt runs after the answer was sent (the setup network goes down while it runs, so the phone could never read an answer written afterwards); the outcome is kept here and,
+    when a state folder is given, in `last_join.json` (the network name and the reason only, never the password), so the page shows it when the phone comes back to the setup network.
+    """
+
+    def __init__(self, state_dir: Path | None = None) -> None:
+        self._lock = threading.Lock()
+        self._state = {"state": "idle", "ssid": "", "reason": ""}
+        self._state_dir = state_dir
+
+    def begin(self, ssid: str) -> bool:
+        with self._lock:
+            if self._state["state"] == "joining":
+                return False
+            self._state = {"state": "joining", "ssid": ssid, "reason": ""}
+            return True
+
+    def finish(self, ssid: str, result: "JoinResult") -> None:
+        snapshot = {"state": "joined" if result.ok else "failed", "ssid": ssid, "reason": result.reason}
+        if self._state_dir is not None:
+            try:
+                secret_output.write_private_atomic(self._state_dir / LAST_JOIN_FILE, json.dumps(snapshot), overwrite=True)
+            except OSError:
+                pass  # the answer in memory is still served; a state folder that cannot be written must not stop the setup
+        with self._lock:  # in memory last: whoever sees the new state finds the file already written
+            self._state = snapshot
+
+    def busy(self) -> bool:
+        with self._lock:
+            return self._state["state"] == "joining"
+
+    def snapshot(self) -> dict[str, str]:
+        with self._lock:
+            return dict(self._state)
+
+
 # -----------------------------------------------------------------------
 # Real HTTP config server - same handler-factory shape as spi_bridge's
 # own http_service.py (HYDRA-UMC/src/cm5_host/spi_bridge/).
@@ -305,6 +348,8 @@ def make_handler(
     ap_ssid: str = DEFAULT_AP_SSID,
     ap_password: str = DEFAULT_AP_PASSWORD,
     setup_code: str | None = None,
+    tracker: JoinTracker | None = None,
+    join_delay_s: float = 0.0,
 ) -> type[BaseHTTPRequestHandler]:
     """`setup_code` (the one-time code of this device) is required in the form when given: only someone who can read the device's label or log can hand it a network.
     A wrong code five times in a row locks the form for a minute. `on_joined` is a real, single-element mutable list used as a
@@ -314,6 +359,19 @@ def make_handler(
     requests to hold this state instead."""
 
     guard = {"failures": 0, "locked_until": 0.0}
+    join_tracker = tracker if tracker is not None else JoinTracker()
+
+    def run_join(ssid: str, password: str) -> None:
+        # runs after the answer was sent: the setup network goes down here, and the outcome is read later at /status or on the page
+        if join_delay_s > 0:
+            time.sleep(join_delay_s)
+        try:
+            result = attempt_join(runner, ifname, ssid, password, ap_ssid, ap_password)
+        except Exception as exc:  # noqa: BLE001 - whatever happens, the state must leave "joining" or the form stays locked
+            result = JoinResult(False, f"unexpected error: {type(exc).__name__}")
+        join_tracker.finish(ssid, result)
+        if result.ok:
+            on_joined[0] = True
     code_field = ('<label>Setup code (printed on the device label)<br><input name="code" inputmode="numeric" autocomplete="off" required style="width:100%"></label><br><br>' + chr(10)) if setup_code else ""
 
     class WifiConfigHandler(BaseHTTPRequestHandler):
@@ -330,7 +388,20 @@ def make_handler(
 
         def do_GET(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler's own naming convention
             if self.path == "/":
-                self._send_html(200, "Enter the Wi-Fi network this device should join.")
+                last = join_tracker.snapshot()
+                if last["state"] == "failed":
+                    self._send_html(200, f"The last attempt to join {last['ssid']!r} failed: {last['reason']}. Try again.")
+                elif last["state"] == "joining":
+                    self._send_html(200, f"Still trying to join {last['ssid']!r}. Wait a moment and reload this page.")
+                else:
+                    self._send_html(200, "Enter the Wi-Fi network this device should join.")
+            elif self.path == "/status":
+                body = json.dumps(join_tracker.snapshot()).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
             elif self.path == "/networks":
                 try:
                     ssids = runner.scan(ifname)
@@ -384,12 +455,17 @@ def make_handler(
             if not ssid:
                 self._send_html(400, "A network name (SSID) is required.")
                 return
-            result = attempt_join(runner, ifname, ssid, password, ap_ssid, ap_password)
-            if result.ok:
-                on_joined[0] = True
-                self._send_html(200, f"Connected to {ssid!r}. This setup page will stop responding shortly.")
-            else:
-                self._send_html(200, f"Could not connect to {ssid!r}: {result.reason}. Try again.")
+            if not join_tracker.begin(ssid):
+                self._send_html(409, "An attempt to join a network is already running. Wait for it to end.")
+                return
+            # answer first, join afterwards: taking the setup network down before the answer is written would cut the phone off from it
+            self._send_html(202, f"Trying to join {ssid!r}. The setup network goes down for up to a minute. If this page stops responding, reconnect to {ap_ssid!r}: "
+                            "the page then tells whether it worked (a device that joined stops offering the setup network).")
+            try:
+                self.wfile.flush()
+            except OSError:
+                pass
+            threading.Thread(target=run_join, args=(ssid, password), daemon=True).start()
 
     return WifiConfigHandler
 
@@ -404,6 +480,8 @@ def serve_until_joined(
     poll_interval_s: float = POLL_INTERVAL_S,
     setup_code: str | None = None,
     window_s: float | None = None,
+    state_dir: Path | None = None,
+    join_delay_s: float = 0.0,
 ) -> None:
     """Real serving loop: brings up the AP if needed, serves the config
     form, and returns as soon as a submitted attempt actually joins a
@@ -417,12 +495,14 @@ def serve_until_joined(
         print(f"WIFI_PROVISION=ALREADY_CONNECTED {ifname}")
         return
     joined = [False]
-    handler = make_handler(runner, ifname, joined, ap_ssid, ap_password, setup_code)
+    tracker = JoinTracker(state_dir)
+    handler = make_handler(runner, ifname, joined, ap_ssid, ap_password, setup_code, tracker, join_delay_s)
     httpd = ThreadingHTTPServer((host, port), handler)
     print(f"WIFI_PROVISION=SERVING http://{host}:{port}/ (AP {ap_ssid!r} on {ifname})")
     deadline = None if window_s is None else time.monotonic() + window_s
     try:
-        while not joined[0] and (deadline is None or time.monotonic() < deadline):
+        # an attempt that is running is waited for even after the window: closing the setup network under it would undo it
+        while not joined[0] and (deadline is None or time.monotonic() < deadline or tracker.busy()):
             httpd.timeout = poll_interval_s
             httpd.handle_request()
     finally:
@@ -454,6 +534,21 @@ def _window_from_environment() -> float:
     return value
 
 
+def _join_delay_from_environment() -> float:
+    """HYDRA_UMC_JOIN_DELAY_S, or the default when it is unset or not a number of 0 or more."""
+    raw = os.environ.get("HYDRA_UMC_JOIN_DELAY_S")
+    if raw is None:
+        return DEFAULT_JOIN_DELAY_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        value = -1.0
+    if not 0 <= value < 600:
+        print(f"WIFI_PROVISION=WARNING HYDRA_UMC_JOIN_DELAY_S={raw!r} is not a number from 0 to 600: using {DEFAULT_JOIN_DELAY_SECONDS}")
+        return DEFAULT_JOIN_DELAY_SECONDS
+    return value
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="required for any real network change")
@@ -466,6 +561,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--state-dir", default=os.environ.get("HYDRA_UMC_WIFI_STATE_DIR", DEFAULT_STATE_DIR))
     parser.add_argument("--window-seconds", type=float, default=_window_from_environment())
+    parser.add_argument("--join-delay-seconds", type=float, default=_join_delay_from_environment(), help="seconds between sending the answer and taking the setup network down to join (or HYDRA_UMC_JOIN_DELAY_S)")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument(
@@ -496,7 +592,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} password={password} code={code} (generated now; print_once is on)")
     else:
         print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} (password and code are in {credentials_file}; read them with: sudo cat {credentials_file})")
-    serve_until_joined(runner, args.ifname, args.ap_ssid, password, args.host, args.port, setup_code=code, window_s=args.window_seconds)
+    serve_until_joined(runner, args.ifname, args.ap_ssid, password, args.host, args.port, setup_code=code, window_s=args.window_seconds, state_dir=Path(args.state_dir), join_delay_s=max(0.0, args.join_delay_seconds))
     return 0
 
 

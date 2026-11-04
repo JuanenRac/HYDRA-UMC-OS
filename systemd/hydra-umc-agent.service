@@ -28,6 +28,22 @@ ProtectKernelTunables=true
 ProtectSystem=strict
 ReadWritePaths=/var/lib/hydra-umc
 UMask=0027
+# The disk check measures the volume of the data folder, not the root (diagnostics.storage_path of the configuration can name another one).
+WorkingDirectory=/var/lib/hydra-umc
+# The agent only reads /sys and /proc and writes to the journal: it opens no network socket, needs no device, no clock change, no namespace and sees no other process.
+# The network itself stays visible on purpose (it reports the interfaces), so PrivateNetwork is not set.
+ProtectProc=invisible
+PrivateDevices=true
+ProtectClock=true
+ProtectKernelLogs=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
 
 # A real, initial cgroup memory ceiling - conservative defaults, meant to be refined once real telemetry from this service running on the CM5 exists, never removed back to unlimited.
 MemoryAccounting=yes

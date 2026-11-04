@@ -94,6 +94,10 @@ installers write are:
 | `HYDRA_KIOSK_USER`, `HYDRA_KIOSK_ALLOW_VT_SWITCH` | `install_kiosk.sh` | account of the kiosk session and virtual-terminal switching |
 | `HYDRA_GATEWAY_ENV` | `install_industrial_gateway.sh` | the file the gateway reads (default `/etc/hydra-umc/gateway.env`) |
 | `print_once` (`--print-once`, `HYDRA_UMC_PRINT_ONCE=1`, or `print_once = true` in `/etc/hydra-umc/provisioning.conf`) | `gateway_env.py`, `wifi_provision.py`, `generate_secrets.py` | off by default: a generated password goes to a file only root can read (0600, in a folder with mode 0700) and the tool prints that path, never the value. On makes the tool also print the value once, when it creates it, for a device without a screen |
+| `npm_scripts` (`HYDRA_UMC_NPM_SCRIPTS=on`, or `npm_scripts = on` in `/etc/hydra-umc/provisioning.conf`) | build hooks of the server and the dashboard | off by default: the dependencies are installed with `--ignore-scripts`, so a changed dependency cannot run code as root during an install. Turn it on only for a program whose build needs the install scripts; the build runs as the user who owns the checkout |
+| `--join-delay-seconds` (`HYDRA_UMC_JOIN_DELAY_S`) | `wifi_provision.py` | seconds between the answer to the phone and the moment the setup network goes down to join the chosen network (default 3). The answer is always sent first; the result is read at `/status` or on the page after the phone reconnects to the setup network |
+| `diagnostics.storage_path` | the agent configuration (`config/hydra-umc-os.example.json`) | the folder whose volume the disk check measures (default: the working folder of the service, `/var/lib/hydra-umc`) |
+| `HYDRA_UMC_RECOVERY_ROOT` | `cm5_recovery.sh` | another root instead of `/` (the tests use it; a device never sets it) |
 | `MQTT_TLS_DIR` | `gateway_env.py` | folder with the certificate of the broker (`server.pem`, `server.key`, made by `hydra_mqtt_tls.sh init`) |
 | `HYDRA_UMC_NEW_INSTALL_TLS=off` | `install_industrial_gateway.sh` | on a new installation, skip the certificate authority (the broker then needs `MQTT_TLS_DIR` from elsewhere) |
 | `HYDRA_UMC_LOCAL_TECHNICIAN_RESULT_KEY_FILE` | `install_local_technician.sh` | key that signs the technician's results; `--no-signing` switches it off |
@@ -109,6 +113,8 @@ Every provisioning script defaults to dry-run and requires `--apply` for a
 change. Do not enable movement, MCU, CAN, or URTC control during first boot.
 If a service fails, disable it with `systemctl disable --now hydra-umc-agent`
 and recover through the local console.
+
+`cm5_recovery.sh backup` saves what is installed, not a fixed list: the configuration and state folders (`/etc/hydra-umc*`, `/var/lib/hydra-umc*`), the `data` folder of every program in `/opt/hydra-umc`, the units `hydra-umc-*.service` and the polkit rules of HYDRA-UMC. SQLite databases are copied with the SQLite backup API (a consistent copy, even while a service writes), never as the live file. `restore` refuses an archive with a path outside that scope, stops every running `hydra-umc-*` service and removes stale `-wal`/`-shm` files before it extracts.
 
 For the public staged installation order of all CM5-capable ecosystem
 repositories, read [CM5 ecosystem deployment](CM5_ECOSYSTEM_DEPLOYMENT.md).
