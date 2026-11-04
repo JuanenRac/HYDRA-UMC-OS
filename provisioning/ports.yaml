@@ -3,11 +3,11 @@
 services:
   - name: HYDRA-UMC-ANOMALY-DETECTOR
     port: 8097
-    health_path: /stats
+    health_path: /health
     systemd_unit: hydra-umc-anomaly-detector.service
   - name: HYDRA-UMC-COGNITIVE-NODE
     port: 8096
-    health_path: /stats
+    health_path: /health
     systemd_unit: hydra-umc-cognitive-node.service
   - name: HYDRA-UMC-DASHBOARD-AI
     port: 8115
@@ -19,11 +19,11 @@ services:
     systemd_unit: hydra-umc-datalake.service
   - name: HYDRA-UMC-DETECTION-HEF
     port: 8093
-    health_path: /stats
+    health_path: /health
     systemd_unit: hydra-umc-detection-hef.service
   - name: HYDRA-UMC-DOCS-QA
     port: 8110
-    health_path: /stats
+    health_path: /health
     systemd_unit: hydra-umc-docs-qa.service
   - name: HYDRA-UMC-DSI
     port: null
@@ -67,11 +67,11 @@ services:
     systemd_unit: hydra-umc-production-reports.service
   - name: HYDRA-UMC-SAFETY-ZONES
     port: 8108
-    health_path: /stats
+    health_path: /health
     systemd_unit: hydra-umc-safety-zones.service
   - name: HYDRA-UMC-SEMANTIC-PLANNER
     port: 8109
-    health_path: /stats
+    health_path: /health
     systemd_unit: hydra-umc-semantic-planner.service
   - name: HYDRA-UMC-SERVER
     port: 3000
@@ -91,11 +91,11 @@ services:
     systemd_unit: hydra-umc-twin.service
   - name: HYDRA-UMC-VISION-NODE
     port: 8094
-    health_path: /stats
+    health_path: /health
     systemd_unit: hydra-umc-vision-node.service
   - name: HYDRA-UMC-VISUAL-SERVOING-API
     port: 8116
-    health_path: /stats
+    health_path: /health
     systemd_unit: hydra-umc-visual-servoing-api.service
   - name: HYDRA-UMC-VLA-ENGINE
     port: 8098
