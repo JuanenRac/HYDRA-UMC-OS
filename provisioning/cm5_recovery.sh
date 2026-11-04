@@ -64,12 +64,15 @@ if ! printf '%s\n' "$LISTING" | python3 "$SCOPE" check-members; then
   exit 2
 fi
 # Every running HYDRA-UMC service is stopped before its files are replaced (the databases most of all); none is started again here.
-if command -v systemctl >/dev/null 2>&1; then
+# Another root (the tests) holds no running service of this machine, so systemd is left alone then.
+USE_SYSTEMD=false
+if [[ "$RECOVERY_ROOT" == / ]] && command -v systemctl >/dev/null 2>&1; then USE_SYSTEMD=true; fi
+if $USE_SYSTEMD; then
   systemctl list-units 'hydra-umc-*.service' --state=active --no-legend --plain 2>/dev/null | awk '{print $1}' | xargs -r systemctl stop 2>/dev/null || true
 fi
 # A -wal or -shm file left by the old database would be replayed over the restored one.
 printf '%s\n' "$LISTING" | python3 "$SCOPE" drop-sidecars --root "$RECOVERY_ROOT"
 tar --extract --force-local --gzip --file "$ARCHIVE" --numeric-owner -C "$RECOVERY_ROOT"
-if command -v systemctl >/dev/null 2>&1; then systemctl daemon-reload; fi
+if $USE_SYSTEMD; then systemctl daemon-reload; fi
 echo "CM5_RECOVERY=PASS action=restore archive=$ARCHIVE services=stopped"
 echo "Review configuration, then enable services manually and run verify_cm5_runtime.sh."
