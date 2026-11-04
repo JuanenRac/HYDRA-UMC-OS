@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import gzip
 import hashlib
 import json
 import os
@@ -220,11 +221,14 @@ def build(component: str, repo: Path, out: Path) -> tuple[Path, str, str]:
     version = version_of(repo)
     out.mkdir(parents=True, exist_ok=True)
     package = out / f"hydra-{component}-{version}.tgz"
-    with tarfile.open(package, "w:gz") as tar:
+    # the same files always give the same bytes: the times are one fixed instant (SOURCE_DATE_EPOCH, 0 by default), members are added in sorted order and the gzip header holds no name or time of its own
+    epoch = int(os.environ.get("SOURCE_DATE_EPOCH", "0"))
+    with open(package, "wb") as raw, gzip.GzipFile(filename="", mode="wb", fileobj=raw, compresslevel=9, mtime=epoch) as compressed, tarfile.open(fileobj=compressed, mode="w", format=tarfile.GNU_FORMAT) as tar:
         def add(path: Path, arcname: str) -> None:
             info = tar.gettarinfo(str(path), arcname)
             info.uid = info.gid = 0
             info.uname = info.gname = ""
+            info.mtime = epoch
             info.mode = 0o755 if info.mode & 0o111 else 0o644
             with open(path, "rb") as handle:
                 tar.addfile(info, handle)

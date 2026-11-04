@@ -115,6 +115,17 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(self.package.name, "hydra-server-0.8.1.0.tgz")
         self.assertEqual(self.digest, hashlib.sha256(self.package.read_bytes()).hexdigest())
 
+    def test_the_same_files_always_give_the_same_bytes(self) -> None:
+        import os
+        import time
+        later = time.time() + 3600
+        for item in self.repo.rglob("*"):
+            if item.is_file():
+                os.utime(item, (later, later))
+        again, _version, digest = pc.build("server", self.repo, self.root / "again")
+        self.assertEqual(digest, self.digest)
+        self.assertEqual(again.read_bytes(), self.package.read_bytes())
+
     def test_a_signed_package_verifies(self) -> None:
         self.assertEqual(self.verify(), ("server", "0.8.1.0", self.digest))
         self.assertEqual(self.signature.name, "hydra-server-0.8.1.0.tgz.sig")

@@ -1,0 +1,221 @@
+# =============================================================================
+# HYDRA-UMC-OS - Manual build of a component package (build here, sign locally)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only (workflow_dispatch): it never runs on a push or a pull request. It builds one program of the CM5 (server, studio or os-agent) from the
+# exact commit it pins, packs it as hydra-<component>-<version>.tgz with tools/package_component.py ON TWO RUNNERS (x86-64 and arm64) and stops unless both
+# give the same bytes, then uploads the package with SHA256SUMS and a build manifest as one artifact with a build-provenance attestation.
+#
+# It holds no key and signs nothing: the package is UNSIGNED. The signature (hydra-pkg/1) is made on the maintainer's machine from this artifact, with the
+# release key that never leaves it (python tools/package_component.py sign <package>). Nothing is published from here.
+
+name: Component package build (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: "Program to pack"
+        type: choice
+        required: true
+        options:
+          - os-agent
+          - server
+          - studio
+        default: os-agent
+      ref:
+        description: "Branch, tag or commit of the repository of the program (HYDRA-UMC-OS for os-agent)"
+        type: string
+        required: true
+        default: main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: package-build-${{ inputs.component }}-${{ inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan the build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      repo: ${{ steps.plan.outputs.repo }}
+      sha: ${{ steps.plan.outputs.sha }}
+      version: ${{ steps.plan.outputs.version }}
+    env:
+      COMPONENT: ${{ inputs.component }}
+      REF: ${{ inputs.ref }}
+      ACTOR: ${{ github.actor }}
+      OWNER: ${{ github.repository_owner }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Only the owner starts a build, and only with a plain ref
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ "$ACTOR" = "$OWNER" ] || { echo "::error::only the owner of the repository starts a build"; exit 1; }
+          [[ "$REF" =~ ^[A-Za-z0-9._/-]{1,100}$ ]] || { echo "::error::the ref has characters that a branch, tag or commit does not have"; exit 1; }
+
+      - name: Pin the commit of the program and read its version
+        id: plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$COMPONENT" in
+            os-agent) repo="HYDRA-UMC-OS" ;;
+            server) repo="HYDRA-UMC-SERVER" ;;
+            studio) repo="HYDRA-UMC-STUDIO" ;;
+            *) echo "::error::unknown component"; exit 1 ;;
+          esac
+          sha="$(gh api "repos/$OWNER/$repo/commits/$REF" --jq .sha)"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::could not resolve $REF in $repo"; exit 1; }
+          # only code that is already in main is built
+          status="$(gh api "repos/$OWNER/$repo/compare/main...$sha" --jq .status)"
+          case "$status" in identical|behind) ;; *) echo "::error::the commit $sha is not part of the main branch of $repo"; exit 1 ;; esac
+          version="$(gh api "repos/$OWNER/$repo/contents/hydra-umc.project.json?ref=$sha" --jq .content | base64 -d | python3 -c "import json,sys; print(json.load(sys.stdin)['version'])")"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::the version $version is not one of the family's"; exit 1; }
+          {
+            echo "repo=$repo"
+            echo "sha=$sha"
+            echo "version=$version"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Pack on ${{ matrix.id }}
+    needs: plan
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: x86-64
+            runner: ubuntu-latest
+          - id: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      COMPONENT: ${{ inputs.component }}
+      REPO: ${{ needs.plan.outputs.repo }}
+    steps:
+      - name: Check out the packer (this repository)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          path: packer
+          persist-credentials: false
+
+      - name: Check out the program at the planned commit
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: ${{ github.repository_owner }}/${{ needs.plan.outputs.repo }}
+          ref: ${{ needs.plan.outputs.sha }}
+          path: ${{ needs.plan.outputs.repo }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        if: ${{ inputs.component != 'os-agent' }}
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22"
+
+      - name: Build the program (no install scripts)
+        if: ${{ inputs.component != 'os-agent' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$REPO"
+          npm ci --ignore-scripts
+          npm run build
+
+      - name: Pack it with fixed dates and owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_DATE_EPOCH="$(git -C "$REPO" log -1 --format=%ct 2>/dev/null || echo 0)"
+          export SOURCE_DATE_EPOCH
+          python3 packer/tools/package_component.py pack "$COMPONENT" --repo "$REPO" --out out
+          ls -l out
+
+      - name: Upload the package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: parts-${{ matrix.id }}
+          path: out/hydra-${{ inputs.component }}-${{ needs.plan.outputs.version }}.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  collect:
+    name: Compare, attest and check
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      VERSION: ${{ needs.plan.outputs.version }}
+      SHA: ${{ needs.plan.outputs.sha }}
+      COMPONENT: ${{ inputs.component }}
+      REPO: ${{ needs.plan.outputs.repo }}
+    steps:
+      - name: Download both packages
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: parts-*
+          path: parts
+
+      - name: Check that both builds are the same bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="hydra-$COMPONENT-$VERSION.tgz"
+          a="$(sha256sum "parts/parts-x86-64/$name" | cut -d' ' -f1)"
+          b="$(sha256sum "parts/parts-arm64/$name" | cut -d' ' -f1)"
+          if [ "$a" != "$b" ]; then
+            echo "::error::the two builds differ (x86-64 $a, arm64 $b): the package is not reproducible"
+            exit 1
+          fi
+          mkdir files
+          cp "parts/parts-x86-64/$name" files/
+          echo "### Reproducible: two builds on two runners, same sha256 \`$a\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write SHA256SUMS and the build manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd files
+          sha256sum * > SHA256SUMS
+          python3 - <<'PY'
+          import json, os
+          files = []
+          for line in open("SHA256SUMS", encoding="utf-8"):
+              digest, name = line.strip().split("  ", 1)
+              files.append({"name": name, "sha256": digest, "bytes": os.path.getsize(name)})
+          json.dump({
+              "schema": "hydra-build/1", "repository": os.environ["GITHUB_REPOSITORY"], "component": os.environ["COMPONENT"], "source": os.environ["REPO"],
+              "version": os.environ["VERSION"], "commit": os.environ["SHA"], "built_on": "github-actions", "run_id": os.environ["GITHUB_RUN_ID"],
+              "package_format": "hydra-pkg/1 (unsigned)", "reproducible": True, "signed": False, "files": files,
+          }, open("build-manifest.json", "w", encoding="utf-8"), indent=2)
+          PY
+          { echo "### $COMPONENT $VERSION (unsigned package)"; sed 's/^/- /' SHA256SUMS; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attest the provenance of the files
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: |
+            files/*.tgz
+            files/SHA256SUMS
+
+      - name: Upload the build
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: package-${{ inputs.component }}-${{ needs.plan.outputs.version }}
+          path: files/*
+          if-no-files-found: error
+          retention-days: 30

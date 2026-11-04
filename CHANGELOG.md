@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A package of a program of the CM5 is built the same way every time, and GitHub Actions builds it twice:** `tools/package_component.py` now writes a package with fixed times, owners and gzip header, so the same files give the same bytes (a test checks it after the files get a later time). The manual workflow `package-build.yml` (owner only, pinned commit, dry-run style: nothing is published) builds `server`, `studio` or `os-agent` on an x86-64 and an arm64 runner, stops unless both give the same package, and uploads it with its hashes, a build manifest and a build-provenance attestation. It holds no key: the package is signed afterwards on the maintainer's machine.
+
 - **A credential for the droid bridge, and the global stop can be read:** `provisioning/gateway_env.py` now creates a credential and an ACL rule for `droids` (its own namespace, like the other machine bridges), and every bridge rule may subscribe to the retained global stop announcement (`hydra/swarm/safety/estop`) without being able to publish to it, so a bridge that follows the global stop hears it when the broker enforces the ACL. An existing `gateway.env` is not rewritten. Two more checks in `tools/verify_gateway_env.py`.
 
 ## [0.5.9] - The check of an environment file reports the line and the reason, never the setting's text: provisioning/generatesecrets.py --check now prints line N and a fixed reason (example value, empty, too short) for every secret... (and 4 more changes)
