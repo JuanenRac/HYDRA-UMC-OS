@@ -128,4 +128,6 @@ repositories, read [CM5 ecosystem deployment](CM5_ECOSYSTEM_DEPLOYMENT.md).
 | Wi-Fi setup network password and setup code | `/var/lib/hydra-umc/wifi-provision/credentials.json` | `sudo cat /var/lib/hydra-umc/wifi-provision/credentials.json` | stop `hydra-umc-wifi-provision`, move that file away, start it again |
 
 `generate_secrets.py` stops (exit code 1, nothing written) when `server-admin.txt` already exists or is a link, so a password is never lost nor placed in a file somebody else controls. An installation made before this setting keeps its files as they are (an existing file is never overwritten) and a mode more open than 0600 is corrected at the next run. To keep the old
+
+**The identity of HYDRA-UMC-SERVER for the services (off by default).** `provisioning/service_identity.py --enable NAME ... --apply` copies the signing key of the server (`JWT_SECRET` of `server.env`) into `/etc/hydra-umc/NAME-identity.key` (mode 0640, group of the service) and writes a drop-in that turns on the switch of the service; `--disable` renames the drop-in, `--status` lists the services. See `docs/SERVER_IDENTITY.md`.
 behaviour (the password printed once in the journal) switch `print_once` on before the first start; a password that was already printed in an older journal stays there, so rotate it.

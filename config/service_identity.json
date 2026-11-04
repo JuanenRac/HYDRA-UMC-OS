@@ -1,0 +1,15 @@
+{
+  "format": "hydra-service-identity/1",
+  "directory": "/etc/hydra-umc",
+  "systemd_directory": "/etc/systemd/system",
+  "server_env": "/etc/hydra-umc/server.env",
+  "secret_variable": "JWT_SECRET",
+  "min_secret_length": 32,
+  "key_mode": "640",
+  "dropin_name": "20-server-identity.conf",
+  "services": {
+    "cognitive-node": {"unit": "hydra-umc-cognitive-node.service", "environment": "HYDRA_UMC_COGNITIVE_NODE_IDENTITY_KEY_FILE", "group": "hydra-umc-cognitive-node"},
+    "vision-node": {"unit": "hydra-umc-vision-node.service", "environment": "HYDRA_UMC_VISION_NODE_IDENTITY_KEY_FILE", "group": "hydra-umc-vision-node"},
+    "vla-engine": {"unit": "hydra-umc-vla-engine.service", "environment": "HYDRA_UMC_VLA_ENGINE_IDENTITY_KEY_FILE", "group": "hydra-umc-vla-engine"}
+  }
+}
