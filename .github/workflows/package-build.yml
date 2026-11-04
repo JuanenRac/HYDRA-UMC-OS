@@ -3,7 +3,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-# Started by hand only (workflow_dispatch): it never runs on a push or a pull request. It builds one program of the CM5 (server, studio or os-agent) from the
+# Started by hand only (workflow_dispatch): it never runs on a push or a pull request. It builds one program of the CM5 (studio or os-agent; the server also needs the assembled frontend in its public folder, which is not built here yet) from the
 # exact commit it pins, packs it as hydra-<component>-<version>.tgz with tools/package_component.py ON TWO RUNNERS (x86-64 and arm64) and stops unless both
 # give the same bytes, then uploads the package with SHA256SUMS and a build manifest as one artifact with a build-provenance attestation.
 #
@@ -21,7 +21,6 @@ on:
         required: true
         options:
           - os-agent
-          - server
           - studio
         default: os-agent
       ref:
@@ -69,7 +68,6 @@ jobs:
           set -euo pipefail
           case "$COMPONENT" in
             os-agent) repo="HYDRA-UMC-OS" ;;
-            server) repo="HYDRA-UMC-SERVER" ;;
             studio) repo="HYDRA-UMC-STUDIO" ;;
             *) echo "::error::unknown component"; exit 1 ;;
           esac
