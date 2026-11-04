@@ -49,6 +49,7 @@ def check_functions() -> None:
         bin_dir.mkdir()
         stand_in = "\n".join(["#!/usr/bin/env bash", 'echo "$@" >>"$NPM_LOG"', ""])
         (bin_dir / "npm").write_bytes(stand_in.encode("utf-8"))
+        (bin_dir / "npm").chmod(0o755)
         (bin_dir / "npm").chmod(0o755)  # without the executable bit the real npm of the machine would run instead of the stand-in
         project = base / "project"
         project.mkdir()
