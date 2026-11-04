@@ -8,7 +8,7 @@
 # dry_run = true (the default): runs provisioning/install_cm5_base.sh WITHOUT --apply (with the Server and the Voice UI) as root on the runner, then
 # lists the unit files the installers would write. Nothing is installed.
 #
-# dry_run = false: runs the installer with --apply inside a throw-away Debian container that has systemd as its first process (privileged, on the
+# dry_run = false: runs the base installer (the agent and the Wi-Fi setup; the Server and the Voice UI need their own source repositories) with --apply inside a throw-away Debian container that has systemd as its first process (privileged, on the
 # runner only), checks that the units it wrote pass `systemd-analyze verify`, and prints `systemd-analyze security` for each. The container is removed
 # at the end. This is the check that a real CM5 would otherwise be the only place to run.
 #
@@ -104,7 +104,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker exec -e DEBIAN_FRONTEND=noninteractive smoke bash -x /opt/hydra-umc/HYDRA-UMC-OS/provisioning/install_cm5_base.sh --apply --with-server --with-voice-ui
+          docker exec -e DEBIAN_FRONTEND=noninteractive smoke bash -x /opt/hydra-umc/HYDRA-UMC-OS/provisioning/install_cm5_base.sh --apply
 
       - name: Verify the units that were written
         if: ${{ !inputs.dry_run }}
