@@ -82,7 +82,7 @@ jobs:
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
             -v "$GITHUB_WORKSPACE/repos:/opt/hydra-umc" \
             --tmpfs /run --tmpfs /run/lock \
-            debian:trixie /bin/sh -c 'apt-get update -qq && apt-get install -y -qq --no-install-recommends systemd systemd-sysv python3 sudo ca-certificates >/dev/null && exec /sbin/init'
+            debian:trixie /bin/sh -c 'apt-get update -qq && apt-get install -y -qq --no-install-recommends systemd systemd-sysv dbus python3 sudo ca-certificates >/dev/null && exec /sbin/init'
           for _ in $(seq 1 60); do
             state="$(docker exec smoke systemctl is-system-running 2>/dev/null || true)"
             case "$state" in running|degraded) break ;; esac
@@ -96,7 +96,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker exec smoke bash /opt/hydra-umc/HYDRA-UMC-OS/provisioning/install_cm5_base.sh --apply --with-server --with-voice-ui
+          docker exec -e DEBIAN_FRONTEND=noninteractive smoke bash -x /opt/hydra-umc/HYDRA-UMC-OS/provisioning/install_cm5_base.sh --apply --with-server --with-voice-ui
 
       - name: Verify the units that were written
         if: ${{ !inputs.dry_run }}
