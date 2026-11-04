@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **A credential for the droid bridge, and the global stop can be read:** `provisioning/gateway_env.py` now creates a credential and an ACL rule for `droids` (its own namespace, like the other machine bridges), and every bridge rule may subscribe to the retained global stop announcement (`hydra/swarm/safety/estop`) without being able to publish to it, so a bridge that follows the global stop hears it when the broker enforces the ACL. An existing `gateway.env` is not rewritten. Two more checks in `tools/verify_gateway_env.py`.
+
 ## [0.5.9] - The check of an environment file reports the line and the reason, never the setting's text: provisioning/generatesecrets.py --check now prints line N and a fixed reason (example value, empty, too short) for every secret... (and 4 more changes)
 
 - **The check of an environment file reports the line and the reason, never the setting's text:** `provisioning/generate_secrets.py --check` now prints `line N` and a fixed reason (example value, empty, too short) for every secret setting it refuses, so the report is never built from what the file contains; `problem_codes()` gives the same facts to other tools, and a test covers the report.
