@@ -23,6 +23,7 @@
     "telemetry-collector": {"unit": "hydra-umc-telemetry-collector.service", "environment": "HYDRA_UMC_TELEMETRY_COLLECTOR_IDENTITY_KEY_FILE", "group": "hydra-umc-telemetry-collector"},
     "orchestrator": {"unit": "hydra-umc-orchestrator.service", "environment": "ORCHESTRATOR_IDENTITY_KEY_FILE", "group": "hydra-umc-orchestrator"},
     "hil-bridge": {"unit": "hydra-umc-hil-bridge.service", "environment": "HYDRA_UMC_HIL_BRIDGE_IDENTITY_KEY_FILE", "group": "hydra-umc-hil-bridge"},
-    "twin": {"unit": "hydra-umc-twin.service", "environment": "HYDRA_UMC_TWIN_IDENTITY_KEY_FILE", "group": "hydra-umc-twin"}
+    "twin": {"unit": "hydra-umc-twin.service", "environment": "HYDRA_UMC_TWIN_IDENTITY_KEY_FILE", "group": "hydra-umc-twin"},
+    "connector-hub": {"unit": "hydra-umc-connector-hub.service", "environment": "HYDRA_UMC_CONNECTOR_HUB_IDENTITY_KEY_FILE", "group": "hydra-umc-connector-hub"}
   }
 }

@@ -53,6 +53,6 @@ All of them read the key from a file (`config/service_identity.json` lists the u
 
 Left, each with its reason:
 
-* CONNECTOR-HUB keeps its own verifier. It already refuses every caller without a signed token (the gate service has no off position) and it also takes the EdDSA key set of the server, which the shared copy does not.
+* CONNECTOR-HUB takes the token of the server too, from the same key file and variable as the others (`HYDRA_UMC_CONNECTOR_HUB_IDENTITY_KEY_FILE`), and keeps its own verifier next to it: it already refuses every caller without a signed token (the gate service has no off position) and it also takes the EdDSA key set of the server, which the shared copy does not.
 * The gRPC health service of JOB-DISPATCHER and ORCHESTRATOR keeps its own token.
 * The gateway and its broker credentials (`GATEWAY_JWT_SECRET`, MQTT, OPC UA administrator) are a different kind of secret and follow `generate_secrets.py`; whether they should also take the server's identity is a decision for the owner. The design that is proposed: the gateway verifies the same token as the other services, and the broker and OPC UA credentials stay what they are because a field device cannot sign in.

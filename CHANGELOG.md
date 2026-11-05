@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The connector hub is in the list of services that take the identity of the server:** `config/service_identity.json` names its unit, its variable (`HYDRA_UMC_CONNECTOR_HUB_IDENTITY_KEY_FILE`) and its group, so the identity command hands it the key like the others; the hub keeps its own verifier and its EdDSA key set.
+
 - **The identity guide describes the safe order for the identity of the services:** the calls of the server to the services now carry its signed token when its own switch is on, so the guide gives the order (the server first, then the key of each service one at a time with the provisioning command, and the way back in the opposite order). The test of the provisioning command makes a throwaway key for each run and never prints it.
 
 - **The identity of the server reaches thirteen more services and nothing is open with it on:** `config/service_identity.json` lists the Python, Go and Rust services that take the signed token of the server, `docs/SERVER_IDENTITY.md` says how a container health check works once the key is on (the probe that signs its own short-lived token), and what is left with its reason.
