@@ -10,6 +10,19 @@
   "services": {
     "cognitive-node": {"unit": "hydra-umc-cognitive-node.service", "environment": "HYDRA_UMC_COGNITIVE_NODE_IDENTITY_KEY_FILE", "group": "hydra-umc-cognitive-node"},
     "vision-node": {"unit": "hydra-umc-vision-node.service", "environment": "HYDRA_UMC_VISION_NODE_IDENTITY_KEY_FILE", "group": "hydra-umc-vision-node"},
-    "vla-engine": {"unit": "hydra-umc-vla-engine.service", "environment": "HYDRA_UMC_VLA_ENGINE_IDENTITY_KEY_FILE", "group": "hydra-umc-vla-engine"}
+    "vla-engine": {"unit": "hydra-umc-vla-engine.service", "environment": "HYDRA_UMC_VLA_ENGINE_IDENTITY_KEY_FILE", "group": "hydra-umc-vla-engine"},
+    "anomaly-detector": {"unit": "hydra-umc-anomaly-detector.service", "environment": "HYDRA_UMC_ANOMALY_DETECTOR_IDENTITY_KEY_FILE", "group": "hydra-umc-anomaly-detector"},
+    "datalake": {"unit": "hydra-umc-datalake.service", "environment": "HYDRA_UMC_DATALAKE_IDENTITY_KEY_FILE", "group": "hydra-umc-datalake"},
+    "detection-hef": {"unit": "hydra-umc-detection-hef.service", "environment": "HYDRA_UMC_DETECTION_HEF_IDENTITY_KEY_FILE", "group": "hydra-umc-detection-hef"},
+    "docs-qa": {"unit": "hydra-umc-docs-qa.service", "environment": "HYDRA_UMC_DOCS_QA_IDENTITY_KEY_FILE", "group": "hydra-umc-docs-qa"},
+    "production-reports": {"unit": "hydra-umc-production-reports.service", "environment": "HYDRA_UMC_PRODUCTION_REPORTS_IDENTITY_KEY_FILE", "group": "hydra-umc-production-reports"},
+    "safety-zones": {"unit": "hydra-umc-safety-zones.service", "environment": "HYDRA_UMC_SAFETY_ZONES_IDENTITY_KEY_FILE", "group": "hydra-umc-safety-zones"},
+    "semantic-planner": {"unit": "hydra-umc-semantic-planner.service", "environment": "HYDRA_UMC_SEMANTIC_PLANNER_IDENTITY_KEY_FILE", "group": "hydra-umc-semantic-planner"},
+    "visual-servoing-api": {"unit": "hydra-umc-visual-servoing-api.service", "environment": "HYDRA_UMC_VISUAL_SERVOING_API_IDENTITY_KEY_FILE", "group": "hydra-umc-visual-servoing-api"},
+    "job-dispatcher": {"unit": "hydra-umc-job-dispatcher.service", "environment": "JOB_DISPATCHER_IDENTITY_KEY_FILE", "group": "hydra-umc-job-dispatcher"},
+    "telemetry-collector": {"unit": "hydra-umc-telemetry-collector.service", "environment": "HYDRA_UMC_TELEMETRY_COLLECTOR_IDENTITY_KEY_FILE", "group": "hydra-umc-telemetry-collector"},
+    "orchestrator": {"unit": "hydra-umc-orchestrator.service", "environment": "ORCHESTRATOR_IDENTITY_KEY_FILE", "group": "hydra-umc-orchestrator"},
+    "hil-bridge": {"unit": "hydra-umc-hil-bridge.service", "environment": "HYDRA_UMC_HIL_BRIDGE_IDENTITY_KEY_FILE", "group": "hydra-umc-hil-bridge"},
+    "twin": {"unit": "hydra-umc-twin.service", "environment": "HYDRA_UMC_TWIN_IDENTITY_KEY_FILE", "group": "hydra-umc-twin"}
   }
 }
