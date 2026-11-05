@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The identity guide describes the safe order for the identity of the services:** the calls of the server to the services now carry its signed token when its own switch is on, so the guide gives the order (the server first, then the key of each service one at a time with the provisioning command, and the way back in the opposite order). The test of the provisioning command makes a throwaway key for each run and never prints it.
+
 - **The identity of the server reaches thirteen more services and nothing is open with it on:** `config/service_identity.json` lists the Python, Go and Rust services that take the signed token of the server, `docs/SERVER_IDENTITY.md` says how a container health check works once the key is on (the probe that signs its own short-lived token), and what is left with its reason.
 
 - **The manual package build never checks out the program of another repository (`package-build.yml`):** the planning job resolves the ref, verifies that the commit is part of the main branch of that repository and reads its commit time; each program is then built in its own job (`build-os-agent`, `build-studio`) from an archive of exactly that commit fetched by its full hash, the Node.js setup has the package-manager cache switched off, and the package dates come from the verified commit, so no cache that code of another repository could write is ever read by a later run.

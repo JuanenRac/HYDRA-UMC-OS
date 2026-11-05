@@ -29,9 +29,10 @@ failures = 0
 
 
 def check(label: str, actual: object, expected: object) -> None:
+    """Compares and reports the label only: a value compared here may derive from the sample key, which is never printed."""
     global failures
     if actual != expected:
-        print(f"FAIL {label}: expected {expected!r}, got {actual!r}")
+        print(f"FAIL {label}")
         failures += 1
     else:
         print(f"ok   {label}")
@@ -44,7 +45,7 @@ def run(*argv: str) -> tuple[int, str, str]:
     return code, out.getvalue(), err.getvalue()
 
 
-SECRET = "9f3a6c0b" * 8
+SAMPLE = os.urandom(32).hex()  # a throwaway value made for this run; it lives only in the temporary directory below
 config = si.load_config(ROOT / "config" / "service_identity.json")
 check("the shipped configuration names at least the three pilot services", {"cognitive-node", "vision-node", "vla-engine"} <= set(config["services"]), True)
 check("every service has its own variable", len({e["environment"] for e in config["services"].values()}), len(config["services"]))
@@ -53,20 +54,20 @@ with tempfile.TemporaryDirectory() as directory:
     base = Path(directory)
     keys, units, env = base / "etc", base / "systemd", base / "server.env"
     common = ["--directory", str(keys), "--systemd-directory", str(units), "--server-env", str(env)]
-    env.write_text(f"NODE_ENV=production\nJWT_SECRET={SECRET}\n", encoding="utf-8")
+    env.write_text(f"NODE_ENV=production\nJWT_SECRET={SAMPLE}\n", encoding="utf-8")
 
     code, out, _ = run(*common, "--status")
     check("nothing is on by default", (code, "vision-node: off" in out and ": on" not in out), (0, True))
 
     code, out, _ = run(*common, "--enable", "vision-node")
-    check("a dry run writes nothing", (code, keys.exists(), units.exists(), SECRET in out), (0, False, False, False))
+    check("a dry run writes nothing", (code, keys.exists(), units.exists(), SAMPLE in out), (0, False, False, False))
 
     code, out, err = run(*common, "--enable", "vision-node", "--apply")
     key_file = keys / "vision-node-identity.key"
     drop_in = units / "hydra-umc-vision-node.service.d" / "20-server-identity.conf"
     check("enabling writes the key and the drop-in", (code, key_file.is_file(), drop_in.is_file()), (0, True, True))
-    check("the secret is never printed", SECRET in out or SECRET in err, False)
-    check("the key file holds the signing key", key_file.read_text(encoding="utf-8").strip(), SECRET)
+    check("the secret is never printed", SAMPLE in out or SAMPLE in err, False)
+    check("the key file holds the signing key", key_file.read_text(encoding="utf-8").strip() == SAMPLE, True)
     if os.name == "posix":
         check("the key file is not readable by others", stat.S_IMODE(key_file.stat().st_mode) & 0o007, 0)
     text = drop_in.read_text(encoding="utf-8")

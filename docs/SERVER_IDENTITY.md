@@ -35,7 +35,13 @@ python -m hydra_umc_<service>.server_identity probe --port PORT [--path /health]
 
 It exits `0` when the service answers `200`. A `HEALTHCHECK` or a `healthcheck.test` in a compose file runs that command instead of `urlopen('http://127.0.0.1:PORT/stats')`; a systemd watchdog does the same. The Go and Rust services have no probe of their own: use `curl` with a token signed by the probe of any Python service of the same machine, or the token of the service itself (`--token`), which they also accept. Without the key nothing changes and the earlier health checks keep working.
 
-What the services do not see: the calls that the SERVER makes to a service to ask its health (the family status, the maintenance agent) carry no token of the server today. Turn the key on for a service only after those callers present one; until then keep it off. This is the open item of the batch.
+The calls that the SERVER makes to a service (the family status and the health probes, the relays to the AI, data and speech services, the stop relay, the takeover, the reload of the job dispatcher) carry the token of the SERVER when its own switch is on: `auth.serviceIdentity.enabled` of Server Admin (or `HYDRA_UMC_SERVICE_IDENTITY=1`), off by default. The server signs one short token (HS256, sixty seconds, the role the request needs) with its `JWT_SECRET`; a service that has a token of its own keeps receiving that one. The two halves of the switch are separate on purpose, and the order matters:
+
+1. **The SERVER first.** Turn `auth.serviceIdentity.enabled` on in Server Admin of STUDIO or SUITE (it asks for a confirmation), or set `HYDRA_UMC_SERVICE_IDENTITY=1` in `/etc/hydra-umc/server.env` and restart the server. The screen "Identity of the services" says whether the server is presenting its token (`presenting`) or cannot (`idle_no_key`: `JWT_SECRET` is unset, an example value or too short).
+2. **Then one service at a time.** On the machine, as root: `python3 provisioning/service_identity.py --enable NAME` (a dry run), then again with `--apply`; restart that unit; `--status` lists which services have it on. Check that the family status still shows the service as `ok`, and go on to the next one.
+3. **Back out the same way, in the opposite order.** `--disable NAME --apply` and a restart for the services first; turn the switch of the server off last. With the switch of the server off and a key still on in a service, the service refuses the server.
+
+Nothing in the SERVER can run step 2: the key is handed out as a file by root on the machine, and the API of the server never does it.
 
 ## Services that take it
 
