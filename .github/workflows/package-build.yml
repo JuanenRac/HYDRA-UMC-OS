@@ -47,6 +47,7 @@ jobs:
       repo: ${{ steps.plan.outputs.repo }}
       sha: ${{ steps.plan.outputs.sha }}
       version: ${{ steps.plan.outputs.version }}
+      epoch: ${{ steps.plan.outputs.epoch }}
     env:
       COMPONENT: ${{ inputs.component }}
       REF: ${{ inputs.ref }}
@@ -78,7 +79,10 @@ jobs:
           case "$status" in identical|behind) ;; *) echo "::error::the commit $sha is not part of the main branch of $repo"; exit 1 ;; esac
           version="$(gh api "repos/$OWNER/$repo/contents/hydra-umc.project.json?ref=$sha" --jq .content | base64 -d | python3 -c "import json,sys; print(json.load(sys.stdin)['version'])")"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::the version $version is not one of the family's"; exit 1; }
+          epoch="$(gh api "repos/$OWNER/$repo/commits/$sha" --jq .commit.committer.date | python3 -c "import sys,datetime; print(int(datetime.datetime.fromisoformat(sys.stdin.read().strip().replace('Z','+00:00')).timestamp()))")"
+          [[ "$epoch" =~ ^[0-9]+$ ]] || { echo "::error::no commit time"; exit 1; }
           {
+            echo "epoch=$epoch"
             echo "repo=$repo"
             echo "sha=$sha"
             echo "version=$version"
@@ -101,6 +105,7 @@ jobs:
     env:
       COMPONENT: os-agent
       REPO: ${{ needs.plan.outputs.repo }}
+      EPOCH: ${{ needs.plan.outputs.epoch }}
     steps:
       - name: Check out the packer (this repository)
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -108,20 +113,26 @@ jobs:
           path: packer
           persist-credentials: false
 
-      - name: Check out the program at the planned commit
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          repository: ${{ github.repository_owner }}/HYDRA-UMC-OS
-          ref: ${{ needs.plan.outputs.sha }}
-          path: ${{ needs.plan.outputs.repo }}
-          persist-credentials: false
+      # The program is fetched as an archive of the commit the planning job verified, not checked out: nothing of it is trusted, only read
+      - name: Fetch the program at the planned commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          SHA: ${{ needs.plan.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a commit"; exit 1; }
+          mkdir "$REPO"
+          gh api "repos/$OWNER/$REPO/tarball/$SHA" > program.tgz
+          tar -xzf program.tgz -C "$REPO" --strip-components=1
+          rm program.tgz
 
       - name: Pack it with fixed dates and owners
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_DATE_EPOCH="$(git -C "$REPO" log -1 --format=%ct 2>/dev/null || echo 0)"
-          export SOURCE_DATE_EPOCH
+          export SOURCE_DATE_EPOCH="$EPOCH"
           python3 packer/tools/package_component.py pack "$COMPONENT" --repo "$REPO" --out out
           ls -l out
 
@@ -150,6 +161,7 @@ jobs:
     env:
       COMPONENT: studio
       REPO: ${{ needs.plan.outputs.repo }}
+      EPOCH: ${{ needs.plan.outputs.epoch }}
     steps:
       - name: Check out the packer (this repository)
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -157,13 +169,20 @@ jobs:
           path: packer
           persist-credentials: false
 
-      - name: Check out the program at the planned commit
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          repository: ${{ github.repository_owner }}/HYDRA-UMC-STUDIO
-          ref: ${{ needs.plan.outputs.sha }}
-          path: ${{ needs.plan.outputs.repo }}
-          persist-credentials: false
+      # The program is fetched as an archive of the commit the planning job verified, not checked out: nothing of it is trusted, only read
+      - name: Fetch the program at the planned commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OWNER: ${{ github.repository_owner }}
+          SHA: ${{ needs.plan.outputs.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a commit"; exit 1; }
+          mkdir "$REPO"
+          gh api "repos/$OWNER/$REPO/tarball/$SHA" > program.tgz
+          tar -xzf program.tgz -C "$REPO" --strip-components=1
+          rm program.tgz
 
       # No cache of any kind: this job runs code of another repository, so a cache it wrote could be read by the next run
       - name: Set up Node.js (without a package-manager cache)
@@ -184,8 +203,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SOURCE_DATE_EPOCH="$(git -C "$REPO" log -1 --format=%ct 2>/dev/null || echo 0)"
-          export SOURCE_DATE_EPOCH
+          export SOURCE_DATE_EPOCH="$EPOCH"
           python3 packer/tools/package_component.py pack "$COMPONENT" --repo "$REPO" --out out
           ls -l out
 
