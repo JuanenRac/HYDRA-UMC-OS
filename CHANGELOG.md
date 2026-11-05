@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The build test of the repository compiles only on CI or when allowed:** for the stacks that compile (`rust`, `go`, `android`, `flutter`, `firmware-c`), `tools/build_test.py` prints `BUILD_TEST=SKIPPED` with exit status 2 on a plain PC, never a pass; `ALLOW_LOCAL_BUILD=1` allows it and a CI runner always may. The `python` and `node` stacks are not locked.
+
 - **The connector hub is in the list of services that take the identity of the server:** `config/service_identity.json` names its unit, its variable (`HYDRA_UMC_CONNECTOR_HUB_IDENTITY_KEY_FILE`) and its group, so the identity command hands it the key like the others; the hub keeps its own verifier and its EdDSA key set.
 
 - **The identity guide describes the safe order for the identity of the services:** the calls of the server to the services now carry its signed token when its own switch is on, so the guide gives the order (the server first, then the key of each service one at a time with the provisioning command, and the way back in the opposite order). The test of the provisioning command makes a throwaway key for each run and never prints it.
