@@ -84,9 +84,10 @@ jobs:
             echo "version=$version"
           } >> "$GITHUB_OUTPUT"
 
-  build:
-    name: Pack on ${{ matrix.id }}
+  build-os-agent:
+    name: Pack os-agent on ${{ matrix.id }}
     needs: plan
+    if: ${{ inputs.component == 'os-agent' }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
@@ -98,7 +99,7 @@ jobs:
           - id: arm64
             runner: ubuntu-24.04-arm
     env:
-      COMPONENT: ${{ inputs.component }}
+      COMPONENT: os-agent
       REPO: ${{ needs.plan.outputs.repo }}
     steps:
       - name: Check out the packer (this repository)
@@ -110,24 +111,73 @@ jobs:
       - name: Check out the program at the planned commit
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
-          repository: ${{ github.repository_owner }}/${{ needs.plan.outputs.repo }}
+          repository: ${{ github.repository_owner }}/HYDRA-UMC-OS
           ref: ${{ needs.plan.outputs.sha }}
           path: ${{ needs.plan.outputs.repo }}
           persist-credentials: false
 
-      - name: Set up Node.js
-        if: ${{ inputs.component != 'os-agent' }}
+      - name: Pack it with fixed dates and owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_DATE_EPOCH="$(git -C "$REPO" log -1 --format=%ct 2>/dev/null || echo 0)"
+          export SOURCE_DATE_EPOCH
+          python3 packer/tools/package_component.py pack "$COMPONENT" --repo "$REPO" --out out
+          ls -l out
+
+      - name: Upload the package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: parts-${{ matrix.id }}
+          path: out/hydra-os-agent-${{ needs.plan.outputs.version }}.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  build-studio:
+    name: Pack studio on ${{ matrix.id }}
+    needs: plan
+    if: ${{ inputs.component == 'studio' }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: x86-64
+            runner: ubuntu-latest
+          - id: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      COMPONENT: studio
+      REPO: ${{ needs.plan.outputs.repo }}
+    steps:
+      - name: Check out the packer (this repository)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          path: packer
+          persist-credentials: false
+
+      - name: Check out the program at the planned commit
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: ${{ github.repository_owner }}/HYDRA-UMC-STUDIO
+          ref: ${{ needs.plan.outputs.sha }}
+          path: ${{ needs.plan.outputs.repo }}
+          persist-credentials: false
+
+      # No cache of any kind: this job runs code of another repository, so a cache it wrote could be read by the next run
+      - name: Set up Node.js (without a package-manager cache)
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: "22"
+          package-manager-cache: false
 
       - name: Build the program (no install scripts)
-        if: ${{ inputs.component != 'os-agent' }}
         shell: bash
         run: |
           set -euo pipefail
           cd "$REPO"
-          npm ci --ignore-scripts
+          npm ci --ignore-scripts --no-audit --no-fund
           npm run build
 
       - name: Pack it with fixed dates and owners
@@ -143,13 +193,14 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: parts-${{ matrix.id }}
-          path: out/hydra-${{ inputs.component }}-${{ needs.plan.outputs.version }}.tgz
+          path: out/hydra-studio-${{ needs.plan.outputs.version }}.tgz
           if-no-files-found: error
           retention-days: 7
 
   collect:
     name: Compare, attest and check
-    needs: [plan, build]
+    needs: [plan, build-os-agent, build-studio]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.build-os-agent.result == 'success' || needs.build-studio.result == 'success') && needs.build-os-agent.result != 'failure' && needs.build-studio.result != 'failure' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
