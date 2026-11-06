@@ -51,13 +51,13 @@ jobs:
 
       # The installer's preflight reads the SDK as a sibling folder, so both checkouts live side by side under repos/.
       - name: Check out this repository
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: repos/HYDRA-UMC-OS
           persist-credentials: false
 
       - name: Check out the SDK next to it
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ github.repository_owner }}/HYDRA-UMC-SDK
           ref: v0.5.2
