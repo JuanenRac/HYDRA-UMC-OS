@@ -61,10 +61,52 @@ class StaticTests(unittest.TestCase):
         self.assertIn('"DeveloperToolsAvailability": 2', self.text)
         self.assertIn('"PasswordManagerEnabled": false', self.text)
 
+    def test_the_session_is_x11_unless_the_operator_chooses_wayland(self) -> None:
+        self.assertIn('SESSION="${SESSION_REQUEST:-${HYDRA_KIOSK_SESSION:-x11}}"', self.text)
+        self.assertIn("case \"$SESSION\" in x11|wayland) ;;", self.text)
+
+    def test_the_wayland_session_installs_cage_and_no_x_server(self) -> None:
+        self.assertIn("run apt-get install -y --no-install-recommends cage chromium", self.text)
+        installs = self.text.split('if [[ "$SESSION" == wayland ]]; then', 1)[1].split("else", 1)[0]
+        for x_piece in ("xserver-xorg", "openbox", "picom", "xinit", "unclutter"):
+            self.assertNotIn(x_piece, installs)
+
+    def test_the_x_server_files_are_written_for_the_x11_session_only(self) -> None:
+        only = block(self.text, "x11 only")
+        self.assertIn("xorg.conf.d/20-hydra-umc-modesetting.conf", only)
+        self.assertIn("xorg.conf.d/30-hydra-umc-kiosk-flags.conf", only)
+        self.assertTrue(only.lstrip().startswith('if [[ "$SESSION" == x11 ]]; then'))
+
+    def test_the_wayland_profile_line_runs_cage_on_tty1_only_and_closes_the_consoles_unless_asked(self) -> None:
+        line = block(self.text, "profile line")
+        self.assertIn('[ "$(tty)" = "/dev/tty1" ]', line)
+        self.assertIn("exec cage '\"$CAGE_FLAGS\"'-- /opt/hydra-umc/kiosk/kiosk-session-wayland.sh", line)
+        self.assertIn('[[ "${HYDRA_KIOSK_ALLOW_VT_SWITCH:-0}" != "1" ]] || CAGE_FLAGS="-s "', line)
+        self.assertIn("HYDRA_LOCAL_SCREEN=(dsi|none)", line)
+
+    def test_a_rerun_removes_the_line_of_either_session_before_writing_its_own(self) -> None:
+        self.assertIn("KIOSK_LINE_PATTERNS=(-e 'exec startx /opt/hydra-umc/kiosk/kiosk-session.sh' -e 'kiosk-session-wayland.sh')", self.text)
+        self.assertEqual(self.text.count('grep -v "${KIOSK_LINE_PATTERNS[@]}"'), 2)
+
+    def test_the_wayland_session_script_is_chromium_on_wayland_with_the_same_dedicated_profile(self) -> None:
+        session = (ROOT / "provisioning" / "kiosk" / "kiosk-session-wayland.sh").read_text(encoding="utf-8")
+        x11 = (ROOT / "provisioning" / "kiosk" / "kiosk-session.sh").read_text(encoding="utf-8")
+        self.assertIn("--ozone-platform=wayland", session)
+        self.assertIn('--user-data-dir="$CHROMIUM_PROFILE"', session)
+        self.assertIn('CHROMIUM_PROFILE="$HOME/.config/hydra-umc-kiosk-chromium"', session)
+        for flag in ("--kiosk", "--noerrdialogs", "--disable-infobars", "--no-first-run", "--disable-session-crashed-bubble", "--autoplay-policy=no-user-gesture-required"):
+            self.assertIn(flag, session)
+            self.assertIn(flag, x11, "the two sessions keep the same browser flags")
+        for x_only in ("xset", "openbox", "picom", "unclutter", "startx"):
+            self.assertNotIn(x_only, session)
+        self.assertIn("exec chromium", session)
+
     def test_the_script_has_valid_syntax(self) -> None:
         if not BASH:
             self.skipTest("bash is needed")
         self.assertEqual(subprocess.run([BASH, "-n", INSTALLER.as_posix()], capture_output=True, text=True).returncode, 0)
+        session = ROOT / "provisioning" / "kiosk" / "kiosk-session-wayland.sh"
+        self.assertEqual(subprocess.run([BASH, "-n", session.as_posix()], capture_output=True, text=True).returncode, 0)
 
 
 @unittest.skipUnless(BASH, "bash is needed")

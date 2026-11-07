@@ -14,7 +14,10 @@
 # then hands off to HYDRA-UMC-SERVER's own STUDIO UI once it responds, both
 # in the same fullscreen window. This is the only HDMI kiosk of the ecosystem.
 #
-# Usage: install_kiosk.sh [--apply] [--screen hdmi|dsi|none]
+# Usage: install_kiosk.sh [--apply] [--screen hdmi|dsi|none] [--session x11|wayland]
+# The session is x11 (the default: X11 with openbox and picom, tuned on the device) or wayland (cage, a Wayland compositor that runs one
+# program fullscreen, with Chromium on Wayland; no X server, no window manager, no compositing manager). The choice also comes from
+# HYDRA_KIOSK_SESSION. Both run as the same locked account and show the same splash and STUDIO.
 # Which local screen the CM5 drives is one setting (provisioning/local_screen.sh):
 # hdmi (the default) is this kiosk, dsi leaves tty1 to the app of HYDRA-UMC-DSI
 # and none leaves it to nobody. This script installs only for hdmi; for the other
@@ -22,6 +25,7 @@
 set -euo pipefail
 APPLY=false
 SCREEN_REQUEST=""
+SESSION_REQUEST=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply) APPLY=true ;;
@@ -30,11 +34,18 @@ while [[ $# -gt 0 ]]; do
       SCREEN_REQUEST="${1:-}"
       [[ -n "$SCREEN_REQUEST" ]] || { echo "--screen needs hdmi, dsi or none." >&2; exit 2; }
       ;;
-    *) echo "Unknown option: $1 (use --apply and/or --screen hdmi|dsi|none)." >&2; exit 2 ;;
+    --session)
+      shift
+      SESSION_REQUEST="${1:-}"
+      [[ -n "$SESSION_REQUEST" ]] || { echo "--session needs x11 or wayland." >&2; exit 2; }
+      ;;
+    *) echo "Unknown option: $1 (use --apply, --screen hdmi|dsi|none and/or --session x11|wayland)." >&2; exit 2 ;;
   esac
   shift
 done
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
+SESSION="${SESSION_REQUEST:-${HYDRA_KIOSK_SESSION:-x11}}"
+case "$SESSION" in x11|wayland) ;; *) echo "The session must be x11 or wayland (got: $SESSION)." >&2; exit 2 ;; esac
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # The session on the HDMI screen runs as its OWN account, hydra-umc-kiosk: no sudo, no password, no SSH key. It used to
 # autologin as the administrator who ran this script and run the browser as them, so anyone with a keyboard on the
@@ -64,6 +75,7 @@ source "$LOCAL_SCREEN_LIB"
 [[ -z "$SCREEN_REQUEST" ]] || HYDRA_LOCAL_SCREEN="$SCREEN_REQUEST"
 SCREEN="$(local_screen_read)" || exit 2
 echo "local screen: $SCREEN"
+echo "kiosk session: $SESSION"
 if [[ -n "$SCREEN_REQUEST" ]]; then
   if $APPLY; then
     local_screen_write "$SCREEN"
@@ -92,8 +104,13 @@ run systemctl enable getty@tty1.service || true
 # --- local screen end
 
 run apt-get update
-run apt-get install -y --no-install-recommends \
-  xserver-xorg x11-xserver-utils xinit openbox picom chromium unclutter
+if [[ "$SESSION" == wayland ]]; then
+  # cage runs the one program fullscreen on the display itself (no X server, no window manager, no compositing manager)
+  run apt-get install -y --no-install-recommends cage chromium
+else
+  run apt-get install -y --no-install-recommends \
+    xserver-xorg x11-xserver-utils xinit openbox picom chromium unclutter
+fi
 
 # --- kiosk user begin
 # The dedicated account: a normal (non-system) user so that login(1) and logind give it the seat of the console, with
@@ -221,6 +238,8 @@ fi
 # display controller) - and modesetting's own autodetection did not
 # reliably resolve to card1 on its own. Pinning kmsdev explicitly is the
 # documented fix for this dual-node situation.
+# --- x11 only begin
+if [[ "$SESSION" == x11 ]]; then
 run install -d -m 0755 /etc/X11/xorg.conf.d
 if $APPLY; then
   cat > /etc/X11/xorg.conf.d/20-hydra-umc-modesetting.conf <<'EOF'
@@ -252,6 +271,9 @@ else
   run rm -f /etc/X11/xorg.conf.d/30-hydra-umc-kiosk-flags.conf
 fi
 
+fi
+# --- x11 only end
+
 # Chromium: no developer tools, no password manager, no sign-in (the page is STUDIO and nothing else needs the browser)
 run install -d -m 0755 /etc/chromium/policies/managed
 if $APPLY; then
@@ -274,6 +296,7 @@ run install -d -o root -g root -m 0755 "$KIOSK_DIR"
 run install -m 0644 "$ROOT/images/HYDRA_UMC_SPLASHSCREEN.svg" "$KIOSK_DIR/HYDRA_UMC_SPLASHSCREEN.svg"
 run install -m 0644 "$ROOT/provisioning/kiosk/splash.html" "$KIOSK_DIR/splash.html"
 run install -m 0755 "$ROOT/provisioning/kiosk/kiosk-session.sh" "$KIOSK_DIR/kiosk-session.sh"
+run install -m 0755 "$ROOT/provisioning/kiosk/kiosk-session-wayland.sh" "$KIOSK_DIR/kiosk-session-wayland.sh"
 
 # Autologin on the physical console (tty1) - the standard, minimal way to
 # reach a graphical kiosk session on a Lite install with no display manager.
@@ -308,13 +331,24 @@ run install -o "$KIOSK_USER" -g "$KIOSK_USER" -m 0644 /dev/null "$KIOSK_HOME/.hu
 # by console=/quiet/fbcon settings) writes its own startup banner to
 # whatever's on stdout/stderr when startx launches it, and that flashed on
 # screen briefly every boot until this was redirected away.
-PROFILE_LINE='[ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && ! grep -Eqx "HYDRA_LOCAL_SCREEN=(dsi|none)" /etc/hydra-umc/local-screen.conf 2>/dev/null && exec startx /opt/hydra-umc/kiosk/kiosk-session.sh -- -verbose 0 -logverbose 0 &> /dev/null'
+# --- profile line begin
+if [[ "$SESSION" == wayland ]]; then
+  # cage closes the text consoles unless -s is given: the same switch (HYDRA_KIOSK_ALLOW_VT_SWITCH=1) opens it
+  CAGE_FLAGS=""
+  [[ "${HYDRA_KIOSK_ALLOW_VT_SWITCH:-0}" != "1" ]] || CAGE_FLAGS="-s "
+  PROFILE_LINE='[ -z "$DISPLAY" ] && [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && ! grep -Eqx "HYDRA_LOCAL_SCREEN=(dsi|none)" /etc/hydra-umc/local-screen.conf 2>/dev/null && exec cage '"$CAGE_FLAGS"'-- /opt/hydra-umc/kiosk/kiosk-session-wayland.sh &> /dev/null'
+else
+  PROFILE_LINE='[ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ] && ! grep -Eqx "HYDRA_LOCAL_SCREEN=(dsi|none)" /etc/hydra-umc/local-screen.conf 2>/dev/null && exec startx /opt/hydra-umc/kiosk/kiosk-session.sh -- -verbose 0 -logverbose 0 &> /dev/null'
+fi
+# the line of either session, whichever an earlier run put there
+KIOSK_LINE_PATTERNS=(-e 'exec startx /opt/hydra-umc/kiosk/kiosk-session.sh' -e 'kiosk-session-wayland.sh')
+# --- profile line end
 if $APPLY; then
   touch "$KIOSK_HOME/.bash_profile"
   # Drop any earlier version of this exact line (e.g. before the &> /dev/null
   # above was added) before appending the current one, so re-running this
   # script after an update never leaves two competing startx lines behind.
-  grep -v 'exec startx /opt/hydra-umc/kiosk/kiosk-session.sh' "$KIOSK_HOME/.bash_profile" > "$KIOSK_HOME/.bash_profile.tmp" || true
+  grep -v "${KIOSK_LINE_PATTERNS[@]}" "$KIOSK_HOME/.bash_profile" > "$KIOSK_HOME/.bash_profile.tmp" || true
   mv "$KIOSK_HOME/.bash_profile.tmp" "$KIOSK_HOME/.bash_profile"
   echo "$PROFILE_LINE" >> "$KIOSK_HOME/.bash_profile"
   chown "$KIOSK_USER":"$KIOSK_USER" "$KIOSK_HOME/.bash_profile"
@@ -327,9 +361,9 @@ fi
 # --- previous user begin
 if [[ -n "$PREVIOUS_KIOSK_USER" && "$PREVIOUS_KIOSK_USER" != "$KIOSK_USER" && "$PREVIOUS_KIOSK_USER" != "root" ]]; then
   PREVIOUS_HOME="$(getent passwd "$PREVIOUS_KIOSK_USER" 2>/dev/null | cut -d: -f6 || true)"
-  if [[ -n "$PREVIOUS_HOME" && -f "$PREVIOUS_HOME/.bash_profile" ]] && grep -q 'exec startx /opt/hydra-umc/kiosk/kiosk-session.sh' "$PREVIOUS_HOME/.bash_profile"; then
+  if [[ -n "$PREVIOUS_HOME" && -f "$PREVIOUS_HOME/.bash_profile" ]] && grep -q "${KIOSK_LINE_PATTERNS[@]}" "$PREVIOUS_HOME/.bash_profile"; then
     if $APPLY; then
-      grep -v 'exec startx /opt/hydra-umc/kiosk/kiosk-session.sh' "$PREVIOUS_HOME/.bash_profile" > "$PREVIOUS_HOME/.bash_profile.tmp" || true
+      grep -v "${KIOSK_LINE_PATTERNS[@]}" "$PREVIOUS_HOME/.bash_profile" > "$PREVIOUS_HOME/.bash_profile.tmp" || true
       mv "$PREVIOUS_HOME/.bash_profile.tmp" "$PREVIOUS_HOME/.bash_profile"
       chown "$PREVIOUS_KIOSK_USER":"$PREVIOUS_KIOSK_USER" "$PREVIOUS_HOME/.bash_profile"
       echo "Removed the kiosk line from $PREVIOUS_HOME/.bash_profile (the screen now runs as $KIOSK_USER)."
