@@ -90,3 +90,26 @@ must be a non-negative integer; and `diagnostics.maximum_temperature_celsius`
 must be a positive finite number. The temperature threshold is optional in an
 existing v1.0 file and defaults safely to `80.0`. Any violation raises
 `ValueError`, printed to stderr as `hydra-umc-agent: <message>`, exit code `2`.
+
+### Optional probes (`diagnostics.probes`, off by default)
+
+```json
+"probes": {
+  "enabled": true,
+  "vcgencmd": "vcgencmd",
+  "systemctl": "systemctl",
+  "hailo_device": "/dev/hailo0",
+  "units": ["hydra-umc-server"],
+  "timeout_seconds": 5
+}
+```
+
+Nothing below runs unless `enabled` is exactly `true`; the default configuration has no `probes` block. With it, `health` adds checks to the report:
+
+| Check | What it asks | PASS | WARN | FAIL |
+|---|---|---|---|---|
+| `throttling` | `vcgencmd get_throttled` | no bit set | a frequency cap or a soft temperature limit now, anything since the boot, a program that is missing, slow or fails, or an answer that cannot be read | under-voltage or throttling right now |
+| `hailo` | whether `hailo_device` exists (only when the key is given) | present | absent | never |
+| `unit:<name>` (one per entry of `units`) | `systemctl is-active <name>` | `active` | any other word, or a program that is missing, slow or fails | `failed` |
+
+The programs are started without a shell, with the time limit of `timeout_seconds` (above 0, at most 30), and the names must be plain characters (`units`: at most 32, lower case; `hailo_device`: an absolute path). A missing tool is a WARN with its reason, never a PASS and never a crash. Any WARN makes the whole report `DEGRADED` and any FAIL makes it `FAULT`, like the other checks. The unit of the agent needs to be allowed to run these programs before they are turned on.

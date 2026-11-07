@@ -17,8 +17,10 @@ import json
 import math
 import os
 import platform
+import re
 import shutil
 import socket
+import subprocess
 import sys
 import time
 import uuid
@@ -135,7 +137,96 @@ def load_config(path: Path | None) -> dict[str, Any]:
     storage_path = diagnostics.get("storage_path")
     if storage_path is not None and (not isinstance(storage_path, str) or not storage_path.strip()):
         raise ValueError("configuration diagnostics.storage_path must be a non-empty string when present")
+    validate_probes(diagnostics.get("probes"))
     return candidate
+
+
+_PROGRAM = re.compile(r"[A-Za-z0-9._/-]{1,120}")
+_UNIT = re.compile(r"[a-z0-9][a-z0-9@._-]{0,63}")
+
+
+def validate_probes(probes: Any) -> None:
+    """The optional `diagnostics.probes` block: off unless `enabled` is exactly true, plain names only, no shell anywhere."""
+    if probes is None:
+        return
+    if not isinstance(probes, dict):
+        raise ValueError("configuration diagnostics.probes must be an object when present")
+    unknown = set(probes) - {"enabled", "vcgencmd", "systemctl", "hailo_device", "units", "timeout_seconds"}
+    if unknown:
+        raise ValueError(f"configuration diagnostics.probes has unknown keys: {sorted(unknown)}")
+    if not isinstance(probes.get("enabled", False), bool):
+        raise ValueError("configuration diagnostics.probes.enabled must be true or false")
+    for key in ("vcgencmd", "systemctl"):
+        value = probes.get(key)
+        if value is not None and (not isinstance(value, str) or not _PROGRAM.fullmatch(value)):
+            raise ValueError(f"configuration diagnostics.probes.{key} must be a program name or path of plain characters")
+    device = probes.get("hailo_device")
+    if device is not None and (not isinstance(device, str) or not device.startswith("/") or not _PROGRAM.fullmatch(device)):
+        raise ValueError("configuration diagnostics.probes.hailo_device must be an absolute path of plain characters")
+    units = probes.get("units", [])
+    if not isinstance(units, list) or len(units) > 32 or any(not isinstance(unit, str) or not _UNIT.fullmatch(unit) for unit in units):
+        raise ValueError("configuration diagnostics.probes.units must be a list of at most 32 unit names of plain characters")
+    timeout = probes.get("timeout_seconds", 5)
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or not 0 < timeout <= 30:
+        raise ValueError("configuration diagnostics.probes.timeout_seconds must be a number above 0 and at most 30")
+
+
+# Bits of `vcgencmd get_throttled`: the first four say what is happening now, the same four shifted by 16 say what happened since the boot.
+_THROTTLE_NOW = {0x1: "under-voltage", 0x2: "arm-frequency-capped", 0x4: "throttled", 0x8: "soft-temperature-limit"}
+
+
+def _run_probe(run: Any, argv: list[str], timeout: float) -> tuple[str | None, str | None]:
+    """(standard output, why not): the program is never started through a shell and a slow one is cut off."""
+    try:
+        done = run(argv, capture_output=True, text=True, timeout=timeout, check=False)
+    except FileNotFoundError:
+        return None, f"{argv[0]} is not installed"
+    except subprocess.TimeoutExpired:
+        return None, f"{argv[0]} did not answer in {timeout:g} s"
+    except OSError as exc:
+        return None, f"{argv[0]} could not be started: {exc.strerror or type(exc).__name__}"
+    if done.returncode != 0:
+        return (done.stdout or "").strip(), f"{argv[0]} exited with status {done.returncode}"
+    return (done.stdout or "").strip(), None
+
+
+def throttle_check(output: str | None, why: str | None) -> dict[str, Any]:
+    """FAIL while under-voltage or throttled right now, WARN for a cap, a soft limit, something that happened since the boot or an answer that cannot be read."""
+    found = re.fullmatch(r"throttled=0x([0-9a-fA-F]{1,8})", output or "")
+    if why is not None or found is None:
+        return {"state": "WARN", "reason": why or "the answer of vcgencmd could not be read"}
+    value = int(found.group(1), 16)
+    now = [name for bit, name in _THROTTLE_NOW.items() if value & bit]
+    past = [name for bit, name in _THROTTLE_NOW.items() if value & (bit << 16)]
+    state = "FAIL" if value & 0x5 else "WARN" if now or past else "PASS"
+    return {"state": state, "raw": f"0x{value:x}", "now": now, "since_boot": past}
+
+
+def unit_check(output: str | None, why: str | None) -> dict[str, Any]:
+    word = (output or "").splitlines()[0].strip() if output else ""
+    if word == "active":
+        return {"state": "PASS", "active_state": word}
+    if word == "failed":
+        return {"state": "FAIL", "active_state": word}
+    return {"state": "WARN", "active_state": word or "unknown", **({"reason": why} if why else {})}
+
+
+def probe_checks(probes: dict[str, Any] | None, *, run: Any = subprocess.run, exists: Any = os.path.exists) -> dict[str, dict[str, Any]]:
+    """The extra checks of `diagnostics.probes`: none unless it is enabled. A missing tool is a WARN with its reason, never a crash and never a PASS."""
+    if not probes or probes.get("enabled") is not True:
+        return {}
+    timeout = float(probes.get("timeout_seconds", 5))
+    checks: dict[str, dict[str, Any]] = {}
+    output, why = _run_probe(run, [probes.get("vcgencmd", "vcgencmd"), "get_throttled"], timeout)
+    checks["throttling"] = throttle_check(output, why)
+    device = probes.get("hailo_device")
+    if device is not None:
+        present = bool(exists(device))
+        checks["hailo"] = {"state": "PASS" if present else "WARN", "device": device, "present": present}
+    for unit in probes.get("units", []):
+        output, why = _run_probe(run, [probes.get("systemctl", "systemctl"), "is-active", unit], timeout)
+        checks[f"unit:{unit}"] = unit_check(output, why)
+    return checks
 
 
 def storage_probe_path(diagnostics: dict[str, Any]) -> Path:
@@ -199,6 +290,7 @@ def health(
     free_bytes: int | None = None,
     interfaces: list[str] | None = None,
     temperature_celsius: float | None = None,
+    probe_run: Any = subprocess.run,
 ) -> HealthReport:
     """Produce a deterministic health state from non-invasive local checks."""
     diagnostics = config["diagnostics"]
@@ -225,6 +317,7 @@ def health(
             "maximum_celsius": maximum_temperature,
         },
     }
+    checks.update(probe_checks(diagnostics.get("probes"), run=probe_run))
     # Real bug fixed while auditing the code: this used to only fold *network*
     # WARN into the overall DEGRADED state - an unreadable temperature
     # sensor (temperature_state == "WARN" above, e.g. a flaky/missing
