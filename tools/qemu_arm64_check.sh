@@ -24,6 +24,8 @@ cd "$OS" || exit 1
 if python3 provisioning/install_plan.py --check >/tmp/plan.log 2>&1; then ok "install_plan.py --check"; else bad "install_plan.py --check"; tail -n 20 /tmp/plan.log; fi
 if python3 provisioning/os_release_guard.py --mode enforce >/tmp/guard.log 2>&1; then ok "the release guard accepts trixie (enforce)"; else bad "the release guard rejects this release"; cat /tmp/guard.log; fi
 if bash provisioning/install_cm5_base.sh --with-server --with-voice-ui >/tmp/base.log 2>&1; then ok "install_cm5_base.sh dry run"; else bad "install_cm5_base.sh dry run"; tail -n 30 /tmp/base.log; fi
+# the packages the installers ask for, planned by apt on the release and the architecture of the image (nothing is installed)
+if python3 tools/apt_packages_check.py --simulate >/tmp/apt.log 2>&1; then ok "apt plans the packages of every installer"; cat /tmp/apt.log; else bad "apt cannot plan the packages of an installer"; cat /tmp/apt.log; fi
 for script in provisioning/*.sh; do
   if bash -n "$script" 2>/tmp/syntax.log; then :; else bad "bash -n $script"; cat /tmp/syntax.log; fi
 done

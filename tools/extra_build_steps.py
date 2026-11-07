@@ -54,6 +54,7 @@ def run_agent_checks() -> None:
     run(sys.executable, "tools/verify_gateway_env.py", env=environment)
     run(sys.executable, "tools/verify_gateway_installer.py", env=environment)
     run(sys.executable, "tools/verify_kiosk_installer.py", env=environment)
+    run(sys.executable, "tools/verify_apt_packages.py", env=environment)
     run(sys.executable, "tools/verify_package_component.py", env=environment)
     run(sys.executable, "tools/verify_deploy_release.py", env=environment)
     run(sys.executable, "tools/verify_deploy_tree.py", env=environment)

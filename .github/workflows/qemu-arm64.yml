@@ -14,6 +14,8 @@ name: Installers on arm64 under QEMU (manual)
 
 on:
   workflow_dispatch:
+  push:
+    branches: [tmp-os-kiosk]
 
 permissions:
   contents: read
