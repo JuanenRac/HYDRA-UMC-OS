@@ -7,7 +7,7 @@ the boot chain). The agent never commands the MCU, moves machinery, or
 alters the OS - every command below only reads local state.
 
 ```bash
-hydra-umc-agent [--config PATH] [--interval SECONDS] [--report-on-change] [--heartbeat SECONDS] {describe|health|serve}
+hydra-umc-agent [--config PATH] [--interval SECONDS] [--report-on-change] [--heartbeat SECONDS] [--socket PATH] [--what {describe|health}] {describe|health|serve|query}
 ```
 
 - `--config PATH` - a validated, non-secret JSON configuration (`schema_version: "1.0"`, `node.id`, `node.profile`, `diagnostics.minimum_free_bytes`, `diagnostics.maximum_temperature_celsius`). Defaults to a built-in `DEFAULT_CONFIG` if omitted.
@@ -69,6 +69,10 @@ Prints a `HealthReport` - a point-in-time, non-invasive health snapshot:
 
 Runs `health` in a loop, printing one `HealthReport` every `--interval` seconds until interrupted (`Ctrl-C`, exit `0`). This is what `systemd/hydra-umc-agent.service` actually invokes.
 
+## `query`
+
+`hydra-umc-agent --socket /run/hydra-umc-agent/agent.sock [--what describe|health] query` asks a running agent over its local socket (see below) and prints the answer; exit `2` when the agent is not there or refuses the request.
+
 ---
 
 ## Configuration file shape (`--config`)
@@ -113,3 +117,16 @@ Nothing below runs unless `enabled` is exactly `true`; the default configuration
 | `unit:<name>` (one per entry of `units`) | `systemctl is-active <name>` | `active` | any other word, or a program that is missing, slow or fails | `failed` |
 
 The programs are started without a shell, with the time limit of `timeout_seconds` (above 0, at most 30), and the names must be plain characters (`units`: at most 32, lower case; `hailo_device`: an absolute path). A missing tool is a WARN with its reason, never a PASS and never a crash. Any WARN makes the whole report `DEGRADED` and any FAIL makes it `FAULT`, like the other checks. The unit of the agent needs to be allowed to run these programs before they are turned on.
+
+### Optional local socket (`diagnostics.local_socket`, off by default)
+
+```json
+"local_socket": {
+  "enabled": true,
+  "path": "/run/hydra-umc-agent/agent.sock",
+  "mode": "0660",
+  "cache_seconds": 2
+}
+```
+
+With `serve` and `enabled` exactly `true`, the agent also listens on a UNIX socket. A client sends `describe` or `health` and one line break, and reads one line of JSON (the same document as the commands above). Nothing else is understood: any other request gets an error line, a request longer than 64 bytes is dropped, a client that stalls or hangs up only loses its own answer, and nothing the client sends reaches the machine. Access is the mode of the socket file (it must give nothing to other users: `0660` by default, or stricter) and the permissions of its folder, which the unit creates as `/run/hydra-umc-agent` (`RuntimeDirectory`, mode `0750`). A `health` report is reused for `cache_seconds` (0 to 60, default 2) so a client that asks in a loop cannot make the probes run in a loop. At start-up a leftover socket of a dead agent is replaced; a socket in use, a file that is not a socket, or a missing folder stops the start with a message (exit `2`). The socket is removed when the agent stops normally.

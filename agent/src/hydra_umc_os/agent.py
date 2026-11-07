@@ -20,8 +20,10 @@ import platform
 import re
 import shutil
 import socket
+import stat
 import subprocess
 import sys
+import threading
 import time
 import uuid
 from dataclasses import asdict, dataclass
@@ -138,6 +140,7 @@ def load_config(path: Path | None) -> dict[str, Any]:
     if storage_path is not None and (not isinstance(storage_path, str) or not storage_path.strip()):
         raise ValueError("configuration diagnostics.storage_path must be a non-empty string when present")
     validate_probes(diagnostics.get("probes"))
+    validate_local_socket(diagnostics.get("local_socket"))
     return candidate
 
 
@@ -169,6 +172,178 @@ def validate_probes(probes: Any) -> None:
     timeout = probes.get("timeout_seconds", 5)
     if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or not 0 < timeout <= 30:
         raise ValueError("configuration diagnostics.probes.timeout_seconds must be a number above 0 and at most 30")
+
+
+def validate_local_socket(block: Any) -> None:
+    """The optional `diagnostics.local_socket` block: off unless `enabled` is exactly true; an absolute path of plain characters; the mode of the socket file."""
+    if block is None:
+        return
+    if not isinstance(block, dict):
+        raise ValueError("configuration diagnostics.local_socket must be an object when present")
+    unknown = set(block) - {"enabled", "path", "mode", "cache_seconds"}
+    if unknown:
+        raise ValueError(f"configuration diagnostics.local_socket has unknown keys: {sorted(unknown)}")
+    if not isinstance(block.get("enabled", False), bool):
+        raise ValueError("configuration diagnostics.local_socket.enabled must be true or false")
+    path = block.get("path", DEFAULT_SOCKET_PATH)
+    if not isinstance(path, str) or not path.startswith("/") or not _PROGRAM.fullmatch(path) or ".." in path.split("/") or len(path) > 100:
+        raise ValueError("configuration diagnostics.local_socket.path must be an absolute path of plain characters (at most 100)")
+    mode = block.get("mode", DEFAULT_SOCKET_MODE)
+    if not isinstance(mode, str) or not re.fullmatch(r"0?[0-7]{3}", mode) or int(mode, 8) & 0o007:
+        raise ValueError("configuration diagnostics.local_socket.mode must be an octal string such as '0660' that gives nothing to other users")
+    cache = block.get("cache_seconds", 2)
+    if isinstance(cache, bool) or not isinstance(cache, (int, float)) or not math.isfinite(cache) or not 0 <= cache <= 60:
+        raise ValueError("configuration diagnostics.local_socket.cache_seconds must be a number from 0 to 60")
+
+
+DEFAULT_SOCKET_PATH = "/run/hydra-umc-agent/agent.sock"
+DEFAULT_SOCKET_MODE = "0660"
+MAX_REQUEST_BYTES = 64
+
+
+class LocalSocketServer:
+    """A read-only endpoint on a UNIX socket: a client sends `describe` or `health` and one line, and gets one line of JSON back.
+
+    Nothing else is understood, nothing is written anywhere and no command reaches the machine. Access is the mode of the socket file (and the
+    permissions of its folder). A report is reused for `cache_seconds`, so a client that asks in a loop cannot make the probes run in a loop.
+    """
+
+    def __init__(self, config: dict[str, Any], *, path: str, mode: str = DEFAULT_SOCKET_MODE, cache_seconds: float = 2.0, clock: Any = time.monotonic) -> None:
+        self.config = config
+        self.path = path
+        self.mode = int(mode, 8)
+        self.cache_seconds = cache_seconds
+        self._clock = clock
+        self._lock = threading.Lock()
+        self._cached: tuple[float, str] | None = None
+        self._stop = threading.Event()
+        self._sock: socket.socket | None = None
+        self._thread: threading.Thread | None = None
+
+    @classmethod
+    def from_config(cls, config: dict[str, Any]) -> "LocalSocketServer | None":
+        block = config["diagnostics"].get("local_socket")
+        if not block or block.get("enabled") is not True:
+            return None
+        return cls(config, path=block.get("path", DEFAULT_SOCKET_PATH), mode=block.get("mode", DEFAULT_SOCKET_MODE), cache_seconds=float(block.get("cache_seconds", 2)))
+
+    def _free_the_path(self) -> None:
+        """A leftover socket of a dead agent is removed; a live one, or anything that is not a socket, is never touched."""
+        try:
+            mode = os.lstat(self.path).st_mode
+        except FileNotFoundError:
+            return
+        if not stat.S_ISSOCK(mode):
+            raise ValueError(f"{self.path} exists and is not a socket")
+        probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        probe.settimeout(1)
+        try:
+            probe.connect(self.path)
+        except (ConnectionRefusedError, FileNotFoundError):
+            os.unlink(self.path)
+            return
+        except OSError:
+            raise ValueError(f"{self.path} could not be checked") from None
+        finally:
+            probe.close()
+        raise ValueError(f"{self.path} is in use by another agent")
+
+    def start(self) -> None:
+        if not hasattr(socket, "AF_UNIX"):
+            raise ValueError("this system has no UNIX sockets")
+        if not Path(self.path).parent.is_dir():
+            raise ValueError(f"the folder of {self.path} does not exist")
+        self._free_the_path()
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        old = os.umask(0o177)  # closed from the first instant; the configured mode is applied right after
+        try:
+            sock.bind(self.path)
+        finally:
+            os.umask(old)
+        os.chmod(self.path, self.mode)
+        sock.listen(8)
+        sock.settimeout(0.2)
+        self._sock = sock
+        self._thread = threading.Thread(target=self._loop, name="hydra-umc-agent-socket", daemon=True)
+        self._thread.start()
+
+    def close(self) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=5)
+        if self._sock is not None:
+            self._sock.close()
+            self._sock = None
+            try:
+                os.unlink(self.path)
+            except OSError:
+                pass
+
+    def _loop(self) -> None:
+        assert self._sock is not None
+        while not self._stop.is_set():
+            try:
+                conn, _ = self._sock.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+            with conn:
+                try:
+                    conn.settimeout(2)
+                    conn.sendall(self.answer(self._read_request(conn)).encode("utf-8"))
+                except (OSError, ValueError):
+                    pass  # a client that stalls, hangs up or sends too much only loses its own answer
+
+    @staticmethod
+    def _read_request(conn: socket.socket) -> bytes:
+        data = b""
+        while b"\n" not in data:
+            chunk = conn.recv(MAX_REQUEST_BYTES + 1)
+            if not chunk:
+                break
+            data += chunk
+            if len(data) > MAX_REQUEST_BYTES:
+                raise ValueError("request too long")
+        return data.split(b"\n", 1)[0]
+
+    def answer(self, request: bytes) -> str:
+        """One line of JSON for one request; an unknown request is an error line, never a guess."""
+        command = request.decode("utf-8", "replace").strip()
+        if command not in ("describe", "health"):
+            return json.dumps({"error": "unknown command", "commands": ["describe", "health"]}, separators=(",", ":")) + "\n"
+        with self._lock:
+            now = self._clock()
+            if command == "health" and self._cached is not None and self.cache_seconds > 0 and now - self._cached[0] < self.cache_seconds:
+                return self._cached[1]
+            value = health(self.config) if command == "health" else describe(self.config)
+            line = json.dumps(asdict(value), sort_keys=True, separators=(",", ":")) + "\n"
+            if command == "health":
+                self._cached = (now, line)
+            return line
+
+
+def query_socket(path: str, command: str = "health", timeout: float = 3.0) -> dict[str, Any]:
+    """Asks a running agent over its socket and returns the answer (an error line is an error, not a report)."""
+    client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    client.settimeout(timeout)
+    try:
+        client.connect(path)
+        client.sendall(command.encode("utf-8") + b"\n")
+        data = b""
+        while not data.endswith(b"\n"):
+            chunk = client.recv(65536)
+            if not chunk:
+                break
+            data += chunk
+            if len(data) > 1_000_000:
+                raise ValueError("the answer is too long")
+    finally:
+        client.close()
+    answer = json.loads(data.decode("utf-8"))
+    if not isinstance(answer, dict) or "error" in answer:
+        raise ValueError(f"the agent refused the request: {answer.get('error') if isinstance(answer, dict) else 'unreadable answer'}")
+    return answer
 
 
 # Bits of `vcgencmd get_throttled`: the first four say what is happening now, the same four shifted by 16 say what happened since the boot.
@@ -382,11 +557,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interval", type=float, default=30.0, help="seconds between reports in serve mode")
     parser.add_argument("--report-on-change", action="store_true", help="in serve mode, write a report only when a state changed (plus a heartbeat)")
     parser.add_argument("--heartbeat", type=float, default=300.0, help="seconds between heartbeat reports with --report-on-change")
-    parser.add_argument("command", choices=("describe", "health", "serve"))
+    parser.add_argument("--socket", dest="socket_path", help="with `query`: the UNIX socket of a running agent (diagnostics.local_socket)")
+    parser.add_argument("--what", choices=("describe", "health"), default="health", help="with `query`: what to ask")
+    parser.add_argument("command", choices=("describe", "health", "serve", "query"))
     args = parser.parse_args(argv)
     try:
         if args.command == "serve" and (not math.isfinite(args.interval) or args.interval <= 0):
             raise ValueError("serve interval must be a finite number greater than zero")
+        if args.command == "query":
+            if not args.socket_path:
+                raise ValueError("query needs --socket")
+            print(json.dumps(query_socket(args.socket_path, args.what), sort_keys=True, indent=2))
+            return 0
         config = load_config(args.config)
         if args.command == "describe":
             emit(describe(config))
@@ -397,11 +579,18 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "serve" and (not math.isfinite(args.heartbeat) or args.heartbeat <= 0):
             raise ValueError("serve heartbeat must be a finite number greater than zero")
         gate = ReportGate(args.report_on_change, args.heartbeat)
-        while True:
-            report = health(config)
-            if gate.should_emit(report, time.monotonic()):
-                emit(report, compact=True)
-            time.sleep(args.interval)
+        local = LocalSocketServer.from_config(config)
+        if local is not None:
+            local.start()
+        try:
+            while True:
+                report = health(config)
+                if gate.should_emit(report, time.monotonic()):
+                    emit(report, compact=True)
+                time.sleep(args.interval)
+        finally:
+            if local is not None:
+                local.close()
     except (ValueError, OSError) as exc:
         print(f"hydra-umc-agent: {exc}", file=sys.stderr)
         return 2

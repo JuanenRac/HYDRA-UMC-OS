@@ -28,9 +28,12 @@ ProtectKernelTunables=true
 ProtectSystem=strict
 ReadWritePaths=/var/lib/hydra-umc
 UMask=0027
+# The folder of the optional local socket (diagnostics.local_socket, off by default): /run/hydra-umc-agent, closed to other users.
+RuntimeDirectory=hydra-umc-agent
+RuntimeDirectoryMode=0750
 # The disk check measures the volume of the data folder, not the root (diagnostics.storage_path of the configuration can name another one).
 WorkingDirectory=/var/lib/hydra-umc
-# The agent only reads /sys and /proc and writes to the journal: it opens no network socket, needs no device, no clock change, no namespace and sees no other process.
+# The agent only reads /sys and /proc and writes to the journal: it opens no network socket (only the UNIX socket of diagnostics.local_socket when that is turned on), needs no device, no clock change, no namespace and sees no other process.
 # The network itself stays visible on purpose (it reports the interfaces), so PrivateNetwork is not set.
 ProtectProc=invisible
 PrivateDevices=true
