@@ -1,0 +1,64 @@
+# =============================================================================
+# HYDRA-UMC-OS - Polkit rules, asked to a real polkit (manual)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only (workflow_dispatch): it never runs on a push or a pull request, so it cannot turn the checks of a push red.
+#
+# Also runs the sudoers rule of the updater (provisioning/sudoers.d, tools/verify_sudoers_rule.py): `visudo -cf`, then `sudo -n` as the account against a stand-in.
+#
+# Installs polkit on the runner, copies provisioning/polkit/*.rules to /etc/polkit-1/rules.d, creates the unprivileged accounts of the table and runs
+# `pkcheck` as each of them (tools/verify_polkit_rules.py): reboot and power-off are granted to hydra-umc-server and nothing else of logind is, and
+# start/stop/restart are granted for the other hydra-umc-*.service units only. It changes the throw-away runner and nothing else; it holds no key,
+# uploads nothing and publishes nothing. The same rules on a real CM5 are still to be tried by pressing the button of the display.
+
+name: Polkit rules (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: polkit-rules
+  cancel-in-progress: false
+
+jobs:
+  polkit:
+    name: Ask polkit about the rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      ACTOR: ${{ github.actor }}
+      OWNER: ${{ github.repository_owner }}
+    steps:
+      - name: Only the owner starts it
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ "$ACTOR" = "$OWNER" ] || { echo "::error::only the owner of the repository starts this check"; exit 1; }
+
+      - name: Check out this repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install polkit
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y -q polkitd pkexec || sudo apt-get install -y -q policykit-1
+          pkcheck --version
+          systemctl is-active polkit || sudo systemctl start polkit || true
+
+      - name: Ask polkit
+        shell: bash
+        run: sudo python3 tools/verify_polkit_rules.py
+
+      - name: Ask sudo about the rule of the updater
+        shell: bash
+        run: sudo python3 tools/verify_sudoers_rule.py

@@ -107,6 +107,8 @@ jobs:
           python tools/verify_deploy_release.py
           python tools/verify_deploy_tree.py
           python tools/verify_install_plan.py
+          python tools/verify_updater_sudoers.py
+          python tools/make_updater_sudoers.py --check
           python tools/verify_mqtt_tls.py
           python tools/verify_firewall.py
           python tools/verify_optional_journals.py

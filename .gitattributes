@@ -5,3 +5,6 @@
 *.sh text eol=lf
 *.bat text eol=crlf
 *.cmd text eol=crlf
+
+# The sudoers rule is read by visudo on the device: always LF.
+provisioning/sudoers.d/* text eol=lf

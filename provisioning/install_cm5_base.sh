@@ -63,6 +63,18 @@ if $APPLY; then
 exec /usr/bin/python3 "$ROOT/provisioning/hydra_umc_os.py" "\$@"
 EOF
   chmod 0755 /usr/local/bin/hydra-umc-os
+  # Off by default: the rule that lets the account of the updater run `hydra-umc-os deploy PROJECT --apply` as root and nothing else
+  # (provisioning/sudoers.d/hydra-umc-updater, generated from the install plan). It is checked with visudo before it is put in place.
+  if [[ "${HYDRA_UMC_INSTALL_UPDATER_SUDOERS:-0}" == "1" ]]; then
+    install -m 0440 provisioning/sudoers.d/hydra-umc-updater /etc/sudoers.d/90-hydra-umc-updater.new
+    if visudo -cf /etc/sudoers.d/90-hydra-umc-updater.new; then
+      mv /etc/sudoers.d/90-hydra-umc-updater.new /etc/sudoers.d/90-hydra-umc-updater
+    else
+      rm -f /etc/sudoers.d/90-hydra-umc-updater.new
+      echo "The updater sudoers rule is not valid; it was not installed." >&2
+      exit 1
+    fi
+  fi
   if $WITH_SERVER; then
     bash provisioning/install_server.sh --apply
   fi
