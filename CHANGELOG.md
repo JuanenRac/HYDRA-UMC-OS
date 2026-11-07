@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The installer checks run on arm64 under QEMU (manual workflow):** `qemu-arm64.yml` runs the plan check, the release guard, the dry run of `install_cm5_base.sh`, `bash -n` over every provisioning script and six verify scripts inside a Debian trixie arm64 container emulated with qemu-user, the architecture of the CM5. It finds what an x86-64 run cannot (a missing arm64 package, a path that differs); it is not the board and it runs no kernel or systemd.
+
 - **The host firewall, loaded for real into network namespaces:** `tools/firewall_netns_check.sh` and the manual workflow "Host firewall in namespaces" load the rules of `provisioning/hydra_firewall.sh` into the nftables of a Linux kernel inside a namespace that plays the CM5, and connect to the broker, TLS and server ports from the field network, the clients' network and an outsider; the field reaches the broker, the clients only the server, the outsider neither, a port the table never mentions stays open and removing the table gives everything back. It proves the rules on real packets of a kernel, not on a CM5.
 ## [0.6.0] - The build test of the repository compiles only on CI or when allowed: for the stacks that compile (rust, go, android, flutter, firmware-c), tools/buildtest.py prints BUILDTEST=SKIPPED with exit status 2 on a plain PC, never a... (and 12 more changes)
 

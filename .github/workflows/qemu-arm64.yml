@@ -1,0 +1,60 @@
+# =============================================================================
+# HYDRA-UMC-OS - Installers in a Debian trixie arm64 container under QEMU (manual)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only (workflow_dispatch): it never runs on a push or a pull request, so it cannot turn the checks of a push red.
+#
+# The CM5 is an arm64 board running Debian trixie. This runs the checks that read the installers (install_plan.py --check, the OS release guard, the install_cm5_base.sh
+# dry run) and the unit tests of the provisioning scripts inside a trixie container of the arm64 architecture, emulated with qemu-user on the runner's x86-64 CPU. It
+# finds what an x86-64 run cannot: a package that has no arm64 build, a path or a tool that differs on the architecture, a script that assumes the CPU. It is slow
+# (emulation) and it is not the board: no kernel, no systemd as PID 1, no hardware. It holds no key, uploads nothing and publishes nothing.
+
+name: Installers on arm64 under QEMU (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qemu-arm64
+  cancel-in-progress: false
+
+jobs:
+  arm64:
+    name: Debian trixie arm64
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: repos/HYDRA-UMC-OS
+          persist-credentials: false
+
+      - name: Check out the SDK next to it
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository_owner }}/HYDRA-UMC-SDK
+          ref: v0.5.9
+          path: repos/HYDRA-UMC-SDK
+          persist-credentials: false
+
+      - name: Register the arm64 emulator in the kernel of the runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --privileged --rm tonistiigi/binfmt:qemu-v8.1.5 --install arm64
+          docker run --rm --platform linux/arm64 debian:trixie uname -m
+
+      - name: Run the checks inside the arm64 container
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp repos/HYDRA-UMC-OS/tools/qemu_arm64_check.sh "$RUNNER_TEMP/check.sh"
+          docker run --rm --platform linux/arm64 -v "$GITHUB_WORKSPACE/repos:/opt/hydra-umc" -v "$RUNNER_TEMP/check.sh:/check.sh:ro" debian:trixie bash /check.sh | tee "$RUNNER_TEMP/arm64.log"
+          { echo "### Installers on Debian trixie arm64 under QEMU"; echo '```'; cat "$RUNNER_TEMP/arm64.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
