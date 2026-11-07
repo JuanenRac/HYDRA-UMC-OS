@@ -87,6 +87,7 @@ class StaticTests(unittest.TestCase):
     def test_a_rerun_removes_the_line_of_either_session_before_writing_its_own(self) -> None:
         self.assertIn("KIOSK_LINE_PATTERNS=(-e 'exec startx /opt/hydra-umc/kiosk/kiosk-session.sh' -e 'kiosk-session-wayland.sh')", self.text)
         self.assertEqual(self.text.count('grep -v "${KIOSK_LINE_PATTERNS[@]}"'), 2)
+        self.assertEqual(self.text.count("KIOSK_LINE_PATTERNS=("), 2, "the block of the previous user stands on its own")
 
     def test_the_wayland_session_script_is_chromium_on_wayland_with_the_same_dedicated_profile(self) -> None:
         session = (ROOT / "provisioning" / "kiosk" / "kiosk-session-wayland.sh").read_text(encoding="utf-8")

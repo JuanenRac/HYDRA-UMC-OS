@@ -75,7 +75,6 @@ source "$LOCAL_SCREEN_LIB"
 [[ -z "$SCREEN_REQUEST" ]] || HYDRA_LOCAL_SCREEN="$SCREEN_REQUEST"
 SCREEN="$(local_screen_read)" || exit 2
 echo "local screen: $SCREEN"
-echo "kiosk session: $SESSION"
 if [[ -n "$SCREEN_REQUEST" ]]; then
   if $APPLY; then
     local_screen_write "$SCREEN"
@@ -102,6 +101,7 @@ fi
 if [[ -f "$SYSTEMD_DIR/hydra-umc-dsi.service" ]]; then run systemctl disable --now hydra-umc-dsi.service || true; fi
 run systemctl enable getty@tty1.service || true
 # --- local screen end
+echo "kiosk session: $SESSION"
 
 run apt-get update
 if [[ "$SESSION" == wayland ]]; then
@@ -359,6 +359,7 @@ fi
 # The administrator who ran this script no longer autologs in on the screen: take the kiosk line out of their profile
 # (an earlier version put it there), so logging in on tty1 by hand does not start the kiosk as them either.
 # --- previous user begin
+KIOSK_LINE_PATTERNS=(-e 'exec startx /opt/hydra-umc/kiosk/kiosk-session.sh' -e 'kiosk-session-wayland.sh')
 if [[ -n "$PREVIOUS_KIOSK_USER" && "$PREVIOUS_KIOSK_USER" != "$KIOSK_USER" && "$PREVIOUS_KIOSK_USER" != "root" ]]; then
   PREVIOUS_HOME="$(getent passwd "$PREVIOUS_KIOSK_USER" 2>/dev/null | cut -d: -f6 || true)"
   if [[ -n "$PREVIOUS_HOME" && -f "$PREVIOUS_HOME/.bash_profile" ]] && grep -q "${KIOSK_LINE_PATTERNS[@]}" "$PREVIOUS_HOME/.bash_profile"; then
