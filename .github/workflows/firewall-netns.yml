@@ -13,8 +13,6 @@ name: Host firewall in namespaces (manual)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [hy-firewall-netns]
 
 permissions:
   contents: read
