@@ -30,7 +30,8 @@ if echo "$wayland_plan" | grep -qiE "xserver-xorg|openbox|picom|xorg.conf.d"; th
 if echo "$x11_plan" | grep -q "kiosk session: x11" && echo "$x11_plan" | grep -q "xserver-xorg"; then ok "the default session is still X11"; else bad "the default session is not X11"; fi
 bash /tmp/repo/provisioning/install_kiosk.sh --session plasma >/tmp/bad.log 2>&1; code=$?
 if [ "$code" -eq 2 ]; then ok "an unknown session is refused (exit 2)"; else bad "an unknown session exited with $code"; fi
-HYDRA_KIOSK_SESSION=wayland bash /tmp/repo/provisioning/install_kiosk.sh 2>&1 | grep -q "kiosk session: wayland" && ok "HYDRA_KIOSK_SESSION chooses the session" || bad "HYDRA_KIOSK_SESSION is not read"
+env_plan="$(HYDRA_KIOSK_SESSION=wayland bash /tmp/repo/provisioning/install_kiosk.sh 2>&1)"
+if echo "$env_plan" | grep -q "kiosk session: wayland"; then ok "HYDRA_KIOSK_SESSION chooses the session"; else bad "HYDRA_KIOSK_SESSION is not read"; fi
 
 # 2. the real session script under the real cage, as the locked account
 useradd --create-home --home-dir /var/lib/hydra-umc-kiosk --shell /bin/bash hydra-umc-kiosk
