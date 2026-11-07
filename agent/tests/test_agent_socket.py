@@ -207,7 +207,10 @@ class SocketTests(unittest.TestCase):
         client.settimeout(3)
         client.connect(self.path)
         client.sendall(b"x" * (MAX_REQUEST_BYTES * 4))
-        self.assertEqual(client.recv(1000), b"")
+        try:
+            self.assertEqual(client.recv(1000), b"")  # dropped without an answer (or reset, because unread bytes were left)
+        except ConnectionResetError:
+            pass
         client.close()
         self.assertIn("state", query_socket(self.path, "health"))
 
