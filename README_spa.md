@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Platform-Raspberry%20Pi%20OS%20%7C%20CM5-red.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Services-systemd%20%7C%20udev-orange.svg" alt="Services">
   <img src="https://img.shields.io/badge/Stack-Debian%20%7C%20Python%20%7C%20Shell-blueviolet.svg" alt="Stack">
-  <img src="https://img.shields.io/badge/Tests-45%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-72%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.6.0-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Versión | `0.6.0` |
 | Madurez | Funcional |
-| Tests | 45 (`python -m unittest discover -s agent/tests`) |
+| Tests | 72 (`python -m unittest discover -s agent/tests`) |
 | Tecnología | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |
 | Destino | La Raspberry Pi CM5 de una celda HYDRA-UMC |
 | En hardware real | Ejecutado en un banco de pruebas: la comprobación de honestidad de arriba dice qué partes funcionaron en hardware real |
@@ -52,7 +52,7 @@ Cada línea es una parte de este repositorio y la luz dice hasta dónde llega ho
 | Área | Estado | Qué significa aquí |
 |---|---|---|
 | Software | 🟡 | Funciona para su propósito principal; la comprobación de honestidad de arriba lista lo que aún falta |
-| Pruebas | 🟢 | 45 pruebas automáticas, ejecutadas en cada cambio |
+| Pruebas | 🟢 | 72 pruebas automáticas, ejecutadas en cada cambio |
 | Hardware real | 🟡 | Ejecutado en un banco de pruebas: la comprobación de honestidad de arriba dice qué partes funcionaron en hardware real |
 | Integración | 🟡 | Sus mensajes y rutas se comprueban contra los contratos compartidos del SDK; no ha funcionado junto con el equipo real |
 | Seguridad | 🟠 | Existen algunas protecciones (un token, límites a lo que acepta) pero no todas están cubiertas por pruebas; nadie ajeno al proyecto las ha revisado |
@@ -70,7 +70,7 @@ Su responsabilidad es proporcionar un perfil de dispositivo HYDRA-UMC reproducib
 configuración, ciclo de vida del servicio, identidad local, diagnóstico,
 marca visual y actualizaciones coordinadas para los componentes de HYDRA-UMC.
 
-**Verificación de honestidad - qué funciona de verdad hoy:** el agente de dispositivo de solo lectura (`agent/src/hydra_umc_os/agent.py`: `DeviceDescriptor`/`HealthReport`, comprobaciones de temperatura/almacenamiento/red, carga de perfil de configuración) es real y está probado (45 tests unitarios, `agent/tests/test_agent.py`, `python -m unittest discover`). `provisioning/preflight_cm5.py` está verificado como idempotente y sin efectos secundarios mediante un test real que lo ejecuta dos veces y compara la salida (`tools/verify_preflight_idempotent.py`), más 5 comprobaciones reales de rutas negativas (`tools/verify_preflight_negative.py`); el mecanismo de backup/restauración de `provisioning/rollback.py` está verificado por 8 comprobaciones reales, incluyendo un escenario genuino de fallo parcial (`tools/verify_rollback.py`); la máquina de estados de fallback en modo AP de `provisioning/wifi_provision.py` está verificada por 46 comprobaciones reales contra un NetworkManager falso, incluyendo un round-trip HTTP real de extremo a extremo sobre un socket loopback de verdad (`tools/verify_wifi_provision.py`) - ninguna de las tres necesita root ni una CM5 física para verificarse. Lo que nada de esto ha probado: hardware real de una CM5. `image-builder/` es solo documentación (un README de notas de reproducibilidad, sin código de ensamblaje de imagen todavía); `packages/debian/` contiene los scripts del mantenedor y el fichero de copyright del paquete `hydra-umc-platform-base`, que `tools/build_deb.py` construye como un `.deb` real (Python puro, sin dpkg, los mismos bytes cada vez) y que `tools/verify_deb_package.py` vuelve a leer; no se ha instalado en una CM5 real. Ver `CHANGELOG.md` para lo que ya se ha entregado exactamente, y `docs/CM5_SOFTWARE_READINESS.md` para la línea exacta entre lo que está verificado aquí y lo que todavía necesita hardware físico.
+**Verificación de honestidad - qué funciona de verdad hoy:** el agente de dispositivo de solo lectura (`agent/src/hydra_umc_os/agent.py`: `DeviceDescriptor`/`HealthReport`, comprobaciones de temperatura/almacenamiento/red, carga de perfil de configuración) es real y está probado (72 tests unitarios, `agent/tests/test_agent.py`, `python -m unittest discover`). `provisioning/preflight_cm5.py` está verificado como idempotente y sin efectos secundarios mediante un test real que lo ejecuta dos veces y compara la salida (`tools/verify_preflight_idempotent.py`), más 5 comprobaciones reales de rutas negativas (`tools/verify_preflight_negative.py`); el mecanismo de backup/restauración de `provisioning/rollback.py` está verificado por 8 comprobaciones reales, incluyendo un escenario genuino de fallo parcial (`tools/verify_rollback.py`); la máquina de estados de fallback en modo AP de `provisioning/wifi_provision.py` está verificada por 46 comprobaciones reales contra un NetworkManager falso, incluyendo un round-trip HTTP real de extremo a extremo sobre un socket loopback de verdad (`tools/verify_wifi_provision.py`) - ninguna de las tres necesita root ni una CM5 física para verificarse. Lo que nada de esto ha probado: hardware real de una CM5. `image-builder/` es solo documentación (un README de notas de reproducibilidad, sin código de ensamblaje de imagen todavía); `packages/debian/` contiene los scripts del mantenedor y el fichero de copyright del paquete `hydra-umc-platform-base`, que `tools/build_deb.py` construye como un `.deb` real (Python puro, sin dpkg, los mismos bytes cada vez) y que `tools/verify_deb_package.py` vuelve a leer; no se ha instalado en una CM5 real. Ver `CHANGELOG.md` para lo que ya se ha entregado exactamente, y `docs/CM5_SOFTWARE_READINESS.md` para la línea exacta entre lo que está verificado aquí y lo que todavía necesita hardware físico.
 
 **Una sola pantalla local a la vez:** el ajuste `HYDRA_LOCAL_SCREEN` (`hdmi` por defecto, `dsi` o `none`; se guarda con `provisioning/install_kiosk.sh --screen <valor>` en `/etc/hydra-umc/local-screen.conf`) decide quién tiene `tty1`: el kiosco HDMI de este repositorio, la app de HYDRA-UMC-DSI o nadie, de modo que los dos kioscos nunca reclaman la consola a la vez. Véase `docs/CM5_PROVISIONING.md`. Probado con simulaciones; no se ha ejecutado en una CM5 real.
 
@@ -95,7 +95,7 @@ PYTHONPATH=agent/src python3 -m unittest discover -s agent/tests
 
 ## 🧪 Pruebas
 
-45 pruebas automáticas se ejecutan con `python -m unittest discover -s agent/tests`. No necesitan hardware ni nada fuera de esta máquina.
+72 pruebas automáticas se ejecutan con `python -m unittest discover -s agent/tests`. No necesitan hardware ni nada fuera de esta máquina.
 
 El CI ejecuta `HYDRA_UMC_CI=1 python tools/ci_validate.py`, que comprueba el manifiesto, los documentos, los ocho README y las imágenes.
 
