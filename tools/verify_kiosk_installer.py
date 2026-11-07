@@ -98,8 +98,10 @@ class StaticTests(unittest.TestCase):
         for flag in ("--kiosk", "--noerrdialogs", "--disable-infobars", "--no-first-run", "--disable-session-crashed-bubble", "--autoplay-policy=no-user-gesture-required"):
             self.assertIn(flag, session)
             self.assertIn(flag, x11, "the two sessions keep the same browser flags")
+        code = "
+".join(line for line in session.splitlines() if not line.lstrip().startswith("#"))
         for x_only in ("xset", "openbox", "picom", "unclutter", "startx"):
-            self.assertNotIn(x_only, session)
+            self.assertNotIn(x_only, code)
         self.assertIn("exec chromium", session)
 
     def test_the_script_has_valid_syntax(self) -> None:
