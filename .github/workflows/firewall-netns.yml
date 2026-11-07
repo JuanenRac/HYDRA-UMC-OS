@@ -1,0 +1,51 @@
+# =============================================================================
+# HYDRA-UMC-OS - Host firewall in network namespaces (manual)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only (workflow_dispatch): it never runs on a push or a pull request, so it cannot turn the checks of a push red.
+#
+# Loads the rules that provisioning/hydra_firewall.sh prints into the nftables of the runner's kernel, inside a network namespace that plays the CM5, and connects to
+# the broker and server ports from three other namespaces (the field network, the clients' network and an outsider). Everything lives in namespaces that the script
+# removes at the end. It holds no key, uploads nothing and publishes nothing. It proves the rules on real packets of a Linux kernel; it is not a test on a CM5.
+
+name: Host firewall in namespaces (manual)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [hy-firewall-netns]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firewall-netns
+  cancel-in-progress: false
+
+jobs:
+  firewall:
+    name: Rules against real packets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Make sure nft and ip are there
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v nft >/dev/null 2>&1 || { sudo apt-get update -qq; sudo apt-get install -y -qq nftables; }
+          command -v ip >/dev/null 2>&1 || sudo apt-get install -y -qq iproute2
+
+      - name: Load the rules into a namespace and connect from the others
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo bash tools/firewall_netns_check.sh | tee "$RUNNER_TEMP/firewall.log"
+          { echo "### Host firewall against real packets"; echo '```'; cat "$RUNNER_TEMP/firewall.log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
