@@ -4,6 +4,7 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+- **The host firewall, loaded for real into network namespaces:** `tools/firewall_netns_check.sh` and the manual workflow "Host firewall in namespaces" load the rules of `provisioning/hydra_firewall.sh` into the nftables of a Linux kernel inside a namespace that plays the CM5, and connect to the broker, TLS and server ports from the field network, the clients' network and an outsider; the field reaches the broker, the clients only the server, the outsider neither, a port the table never mentions stays open and removing the table gives everything back. It proves the rules on real packets of a kernel, not on a CM5.
 ## [0.6.0] - The build test of the repository compiles only on CI or when allowed: for the stacks that compile (rust, go, android, flutter, firmware-c), tools/buildtest.py prints BUILDTEST=SKIPPED with exit status 2 on a plain PC, never a... (and 12 more changes)
 
 - **The build test of the repository compiles only on CI or when allowed:** for the stacks that compile (`rust`, `go`, `android`, `flutter`, `firmware-c`), `tools/build_test.py` prints `BUILD_TEST=SKIPPED` with exit status 2 on a plain PC, never a pass; `ALLOW_LOCAL_BUILD=1` allows it and a CI runner always may. The `python` and `node` stacks are not locked.

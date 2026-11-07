@@ -6,6 +6,7 @@ Every test below is **not executed**. The installers, the agent and the units ar
 
 - `python tools/hydra_project_tool.py test` runs the agent tests (report only on change, heartbeat), the installer generation check, the checks of the units and the secrets policy.
 - `verify_cm5_runtime.sh --secrets --json` is read-only and never opens a secret file.
+- The workflow "Host firewall in namespaces" (started by hand) loads the rules of `hydra_firewall.sh` into the nftables of a runner's kernel in network namespaces and connects from three others; it covers the packet behaviour of the rules, not the CM5's own network.
 
 ## Setup
 
