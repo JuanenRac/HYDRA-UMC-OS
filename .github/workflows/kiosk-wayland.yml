@@ -14,8 +14,6 @@ name: Wayland kiosk on a virtual screen (manual)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [tmp-os-kiosk]
 
 permissions:
   contents: read
