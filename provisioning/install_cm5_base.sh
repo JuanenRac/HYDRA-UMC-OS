@@ -54,6 +54,8 @@ python3 provisioning/os_release_guard.py
 # ("sudo bash provisioning/first_boot.sh"), not by direct execution.
 if $APPLY; then
   bash provisioning/first_boot.sh --apply
+  # The directory of the trust store (owned by root, mode 0700), made with the function of HYDRA-UMC-DEV-SERVER; status 3 is "that program is not here", which does not stop the installation.
+  python3 provisioning/ensure_trust_dir.py --apply || [[ $? -eq 3 ]]
   bash provisioning/install_local_agent.sh --apply
   bash provisioning/install_wifi_provision.sh --apply
   # The command the updater (and the operator) uses to deploy one program the way its installer says (docs/DEPLOY_CONTRACT.md).
