@@ -34,7 +34,7 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| バージョン | `0.6.0` |
+| バージョン | `0.6.1` |
 | 成熟度 | 機能する |
 | テスト | 72 (`python -m unittest discover -s agent/tests`) |
 | 技術 | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |

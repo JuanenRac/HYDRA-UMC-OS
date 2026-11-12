@@ -34,7 +34,7 @@ GPL-3.0-or-later - see LICENSE
 
 | | |
 |---|---|
-| Version | `0.6.0` |
+| Version | `0.6.1` |
 | Reifegrad | Funktionsfähig |
 | Tests | 72 (`python -m unittest discover -s agent/tests`) |
 | Technik | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |

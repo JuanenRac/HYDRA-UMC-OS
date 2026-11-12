@@ -1,8 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [0.6.1] - A slot manager for a two-slot system image, off by default: `provisioning/ab_slots.py` writes an image to the idle slot after its SHA-256 matches, asks the boot loader to try it once (the Raspberry Pi `tryboot` entry of `autoboot.txt`) and makes it the default
 
 - **A slot manager for a two-slot system image, off by default:** `provisioning/ab_slots.py` writes an image to the idle slot after its SHA-256 matches, asks the boot loader to try it once (the Raspberry Pi `tryboot` entry of `autoboot.txt`) and makes it the default only when it reports healthy inside a time limit; a late or missing report, a slot that never started or a board that fell back to the old slot marks the tried slot bad and leaves the default boot entry untouched. Commands that change something need `HYDRA_UMC_AB_SLOTS=1`, a damaged state file is refused and nothing runs `dd` or `reboot`. `tools/verify_ab_slots.py` (55 checks, a seeded random walk of 2400 operations) runs in the build test; not run on a board.
 - **The packages the installers ask for are planned by apt on the release and architecture of the image:** `tools/apt_packages_check.py` reads the `apt-get install` commands of the installers (`--list`) and, in the arm64 trixie container of the manual QEMU workflow, asks apt to plan each installer's packages one installer at a time without installing anything (`--simulate`), so a name that does not exist in trixie or a conflict is reported with the installer that asked for it. `tools/verify_apt_packages.py` tests the reading (continuations, options, comments, stops at a pipe, names with a variable).
