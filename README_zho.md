@@ -196,7 +196,7 @@ CM5 硬件验证）：
 - **[HYDRA-UMC-OS-REBUILDER](https://github.com/JuanenRac/HYDRA-UMC-OS-REBUILDER)** —— 为 CM5 构建本操作系统即刻可烧录镜像的 Windows/Linux 桌面工具，预装生态系统最新版本，并提供 Raspberry Pi Imager 风格的首次启动配置。
 
 **直接相关**
-- **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** —— 机器人手臂主板设计——CM5 主机 + 双核 STM32H745,目标是通过 CAN-OTA/SPI-OTA 协调最多 8 条工具臂(固件处于早期阶段,尚无已组装的电路板);本操作系统层所配置和监管的 CM5/MCU 硬件与固件平台。
+- **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** —— 机器人手臂主板设计——NVIDIA Jetson Orin NX 主机 + 双核 STM32H757(CM5 保留为试验台),目标是通过 CAN-OTA/SPI-OTA 协调最多 8 条工具臂(固件处于早期阶段,尚无已组装的电路板);本操作系统层所配置和监管的 CM5/MCU 硬件与固件平台。
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** —— 每个控制客户端真正通信的真实无头后端(REST/WebSocket);本节点受管理集成的认证服务边界。
 - **[URTC](https://github.com/JuanenRac/URTC)** —— 面向实体 Universal Robot Tool Controller 板卡的固件,通过 CAN 总线支持 25 种以上工具配置;通过显式的、经过版本管理的适配器集成的独立工具控制器平台。
 - **[HYDRA-UMC-UPDATER](https://github.com/JuanenRac/HYDRA-UMC-UPDATER)** —— 发现、克隆并更新本生态系统中每个仓库的管理类桌面工具;其制品注册表、兼容性元数据与协调更新流程。

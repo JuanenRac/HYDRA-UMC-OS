@@ -196,7 +196,7 @@ HYDRA-UMC-OS/
 - **[HYDRA-UMC-OS-REBUILDER](https://github.com/JuanenRac/HYDRA-UMC-OS-REBUILDER)** — エコシステムの最新バージョンをプリロードし、Raspberry Pi Imager方式の初回起動設定を備えた、CM5向けの書き込み可能なこのOSのイメージを構築するWindows/Linuxデスクトップツール。
 
 **直接関連**
-- **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** — ロボットアームのマザーボードの設計——CM5 ホスト + デュアルコア STM32H745、CAN-OTA/SPI-OTA 経由で最大 8 本のツールアームを統括することを目指す(ファームウェアは初期段階で、実装済みの基板はまだない)。本 OS 層が設定・監督する CM5/MCU ハードウェア・ファームウェアプラットフォーム。
+- **[HYDRA-UMC](https://github.com/JuanenRac/HYDRA-UMC)** — ロボットアームのマザーボードの設計——NVIDIA Jetson Orin NX ホスト + デュアルコア STM32H757(CM5 はパイロット試験台として残る)、CAN-OTA/SPI-OTA 経由で最大 8 本のツールアームを統括することを目指す(ファームウェアは初期段階で、実装済みの基板はまだない)。本 OS 層が設定・監督する CM5/MCU ハードウェア・ファームウェアプラットフォーム。
 - **[HYDRA-UMC-SERVER](https://github.com/JuanenRac/HYDRA-UMC-SERVER)** — すべての制御クライアントが実際に通信する、本物のヘッドレスバックエンド(REST/WebSocket)。本ノードの管理対象統合のための認証済みサービス境界。
 - **[URTC](https://github.com/JuanenRac/URTC)** — 物理的な Universal Robot Tool Controller 基板向けファームウェア、CAN バス経由の 25 以上のツールプロファイル。明示的でバージョン管理されたアダプター経由で統合される独立したツールコントローラープラットフォーム。
 - **[HYDRA-UMC-UPDATER](https://github.com/JuanenRac/HYDRA-UMC-UPDATER)** — このエコシステム内のすべてのリポジトリを検出・クローン・更新する、管理用デスクトップツール。そのアーティファクトレジストリ、互換性メタデータ、調整された更新ワークフロー。
