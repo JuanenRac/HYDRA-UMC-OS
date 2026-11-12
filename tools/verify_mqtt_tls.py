@@ -182,6 +182,20 @@ class TlsScriptTests(unittest.TestCase):
         self.assertNotIn("ca.key", result.stdout)
         self.assertEqual(run(self.dir, "env", "--client", "nobody").returncode, 2)
 
+    def test_the_ros2_bridge_gets_its_own_settings_and_the_identity_switch_is_opt_in(self) -> None:
+        self.assertEqual(run(self.dir, "client", "hydra-umc-bridge-ros2").returncode, 0)
+        subject = subprocess.run(["openssl", "x509", "-in", str(self.dir / "client-hydra-umc-bridge-ros2.pem"), "-noout", "-subject"], env=environment(self.dir), capture_output=True, text=True, check=True).stdout
+        self.assertIn("CN=hydra-umc-bridge-ros2", subject.replace(" ", ""))
+        plain = run(self.dir, "env", "--client", "hydra-umc-bridge-ros2")
+        self.assertEqual(plain.returncode, 0, plain.stderr)
+        for expected in ("HYDRA_UMC_ROS2_MTLS=1", "HYDRA_UMC_ROS2_MTLS_CERT=/etc/hydra-umc/tls/client-hydra-umc-bridge-ros2.pem", "HYDRA_UMC_ROS2_MTLS_KEY=/etc/hydra-umc/tls/client-hydra-umc-bridge-ros2.key"):
+            self.assertIn(expected, plain.stdout)
+        self.assertNotIn("HYDRA_MQTT_TLS", plain.stdout)  # the bridge refuses both families at once
+        self.assertNotIn("MQTT_TLS_CERT_IDENTITY", plain.stdout)
+        bound = run(self.dir, "env", "--client", "hydra-umc-bridge-ros2", "--identity")
+        self.assertIn("MQTT_TLS_CERT_IDENTITY=1", bound.stdout)
+        self.assertNotIn("MQTT_TLS_CERT_IDENTITY", run(self.dir, "env").stdout)
+
     def test_the_key_of_the_authority_never_leaves_the_directory(self) -> None:
         exported = run(self.dir, "export-ca")
         self.assertIn("BEGIN CERTIFICATE", exported.stdout)

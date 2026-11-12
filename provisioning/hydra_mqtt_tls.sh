@@ -11,7 +11,8 @@
 #   hydra_mqtt_tls.sh plan   [--name HOST]... [--ip ADDRESS]...             what would be made; changes nothing
 #   hydra_mqtt_tls.sh init   [--name HOST]... [--ip ADDRESS]... [--force]   the authority (once), the certificate of the broker, 0700 directory
 #   hydra_mqtt_tls.sh client NAME                                            a certificate for one bridge or service (mutual TLS); NAME is its MQTT client-id prefix
-#   hydra_mqtt_tls.sh env    [--client NAME]                                 the environment lines of the broker and, with --client, of that bridge
+#   hydra_mqtt_tls.sh env    [--client NAME] [--identity]                    the environment lines of the broker and, with --client, of that bridge;
+#                                                                            --identity also makes the broker bind the certificate name (CN) to the client id
 #   hydra_mqtt_tls.sh export-ca [--out FILE]                                 the certificate of the authority (public) to copy to the machines that connect
 #   hydra_mqtt_tls.sh verify                                                 every certificate is signed by the authority, not expired and not near expiry
 #   hydra_mqtt_tls.sh renew                                                  a new certificate of the broker with the same authority (when the address changed or it expires)
@@ -28,7 +29,8 @@ export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*'
 
 DIR="${HYDRA_TLS_DIR:-/etc/hydra-umc/tls}"
 CA_DAYS=3650; SERVER_DAYS=730; CLIENT_DAYS=365; WARN_DAYS=30
-NAMES=(); IPS=(); FORCE=0; OUT=""; CLIENT_FOR=""
+NAMES=(); IPS=(); FORCE=0; OUT=""; CLIENT_FOR=""; IDENTITY=0
+ROS2_BRIDGE="hydra-umc-bridge-ros2"
 
 fail() { echo "hydra_mqtt_tls: $*" >&2; exit 2; }
 say() { echo "[hydra-mqtt-tls] $*"; }
@@ -53,6 +55,7 @@ while [[ $# -gt 0 ]]; do
     --name) valid_name "${2:-}" || fail "--name wants a host name"; NAMES+=("$2"); shift 2 ;;
     --ip) { valid_ipv4 "${2:-}" || valid_ipv6 "${2:-}"; } || fail "--ip wants an IP address"; IPS+=("$2"); shift 2 ;;
     --force) FORCE=1; shift ;;
+    --identity) IDENTITY=1; shift ;;
     --out) OUT="${2:-}"; [[ -n "$OUT" ]] || fail "--out wants a file name"; shift 2 ;;
     --client) valid_client "${2:-}" || fail "--client wants a client name"; CLIENT_FOR="$2"; shift 2 ;;
     -h|--help) sed -n '5,26p' "${BASH_SOURCE[0]}"; exit 0 ;;
@@ -159,12 +162,21 @@ case "$COMMAND" in
     echo "MQTT_TLS_KEY=$DIR/server.key"
     echo "MQTT_TLS_CA=$DIR/ca.pem"
     echo "MQTT_TLS_REQUIRE_CLIENT_CERT=1"
+    [[ $IDENTITY -eq 0 ]] || echo "MQTT_TLS_CERT_IDENTITY=1"
     if [[ -n "$CLIENT_FOR" ]]; then
       [[ -f "client-$CLIENT_FOR.pem" ]] || fail "client-$CLIENT_FOR.pem does not exist: run client $CLIENT_FOR first"
       echo "# the bridge $CLIENT_FOR (its service environment; the files are copied to the paths below on that machine)"
-      echo "HYDRA_MQTT_TLS_CA=/etc/hydra-umc/tls/ca.pem"
-      echo "HYDRA_MQTT_TLS_CERT=/etc/hydra-umc/tls/client-$CLIENT_FOR.pem"
-      echo "HYDRA_MQTT_TLS_KEY=/etc/hydra-umc/tls/client-$CLIENT_FOR.key"
+      if [[ "$CLIENT_FOR" == "$ROS2_BRIDGE" ]]; then
+        # this bridge has settings of its own and refuses the HYDRA_MQTT_TLS* ones next to them; its key must be mode 0600 and outside any git tree
+        echo "HYDRA_UMC_ROS2_MTLS=1"
+        echo "HYDRA_UMC_ROS2_MTLS_CA=/etc/hydra-umc/tls/ca.pem"
+        echo "HYDRA_UMC_ROS2_MTLS_CERT=/etc/hydra-umc/tls/client-$CLIENT_FOR.pem"
+        echo "HYDRA_UMC_ROS2_MTLS_KEY=/etc/hydra-umc/tls/client-$CLIENT_FOR.key"
+      else
+        echo "HYDRA_MQTT_TLS_CA=/etc/hydra-umc/tls/ca.pem"
+        echo "HYDRA_MQTT_TLS_CERT=/etc/hydra-umc/tls/client-$CLIENT_FOR.pem"
+        echo "HYDRA_MQTT_TLS_KEY=/etc/hydra-umc/tls/client-$CLIENT_FOR.key"
+      fi
     fi
     ;;
   verify)
