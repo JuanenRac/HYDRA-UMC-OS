@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Platform-Raspberry%20Pi%20OS%20%7C%20CM5-red.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Services-systemd%20%7C%20udev-orange.svg" alt="Services">
   <img src="https://img.shields.io/badge/Stack-Debian%20%7C%20Python%20%7C%20Shell-blueviolet.svg" alt="Stack">
-  <img src="https://img.shields.io/badge/Tests-72%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-73%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.6.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | Version | `0.6.1` |
 | Maturity | Functional |
-| Tests | 72 (`python -m unittest discover -s agent/tests`) |
+| Tests | 73 (`python -m unittest discover -s agent/tests`) |
 | Stack | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |
 | Target | The Raspberry Pi CM5 of a HYDRA-UMC cell |
 | On real hardware | Run on a bench setup: the honesty check above says which parts ran on real hardware |
@@ -52,7 +52,7 @@ Each line is one part of this repository and the light says how far it is today.
 | Area | State | What it means here |
 |---|---|---|
 | Software | 🟡 | Works for its main purpose; the honesty check above lists what is still missing |
-| Tests | 🟢 | 72 automated tests, run on every change |
+| Tests | 🟢 | 73 automated tests, run on every change |
 | Real hardware | 🟡 | Run on a bench setup: the honesty check above says which parts ran on real hardware |
 | Integration | 🟡 | Its messages and routes are checked against the shared contracts of the SDK; it has not run together with the real equipment |
 | Security | 🟠 | Some protections exist (a token, limits on what it accepts) but they are not all covered by tests; nobody outside the project has reviewed them |
@@ -70,7 +70,7 @@ Its responsibility is to provide a reproducible HYDRA-UMC device profile:
 configuration, service lifecycle, local identity, diagnostics, visual
 branding, and coordinated updates for HYDRA-UMC components.
 
-**Honesty check - what actually runs today:** the read-only device agent (`agent/src/hydra_umc_os/agent.py`: `DeviceDescriptor`/`HealthReport`, temperature/storage/network checks, config-profile loading) is real and tested (72 unit tests, `agent/tests/test_agent.py`, `python -m unittest discover`). `provisioning/preflight_cm5.py` is verified idempotent and side-effect-free by a real test that runs it twice and diffs the output (`tools/verify_preflight_idempotent.py`) plus 5 real negative-path checks (`tools/verify_preflight_negative.py`); `provisioning/rollback.py`'s backup/restore mechanism is verified by 8 real checks including a genuinely partial-failure scenario (`tools/verify_rollback.py`); `provisioning/wifi_provision.py`'s AP-mode fallback state machine is verified by 46 real checks against a fake NetworkManager, including one real end-to-end HTTP round-trip over an actual loopback socket (`tools/verify_wifi_provision.py`) - none of the three needs root or a physical CM5 to verify. What none of this has been run against: real CM5 hardware. `image-builder/` is documentation only (a reproducibility-notes README, no image-assembly code yet); `packages/debian/` holds the maintainer scripts and the copyright file of the `hydra-umc-platform-base` package, which `tools/build_deb.py` builds into a real `.deb` (plain Python, no dpkg needed, the same bytes every time) and `tools/verify_deb_package.py` reads back; it has not been installed on a real CM5. See `CHANGELOG.md` for exactly what has shipped so far, and `docs/CM5_SOFTWARE_READINESS.md` for the precise line between what is verified here and what still needs physical hardware.
+**Honesty check - what actually runs today:** the read-only device agent (`agent/src/hydra_umc_os/agent.py`: `DeviceDescriptor`/`HealthReport`, temperature/storage/network checks, config-profile loading) is real and tested (73 unit tests, `agent/tests/test_agent.py`, `python -m unittest discover`). `provisioning/preflight_cm5.py` is verified idempotent and side-effect-free by a real test that runs it twice and diffs the output (`tools/verify_preflight_idempotent.py`) plus 5 real negative-path checks (`tools/verify_preflight_negative.py`); `provisioning/rollback.py`'s backup/restore mechanism is verified by 8 real checks including a genuinely partial-failure scenario (`tools/verify_rollback.py`); `provisioning/wifi_provision.py`'s AP-mode fallback state machine is verified by 46 real checks against a fake NetworkManager, including one real end-to-end HTTP round-trip over an actual loopback socket (`tools/verify_wifi_provision.py`) - none of the three needs root or a physical CM5 to verify. What none of this has been run against: real CM5 hardware. `image-builder/` is documentation only (a reproducibility-notes README, no image-assembly code yet); `packages/debian/` holds the maintainer scripts and the copyright file of the `hydra-umc-platform-base` package, which `tools/build_deb.py` builds into a real `.deb` (plain Python, no dpkg needed, the same bytes every time) and `tools/verify_deb_package.py` reads back; it has not been installed on a real CM5. See `CHANGELOG.md` for exactly what has shipped so far, and `docs/CM5_SOFTWARE_READINESS.md` for the precise line between what is verified here and what still needs physical hardware.
 
 **One local screen at a time:** the setting `HYDRA_LOCAL_SCREEN` (`hdmi` by default, `dsi` or `none`; saved with `provisioning/install_kiosk.sh --screen <value>` in `/etc/hydra-umc/local-screen.conf`) decides who owns `tty1`: the HDMI kiosk of this repository, the app of HYDRA-UMC-DSI or nobody, so the two kiosks never claim the console together. See `docs/CM5_PROVISIONING.md`. Tested against stubs; it has not run on a real CM5.
 
@@ -95,7 +95,7 @@ PYTHONPATH=agent/src python3 -m unittest discover -s agent/tests
 
 ## 🧪 Testing
 
-72 automated tests run with `python -m unittest discover -s agent/tests`. They need no hardware and nothing outside this machine.
+73 automated tests run with `python -m unittest discover -s agent/tests`. They need no hardware and nothing outside this machine.
 
 The CI runs `HYDRA_UMC_CI=1 python tools/ci_validate.py`, which checks the manifest, the documents, the eight READMEs and the pictures.
 

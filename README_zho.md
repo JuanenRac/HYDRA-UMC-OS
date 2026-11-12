@@ -19,7 +19,7 @@ GPL-3.0-or-later - see LICENSE
   <img src="https://img.shields.io/badge/Platform-Raspberry%20Pi%20OS%20%7C%20CM5-red.svg" alt="Platform">
   <img src="https://img.shields.io/badge/Services-systemd%20%7C%20udev-orange.svg" alt="Services">
   <img src="https://img.shields.io/badge/Stack-Debian%20%7C%20Python%20%7C%20Shell-blueviolet.svg" alt="Stack">
-  <img src="https://img.shields.io/badge/Tests-72%20passing-2ea44f.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/Tests-73%20passing-2ea44f.svg" alt="Tests">
   <img src="https://img.shields.io/badge/Version-0.6.1-0f6cbd.svg" alt="Version">
   <img src="https://img.shields.io/badge/Maturity-functional-0F6CBD.svg" alt="Maturity">
 </p>
@@ -36,7 +36,7 @@ GPL-3.0-or-later - see LICENSE
 |---|---|
 | 版本 | `0.6.1` |
 | 成熟度 | 可用 |
-| 测试 | 72 (`python -m unittest discover -s agent/tests`) |
+| 测试 | 73 (`python -m unittest discover -s agent/tests`) |
 | 技术栈 | Raspberry Pi OS ARM64 / Debian/apt / systemd / udev / NetworkManager |
 | 目标 | HYDRA-UMC 工作单元的 Raspberry Pi CM5 |
 | 真实硬件 | 已在试验台上运行：上面的诚实性检查说明了哪些部分在真实硬件上运行过 |
@@ -52,7 +52,7 @@ GPL-3.0-or-later - see LICENSE
 | 领域 | 状态 | 在这里的含义 |
 |---|---|---|
 | 软件 | 🟡 | 主要用途可用；上面的诚实性检查列出了仍然缺少的内容 |
-| 测试 | 🟢 | 72 项自动测试，每次变更都会运行 |
+| 测试 | 🟢 | 73 项自动测试，每次变更都会运行 |
 | 真实硬件 | 🟡 | 已在试验台上运行：上面的诚实性检查说明了哪些部分在真实硬件上运行过 |
 | 集成 | 🟡 | 其消息和路由已对照 SDK 的共享契约检查；尚未与真实设备一起运行 |
 | 安全性 | 🟠 | 有一些保护措施（令牌、对输入的限制），但并非都有测试覆盖；项目之外无人审查过 |
@@ -70,7 +70,7 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 配置、服务生命周期、本地身份、诊断、视觉品牌
 以及 HYDRA-UMC 组件的协调更新。
 
-**诚实核查——今天真正能跑起来的部分：** 只读设备代理（`agent/src/hydra_umc_os/agent.py`：`DeviceDescriptor`/`HealthReport`，温度/存储/网络检查，配置档案加载）是真实且经过测试的（72 个单元测试，`agent/tests/test_agent.py`，`python -m unittest discover`）。`provisioning/preflight_cm5.py` 通过一个真实测试验证为幂等且无副作用——运行两次并对比输出（`tools/verify_preflight_idempotent.py`），外加 5 项真实的反向路径检查（`tools/verify_preflight_negative.py`）；`provisioning/rollback.py` 的备份/恢复机制由 8 项真实检查验证，其中包括一个真正的部分失败场景（`tools/verify_rollback.py`）；`provisioning/wifi_provision.py` 的 AP 模式回退状态机由针对一个伪造 NetworkManager 的 46 项真实检查验证，其中包括一次通过真实回环套接字完成的端到端 HTTP 往返（`tools/verify_wifi_provision.py`）——这三者都不需要 root 权限或物理 CM5 即可验证。目前唯一没有被验证过的：真实的 CM5 硬件本身。`image-builder/` 目前只是文档（一份关于可复现性说明的 README，还没有镜像组装代码）；`packages/debian/` 包含软件包 `hydra-umc-platform-base` 的维护者脚本和版权文件，`tools/build_deb.py` 会把它构建成真正的 `.deb`（纯 Python，无需 dpkg，每次字节完全相同），`tools/verify_deb_package.py` 会读回并检查；尚未在真实的 CM5 上安装过。已交付的具体内容见 `CHANGELOG.md`，这里已验证的部分与仍需物理硬件的部分之间的确切界线见 `docs/CM5_SOFTWARE_READINESS.md`。
+**诚实核查——今天真正能跑起来的部分：** 只读设备代理（`agent/src/hydra_umc_os/agent.py`：`DeviceDescriptor`/`HealthReport`，温度/存储/网络检查，配置档案加载）是真实且经过测试的（73 个单元测试，`agent/tests/test_agent.py`，`python -m unittest discover`）。`provisioning/preflight_cm5.py` 通过一个真实测试验证为幂等且无副作用——运行两次并对比输出（`tools/verify_preflight_idempotent.py`），外加 5 项真实的反向路径检查（`tools/verify_preflight_negative.py`）；`provisioning/rollback.py` 的备份/恢复机制由 8 项真实检查验证，其中包括一个真正的部分失败场景（`tools/verify_rollback.py`）；`provisioning/wifi_provision.py` 的 AP 模式回退状态机由针对一个伪造 NetworkManager 的 46 项真实检查验证，其中包括一次通过真实回环套接字完成的端到端 HTTP 往返（`tools/verify_wifi_provision.py`）——这三者都不需要 root 权限或物理 CM5 即可验证。目前唯一没有被验证过的：真实的 CM5 硬件本身。`image-builder/` 目前只是文档（一份关于可复现性说明的 README，还没有镜像组装代码）；`packages/debian/` 包含软件包 `hydra-umc-platform-base` 的维护者脚本和版权文件，`tools/build_deb.py` 会把它构建成真正的 `.deb`（纯 Python，无需 dpkg，每次字节完全相同），`tools/verify_deb_package.py` 会读回并检查；尚未在真实的 CM5 上安装过。已交付的具体内容见 `CHANGELOG.md`，这里已验证的部分与仍需物理硬件的部分之间的确切界线见 `docs/CM5_SOFTWARE_READINESS.md`。
 
 **一次只用一个本地屏幕：** 设置 `HYDRA_LOCAL_SCREEN`（默认 `hdmi`，另有 `dsi` 和 `none`；用 `provisioning/install_kiosk.sh --screen <值>` 保存到 `/etc/hydra-umc/local-screen.conf`）决定谁拥有 `tty1`：本仓库的 HDMI 展示终端、HYDRA-UMC-DSI 的应用，或者都不用，因此两个展示终端不会同时抢占控制台。参见 `docs/CM5_PROVISIONING.md`。已用桩程序测试，未在真实 CM5 上运行。
 
@@ -95,7 +95,7 @@ PYTHONPATH=agent/src python3 -m unittest discover -s agent/tests
 
 ## 🧪 测试
 
-运行 `python -m unittest discover -s agent/tests` 会执行 72 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
+运行 `python -m unittest discover -s agent/tests` 会执行 73 个自动测试。 不需要硬件，也不需要这台机器以外的任何东西。
 
 CI 运行 `HYDRA_UMC_CI=1 python tools/ci_validate.py`，检查清单、文档、八个 README 和图片。
 

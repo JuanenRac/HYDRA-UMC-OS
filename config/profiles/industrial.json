@@ -1,0 +1,1 @@
+{"schema_version":"1.0","profile":"industrial","enabled_services":["hydra-umc-agent","hydra-umc-server","hydra-umc-safety-zones","hydra-umc-job-dispatcher"],"requires":["industrial_network"]}

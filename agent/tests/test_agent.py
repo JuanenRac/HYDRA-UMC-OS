@@ -152,6 +152,20 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(load_profile(profiles / "control.json")["enabled_services"], ["hydra-umc-agent", "hydra-umc-server"])
         self.assertEqual(load_profile(profiles / "base.json")["enabled_services"], ["hydra-umc-agent"])
 
+    def test_the_profiles_of_every_kind_of_node_load_and_name_only_known_services(self):
+        profiles = Path(__file__).resolve().parents[2] / "config" / "profiles"
+        plan = json.loads((Path(__file__).resolve().parents[2] / "provisioning" / "install_plan.json").read_text(encoding="utf-8"))
+        known = {"hydra-umc-agent", "hydra-umc-server"}
+        for installer in plan["installers"]:
+            known.update(unit[: -len(".service")] for unit in installer["units"] if unit.endswith(".service"))
+        names = sorted(path.stem for path in profiles.glob("*.json"))
+        self.assertEqual(names, ["base", "control", "dsi", "fleet", "industrial", "laboratory", "vision"])
+        for name in names:
+            profile = load_profile(profiles / f"{name}.json")
+            self.assertEqual(profile["profile"], name)
+            self.assertIn("hydra-umc-agent", profile["enabled_services"])
+            self.assertLessEqual(set(profile["enabled_services"]), known, name)
+
     def test_a_control_profile_without_the_server_is_still_a_valid_profile(self):
         with tempfile.TemporaryDirectory() as directory:
             profile_path = Path(directory) / "control-no-server.json"

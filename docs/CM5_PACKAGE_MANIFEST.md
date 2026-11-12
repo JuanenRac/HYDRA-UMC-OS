@@ -44,3 +44,11 @@ the detected accelerator. Record every installed version in deployment logs.
 Flutter, Rust toolchains, Go toolchains, large LLM runtimes, MuJoCo/physics,
 and optional industrial gateways are not base-image dependencies. Add them by
 profile after resource and hardware validation.
+
+## Profiles and the module matrix
+
+`config/profiles` declares seven kinds of node: `base`, `control`, `vision`, `dsi`, `industrial`, `laboratory` and `fleet`.
+A profile only names services and the capabilities that need hardware; it installs and starts nothing.
+[`CM5_MODULE_MATRIX.md`](CM5_MODULE_MATRIX.md) shows which service each profile declares and is printed by
+`python tools/verify_profiles.py --write`; the same tool fails when a profile names a service that no installer of the
+install plan installs or when the committed matrix is out of date.

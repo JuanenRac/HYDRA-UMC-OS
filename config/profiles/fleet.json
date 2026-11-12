@@ -1,0 +1,1 @@
+{"schema_version":"1.0","profile":"fleet","enabled_services":["hydra-umc-agent","hydra-umc-server","hydra-umc-orchestrator","hydra-umc-swarm-sync","hydra-umc-node-healing"],"requires":[]}

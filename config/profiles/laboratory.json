@@ -1,0 +1,1 @@
+{"schema_version":"1.0","profile":"laboratory","enabled_services":["hydra-umc-agent","hydra-umc-server","hydra-umc-datalake","hydra-umc-telemetry-collector","hydra-umc-anomaly-detector"],"requires":[]}

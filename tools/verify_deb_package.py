@@ -123,7 +123,7 @@ def main() -> int:
         expect("ExecStart=/usr/bin/hydra-umc-agent " in unit, "the unit must run the command the package installs")
         expect("/usr/local/" not in unit, "a package must not rely on /usr/local")
         expect("\r" not in unit, "the unit must use plain line feeds")
-        for profile in ("base.json", "control.json", "vision.json"):
+        for profile in ("base.json", "control.json", "vision.json", "dsi.json", "industrial.json", "laboratory.json", "fleet.json"):
             expect(f"usr/share/hydra-umc/config/profiles/{profile}" in files, f"profile {profile} must be installed")
         installed_manifest = json.loads(files["opt/hydra-umc/os-agent/hydra-umc.project.json"][1])
         expect(installed_manifest["version"] == manifest["version"], "the installed manifest must carry the version")

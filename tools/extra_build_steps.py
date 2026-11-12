@@ -61,6 +61,7 @@ def run_agent_checks() -> None:
     run(sys.executable, "tools/verify_deploy_release.py", env=environment)
     run(sys.executable, "tools/verify_deploy_tree.py", env=environment)
     run(sys.executable, "tools/verify_install_plan.py", env=environment)
+    run(sys.executable, "tools/verify_profiles.py", env=environment)
     run(sys.executable, "tools/verify_installer_generation.py", env=environment)
     run(sys.executable, "tools/verify_secrets_panel.py", env=environment)
     run(sys.executable, "tools/verify_mqtt_tls.py", env=environment)
