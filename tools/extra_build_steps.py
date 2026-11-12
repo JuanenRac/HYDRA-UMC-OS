@@ -47,6 +47,7 @@ def run_agent_checks() -> None:
     run(sys.executable, "tools/verify_preflight_negative.py", env=environment)
     run(sys.executable, "tools/verify_preflight_idempotent.py", env=environment)
     run(sys.executable, "tools/verify_rollback.py", env=environment)
+    run(sys.executable, "tools/verify_ab_slots.py", env=environment)
     run(sys.executable, "tools/verify_wifi_provision.py", env=environment)
     run(sys.executable, "tools/verify_generate_secrets.py", env=environment)
     run(sys.executable, "tools/verify_service_identity.py", env=environment)
