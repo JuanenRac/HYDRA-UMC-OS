@@ -76,7 +76,7 @@ Raspberry Pi 内核、systemd、NetworkManager、libcamera 或供应商 SDK。
 
 ## 🧩 在 HYDRA-UMC 中的角色
 
-**HYDRA-UMC-OS** 是 CM5 节点的平台层：在 Raspberry Pi OS 之上提供配置、服务生命周期、本地身份、诊断、视觉外观和协调更新，并带有只读的设备代理。它不替代 Linux、systemd 或厂商 SDK；镜像由 `HYDRA-UMC-OS-REBUILDER` 构建。
+**HYDRA-UMC-OS** 是 CM5 节点的平台层：在 Raspberry Pi OS 之上提供配置、服务生命周期、本地身份、诊断、视觉外观和协调更新，并带有只读的设备代理。它不替代 Linux、systemd 或厂商 SDK；镜像由 `HYDRA-UMC-OS-REBUILDER` 构建。此镜像属于 CM5 试验台；HYDRA-UMC 的目标平台是 NVIDIA Jetson Orin NX 16 GB（JetPack 或 Debian），其镜像尚未定义，也没有构建或测试过。
 
 ## 🏛️ 架构
 

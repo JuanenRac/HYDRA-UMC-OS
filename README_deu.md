@@ -76,7 +76,7 @@ visuelles Branding und koordinierte Updates für HYDRA-UMC-Komponenten.
 
 ## 🧩 Rolle in HYDRA-UMC
 
-**HYDRA-UMC-OS** ist die Plattformschicht eines CM5-Knotens: Konfiguration, Dienstlebenszyklus, lokale Identität, Diagnose, Erscheinungsbild und koordinierte Updates auf Raspberry Pi OS, mit einem nur lesenden Geräte-Agenten. Es ersetzt weder Linux noch systemd noch die Hersteller-SDKs; das Image baut `HYDRA-UMC-OS-REBUILDER`.
+**HYDRA-UMC-OS** ist die Plattformschicht eines CM5-Knotens: Konfiguration, Dienstlebenszyklus, lokale Identität, Diagnose, Erscheinungsbild und koordinierte Updates auf Raspberry Pi OS, mit einem nur lesenden Geräte-Agenten. Es ersetzt weder Linux noch systemd noch die Hersteller-SDKs; das Image baut `HYDRA-UMC-OS-REBUILDER`. Dieses Image ist das des CM5-Pilotprüfstands; die Zielplattform von HYDRA-UMC ist ein NVIDIA Jetson Orin NX 16 GB (JetPack oder Debian), dessen Image noch nicht definiert und weder gebaut noch getestet ist.
 
 ## 🏛️ Architektur
 

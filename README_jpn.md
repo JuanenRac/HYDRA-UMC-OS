@@ -76,7 +76,7 @@ Raspberry Pi カーネル、systemd、NetworkManager、libcamera、またはベ�
 
 ## 🧩 HYDRA-UMC での役割
 
-**HYDRA-UMC-OS** は CM5 ノードのプラットフォーム層です。Raspberry Pi OS の上で、設定、サービスのライフサイクル、ローカルな識別、診断、見た目、調整された更新を提供し、読み取り専用のデバイスエージェントを備えます。Linux、systemd、ベンダーの SDK を置き換えるものではなく、イメージは `HYDRA-UMC-OS-REBUILDER` が作ります。
+**HYDRA-UMC-OS** は CM5 ノードのプラットフォーム層です。Raspberry Pi OS の上で、設定、サービスのライフサイクル、ローカルな識別、診断、見た目、調整された更新を提供し、読み取り専用のデバイスエージェントを備えます。Linux、systemd、ベンダーの SDK を置き換えるものではなく、イメージは `HYDRA-UMC-OS-REBUILDER` が作ります。このイメージは CM5 試験用ベンチのものです。HYDRA-UMC の目標プラットフォームは NVIDIA Jetson Orin NX 16 GB（JetPack または Debian）ですが、そのイメージはまだ定義されておらず、構築も試験もされていません。
 
 ## 🏛️ アーキテクチャ
 
