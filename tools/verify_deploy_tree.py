@@ -284,6 +284,98 @@ class TreeTests(unittest.TestCase):
         self.assertFalse(dt.http_ok("http://127.0.0.1:1/health"))
         self.assertFalse(dt.http_ok("http://example.invalid/health"))
 
+    # ---- the unit files and drop-ins go back with the program -----------------------------------------------------------------------
+
+    def units(self) -> Path:
+        folder = self.base / "systemd"
+        (folder / "hydra-umc-server.service.d").mkdir(parents=True, exist_ok=True)
+        (folder / "hydra-umc-server.service").write_text("unit A", encoding="utf-8")
+        (folder / "hydra-umc-server.service.d" / "10-health.conf").write_text("drop-in A", encoding="utf-8")
+        (folder / "other.service").write_text("another service", encoding="utf-8")
+        self.settings["reloadCommand"] = f'{PY} -c "open(r\'{self.log}\', \'a\').write(\'reload\\n\')"'
+        return folder
+
+    def deploy_units(self, folder: Path, version: str, change) -> None:
+        dt.begin(self.root, "server", self.target, units=["hydra-umc-server.service"], unit_dir=folder)
+        self.program(version)
+        change(folder)
+        self.settle()
+
+    @staticmethod
+    def new_unit(folder: Path) -> None:
+        (folder / "hydra-umc-server.service").write_text("unit B", encoding="utf-8")
+        (folder / "hydra-umc-server.service.d" / "10-health.conf").unlink()
+        (folder / "hydra-umc-server.service.d" / "20-sdk.conf").write_text("drop-in B", encoding="utf-8")
+        (folder / "other.service").write_text("changed by somebody else", encoding="utf-8")
+
+    def test_a_failed_deploy_puts_the_unit_and_the_drop_ins_back_and_reloads_before_the_restart(self) -> None:
+        folder = self.units()
+        self.running = False
+        self.deploy_units(folder, "0.1.0", lambda _f: None)
+        self.running = True
+        self.healthy_now = False
+        with self.assertRaises(dr.DeployError):
+            self.deploy_units(folder, "0.1.1", self.new_unit)
+        self.assertEqual((folder / "hydra-umc-server.service").read_text(encoding="utf-8"), "unit A")
+        self.assertEqual((folder / "hydra-umc-server.service.d" / "10-health.conf").read_text(encoding="utf-8"), "drop-in A")
+        self.assertFalse((folder / "hydra-umc-server.service.d" / "20-sdk.conf").exists(), "a drop-in that only the new release had must go")
+        self.assertEqual((folder / "other.service").read_text(encoding="utf-8"), "changed by somebody else", "only the units that were named are touched")
+        order = self.log.read_text(encoding="utf-8").split()
+        self.assertEqual(order[-3:], ["0.1.1", "reload", "0.1.0"], "systemd reads the old units before the old program is restarted")
+
+    def test_a_unit_that_did_not_exist_before_is_removed_when_the_deploy_fails(self) -> None:
+        folder = self.units()
+        (folder / "hydra-umc-server.service").unlink()
+        self.running = False
+        self.deploy_units(folder, "0.1.0", lambda _f: None)
+        self.running = True
+        self.healthy_now = False
+        with self.assertRaises(dr.DeployError):
+            self.deploy_units(folder, "0.1.1", lambda f: (f / "hydra-umc-server.service").write_text("unit B", encoding="utf-8"))
+        self.assertFalse((folder / "hydra-umc-server.service").exists())
+
+    def test_a_deploy_that_holds_keeps_the_new_units_and_remembers_the_old_ones_for_the_rollback_command(self) -> None:
+        folder = self.units()
+        self.running = False
+        self.deploy_units(folder, "0.1.0", lambda _f: None)
+        self.deploy_units(folder, "0.1.1", self.new_unit)
+        self.assertEqual((folder / "hydra-umc-server.service").read_text(encoding="utf-8"), "unit B")
+        kept = dr.Component(self.root, "server").base / "units"
+        self.assertFalse((kept / "pending").exists())
+        self.assertEqual(len(list(kept.glob("before-*"))), 2)
+        dt.rollback(self.root, "server", settings=self.settings, sleep=lambda _s: None, is_active=lambda _u: False)
+        self.assertEqual((folder / "hydra-umc-server.service").read_text(encoding="utf-8"), "unit A")
+        self.assertTrue((folder / "hydra-umc-server.service.d" / "10-health.conf").exists())
+        self.assertFalse((folder / "hydra-umc-server.service.d" / "20-sdk.conf").exists())
+        self.assertIn("reload", self.log.read_text(encoding="utf-8").split())
+
+    def test_without_units_nothing_is_kept_and_the_behaviour_is_the_old_one(self) -> None:
+        self.running = False
+        self.deploy("0.1.0")
+        self.deploy("0.1.1")
+        self.assertFalse((dr.Component(self.root, "server").base / "units" / "pending").exists())
+
+    def test_the_snapshot_of_a_new_begin_replaces_the_one_of_an_interrupted_install(self) -> None:
+        folder = self.units()
+        dt.begin(self.root, "server", self.target, units=["hydra-umc-server.service"], unit_dir=folder)
+        (folder / "hydra-umc-server.service").write_text("unit half-way", encoding="utf-8")
+        dt.begin(self.root, "server", self.target, units=["hydra-umc-server.service"], unit_dir=folder)
+        manifest = dr.Component(self.root, "server").base / "units" / "pending" / "hydra-umc-server.service"
+        self.assertEqual(manifest.read_text(encoding="utf-8"), "unit half-way")
+
+    def test_a_snapshot_that_cannot_be_read_is_refused_with_a_message(self) -> None:
+        broken = self.base / "broken"
+        broken.mkdir()
+        with self.assertRaises(dr.DeployError):
+            dt.restore_units(broken)
+
+    def test_the_command_line_keeps_the_units_it_is_given(self) -> None:
+        folder = self.units()
+        self.program("0.3.0")
+        base = ["--root", str(self.root)]
+        self.assertEqual(dt.main([*base, "begin", "server", "--target", str(self.target), "--unit", "hydra-umc-server.service", "--unit-dir", str(folder)]), 0)
+        self.assertTrue((dr.Component(self.root, "server").base / "units" / "pending" / "manifest.json").is_file())
+
     def test_the_command_line_begins_settles_and_reports(self) -> None:
         self.program("0.2.0")
         base = ["--root", str(self.root)]
@@ -449,6 +541,34 @@ class LibTests(unittest.TestCase):
         self.assertNotIn("installer-finished", done.stdout)
         self.assertEqual((self.target / "src" / "x.py").read_text(encoding="utf-8"), "0.1.0")
         self.assertIn("DEPLOY=FAIL", done.stderr)
+
+    def test_a_unit_file_and_a_drop_in_the_installer_changed_go_back_when_the_unit_does_not_come_back(self) -> None:
+        self.write_program("0.1.0")
+        units = self.base / "systemd"
+        (units / "hydra-umc-twin.service.d").mkdir(parents=True)
+        (units / "hydra-umc-twin.service").write_text("unit A", encoding="utf-8")
+        (units / "hydra-umc-twin.service.d" / "10-health.conf").write_text("drop-in A", encoding="utf-8")
+        script = self.base / "install_units.sh"
+        script.write_text(
+            "set -euo pipefail\n"
+            f'DEPLOY_CONTRACT=1\nTARGET="{self.target}"\n'
+            f'source "{ROOT / "provisioning" / "deploy_lib.sh"}"\n'
+            'deploy_begin HYDRA-UMC-TWIN "$TARGET"\n'
+            f'mkdir -p "$TARGET/src"; printf %s "0.1.1" > "$TARGET/src/x.py"; printf %s \'{{"version": "0.1.1"}}\' > "$TARGET/hydra-umc.project.json"\n'
+            f'printf %s "unit B" > "{units}/hydra-umc-twin.service"; rm "{units}/hydra-umc-twin.service.d/10-health.conf"\n'
+            f'printf %s "drop-in B" > "{units}/hydra-umc-twin.service.d/20-sdk.conf"\n'
+            'deploy_finish HYDRA-UMC-TWIN "$TARGET"\n'
+            'echo installer-finished\n', encoding="utf-8")
+        self.server.shutdown()
+        self.server.server_close()
+        env = {**os.environ, "PATH": f"{self.bin}{os.pathsep}{os.environ['PATH']}", "HYDRA_UMC_PORTS_REGISTRY": str(self.registry), "HYDRA_UMC_UNIT_DIR": str(units),
+               "HYDRA_UMC_DEPLOY_ROOT": str(self.base / "releases"), "HYDRA_UMC_DEPLOY_TOOL": str(HERE / "deploy_tree.py"), "HYDRA_UMC_DEPLOY_RESULT": str(self.result)}
+        done = subprocess.run(["bash", str(script)], env=env, capture_output=True, text=True, timeout=120)
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        self.assertEqual((units / "hydra-umc-twin.service").read_text(encoding="utf-8"), "unit A")
+        self.assertEqual((units / "hydra-umc-twin.service.d" / "10-health.conf").read_text(encoding="utf-8"), "drop-in A")
+        self.assertFalse((units / "hydra-umc-twin.service.d" / "20-sdk.conf").exists())
+        self.assertIn("daemon-reload", self.calls.read_text(encoding="utf-8"), "systemd was told to read the old units again")
 
     def test_a_unit_that_is_not_running_is_left_alone(self) -> None:
         (self.base / "running").unlink()

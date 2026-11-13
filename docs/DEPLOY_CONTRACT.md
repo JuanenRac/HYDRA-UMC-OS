@@ -23,6 +23,21 @@ An installer that follows contract 1:
 The folders `data`, `models` and `workspace` of the target hold what the program writes; they are never kept, replaced or removed. A service user may write only in those
 (`provisioning/install_plan.py --check` fails when an installer creates another folder owned by the service user).
 
+### The Python SDK of the services that import it
+
+A service that runs from `/opt/hydra-umc/<component>/src` cannot import `hydra_umc_sdk` unless the package is on its `PYTHONPATH`. The installers of the services named in
+`needs_sdk` of `config/installer_generation.json` (today the semantic planner, which imports `hydra_umc_sdk.mcu_errors`) call `provide_sdk_python` and then
+`verify_sdk_importable <module>...` after the build hook and BEFORE the program is copied. The first copies `HYDRA-UMC-SDK/clients/python/src/hydra_umc_sdk` (next to the other
+repositories; `HYDRA_UMC_SDK_SOURCE` names another folder) to `/opt/hydra-umc/sdk-python` (`HYDRA_UMC_SDK_PYTHON_DIR`), owned by root and readable by everybody; the second
+imports each module from that folder alone, as the service user, and ends the installer with status 2 when one cannot be imported, so a missing SDK stops the installation with
+the earlier program in place. The unit of the service lists `/opt/hydra-umc/sdk-python` in its `PYTHONPATH`. `tools/verify_sdk_provision.py` proves all of it without root.
+
+### The unit files go back with the program
+
+`deploy_begin` also keeps the unit file of the service and its drop-in folder (`/etc/systemd/system/<unit>` and `<unit>.d`, `HYDRA_UMC_UNIT_DIR` names another folder) next to the kept
+program. A deploy that does not hold, and the `rollback` command, put them back (a unit or a drop-in that only the new release had is removed), run `systemctl daemon-reload`
+(`reloadCommand` in `deploy.json`) and then restart the unit, so the old program never runs with the new unit. `tools/verify_deploy_tree.py` covers it.
+
 ### Settings
 
 `/opt/hydra-umc/.releases/deploy.json` (all optional; a value that is not valid is replaced by the default and said on the standard error):
