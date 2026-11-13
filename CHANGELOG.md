@@ -4,6 +4,7 @@
 
 All notable changes to this project are documented here.
 
+- **`LICENSE` holds the complete GPL-3.0 text, as the other repositories do:** until now it held a short notice. The notice moves to `LICENSE.md` (code under GPL-3.0-or-later, documentation under CC BY-SA 4.0, third-party software keeps its own license).
 - **README: the platform statement:** the description says what this project serves today (the CM5 pilot bench) and that the target platform of HYDRA-UMC, an NVIDIA Jetson Orin NX 16 GB, is a design that has not been built or tested.
 - **The certificate of the ROS 2 bridge and the identity switch of the broker in `hydra_mqtt_tls.sh`:** `env --client hydra-umc-bridge-ros2` prints the `HYDRA_UMC_ROS2_MTLS*` lines of that bridge (which refuses the `HYDRA_MQTT_TLS*` ones next to them) instead of the generic client lines, and `env --identity` adds `MQTT_TLS_CERT_IDENTITY=1` so the broker binds the certificate name to the client id (off unless asked for). `client hydra-umc-bridge-ros2` already made the certificate with that common name and a 0600 key. One more test in `tools/verify_mqtt_tls.py`. Nothing was run on a CM5.
 
