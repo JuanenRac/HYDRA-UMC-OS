@@ -66,7 +66,8 @@ EXIT_ROLLED_BACK = 3
 HISTORY_LIMIT = 50
 COMPONENT = re.compile(r"^[a-z][a-z0-9-]*$")
 
-DEFAULTS: dict[str, Any] = {"keep": 3, "healthTimeoutS": 30, "healthIntervalS": 1.0, "restartCommand": "", "healthCommand": "", "allowDowngrade": False}
+STATE_DIR = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
+DEFAULTS: dict[str, Any] = {"keep": 3, "healthTimeoutS": 30, "healthIntervalS": 1.0, "restartCommand": "", "healthCommand": "", "allowDowngrade": False, "stateDirs": []}
 
 
 class DeployError(Exception):
@@ -109,6 +110,12 @@ def load_settings(root: Path, warn: Callable[[str], None] = lambda message: prin
                 settings[key] = raw[key].strip()
             else:
                 warn(f"{path}: {key} must be text; it is ignored")
+    if "stateDirs" in raw:
+        dirs = raw["stateDirs"]
+        if isinstance(dirs, list) and len(dirs) <= 16 and all(isinstance(d, str) and STATE_DIR.match(d) for d in dirs):
+            settings["stateDirs"] = list(dirs)
+        else:
+            warn(f"{path}: stateDirs must be a list of plain folder names; none is used")
     if "allowDowngrade" in raw:
         if isinstance(raw["allowDowngrade"], bool):
             settings["allowDowngrade"] = raw["allowDowngrade"]
@@ -160,8 +167,14 @@ class Component:
         try:
             if temporary.is_symlink() or temporary.exists():
                 temporary.unlink()
-            os.symlink(release.name if release.parent == self.releases else release, temporary, target_is_directory=True)
-            os.replace(temporary, self.link)
+            os.symlink(Path("releases") / release.name if release.parent == self.releases else release, temporary, target_is_directory=True)
+            try:
+                os.replace(temporary, self.link)
+            except OSError:      # a host that cannot replace a link over a link (Windows): take the old one away and rename
+                if not self.link.is_symlink():
+                    raise
+                self.link.unlink()
+                os.rename(temporary, self.link)
         except (OSError, NotImplementedError):
             pass
 
@@ -206,6 +219,20 @@ def extract(package: Path, destination: Path) -> None:
             tar.extractall(destination)
 
 
+def link_state(component: Component, release: Path, names: list[str]) -> list[str]:
+    """Each folder of `names` that the component keeps in `<component>/state/` is linked inside the new release, so the program finds its data where it always did. A name the
+    release already holds is left alone. Nothing is done when the list is empty (the default)."""
+    linked: list[str] = []
+    for name in names:
+        target = component.base / "state" / name
+        link = release / name
+        if not target.is_dir() or link.exists() or link.is_symlink():
+            continue
+        os.symlink(os.path.relpath(target, release), link, target_is_directory=True)
+        linked.append(name)
+    return linked
+
+
 def next_release_name(component: Component, version: str) -> str:
     number = 1
     while (component.releases / f"{version}-{number}").exists():
@@ -237,6 +264,7 @@ def install(package: Path, root: Path, *, trusted_key: str | None = None, allow_
         extract(package, staging)
         final = component.releases / release_name
         os.replace(staging, final)
+        link_state(component, final, settings["stateDirs"])
     except (OSError, tarfile.TarError) as error:
         shutil.rmtree(staging, ignore_errors=True)
         raise DeployError(f"refused: the package could not be extracted: {error}") from error

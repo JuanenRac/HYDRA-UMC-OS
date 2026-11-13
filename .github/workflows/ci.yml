@@ -107,6 +107,7 @@ jobs:
           python tools/verify_package_component.py
           python tools/verify_deploy_release.py
           python tools/verify_fleet_update.py
+          python tools/verify_component_links.py
           python tools/verify_deploy_tree.py
           python tools/verify_install_plan.py
           python tools/verify_updater_sudoers.py
