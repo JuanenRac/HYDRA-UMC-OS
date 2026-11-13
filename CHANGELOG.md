@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **The deploy tool and the package check keep one marker line that the server reads when Studio starts an update:** `tools/verify_deploy_release.py` now checks that a good install ends its standard output with `DEPLOY=PASS`, that a restart that fails puts the earlier release back with status 3 and one `DEPLOY=FAIL` line that says so, that a refusal (the same version) is a `DEPLOY=FAIL refused` line, and that `package_component.py verify` prints `PACKAGE=OK <component> <version> <sha256>` for a good package and `PACKAGE=REFUSED` with status 1 for an unsigned one. `docs/UPDATE_MODEL.md` tells how the server uses them and what is still missing on a device (units that run from the releases, the rule that lets the server restart its own unit).
+
 - **The shared tools and the CI jobs have time limits:** the project tool, the validators and the build test pass a timeout to every child process (`HYDRA_UMC_GIT_TIMEOUT_S`, 120 s by default, and `HYDRA_UMC_COMMAND_TIMEOUT_S`, 3600 s by default; a value that is not a positive number means the default), and the baseline and notify jobs of the workflows carry `timeout-minutes`, so a stuck step ends with a message instead of holding a runner.
 All notable changes to this project are documented here.
 

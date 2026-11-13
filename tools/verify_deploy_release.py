@@ -10,7 +10,9 @@ never removes the release in use."""
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import sys
@@ -234,6 +236,54 @@ class DeployTests(unittest.TestCase):
         self.assertEqual(dr.main(["--root", str(self.root), "rollback", "server"]), dr.EXIT_REFUSED)
         self.assertEqual(dr.main(["--root", str(self.root), "prune", "server", "--keep", "2"]), 0)
         self.assertEqual(dr.status(self.root)["server"]["current"]["version"], "0.8.1.0")
+
+
+    # ---- what the server reads when Studio starts an update (HYDRA-UMC-SERVER, src/selfUpdate.ts) -------------------------------------------
+
+    def run_cli(self, module, argv: list[str]) -> tuple[int, str, str]:
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = module.main(argv)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_the_end_of_an_install_is_one_marker_line_the_server_can_read(self) -> None:
+        package = self.package("0.8.1.0")
+        code, out, _err = self.run_cli(dr, ["--root", str(self.root), "install", str(package), "--trusted-key", PUBLIC])
+        self.assertEqual(code, 0)
+        self.assertEqual(out.splitlines()[-1], "DEPLOY=PASS")
+        # a newer one whose restart fails: the old release is back, the status is 3 and the failure line says it did not hold
+        (self.root / "deploy.json").write_text(json.dumps({"restartCommand": f'{PY} -c "import sys; sys.exit(1)"'}), encoding="utf-8")
+        code, out, err = self.run_cli(dr, ["--root", str(self.root), "install", str(self.package("0.8.2.0")), "--trusted-key", PUBLIC])
+        self.assertEqual(code, dr.EXIT_ROLLED_BACK)
+        self.assertNotIn("DEPLOY=PASS", out)
+        failure = [line for line in err.splitlines() if line.startswith("DEPLOY=FAIL")]
+        self.assertEqual(len(failure), 1)
+        self.assertRegex(failure[0], r"did not|rolled|put back|earlier release")
+        self.assertEqual(self.current(), "0.8.1.0")
+        # a refusal (the same version) is a failure line too, and it is not one of the "went back" kind
+        code, _out, err = self.run_cli(dr, ["--root", str(self.root), "install", str(package), "--trusted-key", PUBLIC])
+        self.assertEqual(code, dr.EXIT_REFUSED)
+        self.assertRegex(err, r"(?m)^DEPLOY=FAIL refused")
+
+    def test_the_check_of_a_package_says_component_version_and_hash_on_one_line(self) -> None:
+        package = self.package("0.8.1.0")
+        code, out, _err = self.verify_cli(package)
+        self.assertEqual(code, 0)
+        self.assertRegex(out, r"(?m)^PACKAGE=OK server 0\.8\.1\.0 [0-9a-f]{64}$")
+        unsigned = self.package("0.8.2.0", sign=False)
+        code, out, err = self.verify_cli(unsigned)
+        self.assertEqual(code, 1)
+        self.assertNotIn("PACKAGE=OK", out)
+        self.assertRegex(err, r"(?m)^PACKAGE=REFUSED ")
+
+    def verify_cli(self, package: Path) -> tuple[int, str, str]:
+        # `verify` checks against the key the repository trusts; the case runs it against the key of the RFC test vector, as the rest of this file does
+        original = pc.TRUST_FILE
+        pc.TRUST_FILE = self.trust
+        try:
+            return self.run_cli(pc, ["verify", str(package)])
+        finally:
+            pc.TRUST_FILE = original
 
 
 if __name__ == "__main__":
