@@ -14,6 +14,8 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
+import re
 import sys
 import tempfile
 import unittest
@@ -32,6 +34,7 @@ ms = importlib.util.module_from_spec(_spec2)
 sys.modules["make_fleet_sudoers"] = ms
 _spec2.loader.exec_module(ms)
 
+FAKE_DIGEST = "a" * 64
 SHA = {"v0.2.0": "a" * 40, "v0.3.0": "b" * 40, "v1.0.0": "c" * 40}
 INSTALLERS = [
     {"script": "install_datalake.sh", "source": "HYDRA-UMC-DATALAKE", "target": "/opt/hydra-umc/datalake", "unit": "hydra-umc-datalake.service", "port": 8100, "health_path": "/health"},
@@ -71,6 +74,12 @@ class Device:
         self.restore_units = True
         self.build_fails = False
         self.free = 100000
+        self.components = base / "components"
+        self.bad_signature = False
+        self.fail_package_install = False
+        self.download_fails = False
+        self.downloads: list[str] = []
+        self.rollbacks: list[str] = []
         self.fail_tar = False
         self.install_noop: set[str] = set()
         self.offline = False
@@ -86,6 +95,22 @@ class Device:
         if argv[:2] == ["sudo", "-n"]:
             argv = argv[2:]
         self.calls.append(argv)
+        if argv[0] == "python3" and argv[1].endswith("package_component.py"):
+            name = Path(argv[3]).name
+            m = re.match(r"hydra-([a-z-]+)-([0-9.]+)\.tgz$", name)
+            if self.bad_signature or not m:
+                return 1, "PACKAGE=REFUSED the signature does not match the key of the releases\n"
+            return 0, f"PACKAGE=OK {m.group(1)} {m.group(2)} {FAKE_DIGEST}\n"
+        if argv[0] == "python3" and argv[1].endswith("deploy_release.py"):
+            if argv[4] == "rollback":
+                self.rollbacks.append(argv[5])
+                self.write_version(argv[5], self.versions[argv[5]])
+                return 0, "DEPLOY=PASS\n"
+            name = re.match(r"hydra-([a-z-]+)-([0-9.]+)\.tgz$", Path(argv[5]).name)
+            if self.fail_package_install:
+                return 3, f"DEPLOY=FAIL {name.group(1)} did not pass the health check; the release in use is {self.versions[name.group(1)]}\n"
+            self.write_version(name.group(1), name.group(2))
+            return 0, "DEPLOY=PASS\n"
         if argv[0] == "git":
             repo = Path(argv[2]).name
             verb = argv[3]
@@ -165,12 +190,27 @@ class Device:
             return {"tag_name": self.releases[repo], "assets": []}
         return {"sha": SHA.get(url.rsplit("/", 1)[1], "e" * 40)}
 
+    def wire(self, name: str) -> None:
+        """The program runs from <components>/<name>/current: its folder under the root becomes a link to it."""
+        import shutil
+        release = self.components / name / "releases" / f"{self.versions[name]}-1"
+        release.parent.mkdir(parents=True)
+        shutil.move(str(self.root / name), str(release))
+        os.symlink(Path("releases") / release.name, self.components / name / "current", target_is_directory=True)
+        os.symlink(self.components / name / "current", self.root / name, target_is_directory=True)
+
+    def download(self, url: str, destination: Path) -> None:
+        self.downloads.append(url)
+        if self.download_fails:
+            raise OSError("connection reset")
+        destination.write_text("package", encoding="utf-8")
+
     def env(self, **config: Any) -> Any:
         settings = dict(fu.DEFAULTS)
-        settings.update(workspace=str(self.workspace), root=str(self.root), backups=str(self.backups), **config)
+        settings.update(workspace=str(self.workspace), root=str(self.root), backups=str(self.backups), components=str(self.components), **config)
         clock = [1_900_000_000.0]
         environment = fu.Env(self.base / "state" / "fleet.json", settings, sh=self.sh, http=self.http, health=lambda _u: self.health_code, now=lambda: clock[0],
-                             sleep=lambda s: clock.__setitem__(0, clock[0] + s), log=lambda _m: None, free_mb=lambda _p: self.free)
+                             sleep=lambda s: clock.__setitem__(0, clock[0] + s), log=lambda _m: None, free_mb=lambda _p: self.free, download=self.download)
         environment.unit_dir = self.units
         environment.clock = clock  # type: ignore[attr-defined]
         return environment
@@ -646,6 +686,97 @@ class FleetTests(unittest.TestCase):
         self.assertFalse([c for c in self.device.calls if c[0] == "tar" or (c[0] == "bash" and c[1] == "-c")])
         self.assertFalse([c for c in self.device.calls if c[0] == "git" and c[3] == "checkout"])
         self.assertTrue(any("only the checks are left" in e["text"] for e in self.row(environment, "server")["log"]))
+
+
+    # ---- the programs that run from their link are updated with the signed package of their release --------------------------------------------------
+    def wired_server(self, **config: Any):
+        self.device.releases["HYDRA-UMC-SERVER"] = "v1.0.0"
+        self.device.releases["HYDRA-UMC-STUDIO"] = "v1.0.0"
+        self.device.wire("server")
+        return self.planned(**config)
+
+    def test_a_program_that_runs_from_its_link_is_left_alone_while_the_switch_is_off(self) -> None:
+        environment = self.wired_server()
+        server = self.row(environment, "server")
+        self.assertEqual((server["action"], server["reason"], server["wired"]), ("skip", "migrated_needs_packages", True))
+        self.assertEqual(self.row(environment, "studio")["action"], "skip")
+        self.go(environment)
+        self.assertEqual(self.row(environment, "datalake")["state"], "done")
+        self.assertEqual(self.row(environment, "server")["state"], "waiting")
+        self.assertFalse([c for c in self.device.calls if c[0] == "python3"])
+        self.assertFalse([c for c in self.device.calls if c[0] == "bash" and "install_server" in c[1]])
+        self.assertFalse(fu.DEFAULTS["usePackages"])
+
+    def test_with_the_switch_on_the_server_is_updated_by_its_signed_package_and_not_by_its_installer(self) -> None:
+        environment = self.wired_server(usePackages=True)
+        server = self.row(environment, "server")
+        self.assertEqual((server["action"], server["mode"]), ("update", "package"))
+        self.assertEqual((self.row(environment, "studio")["action"], self.row(environment, "studio")["reason"]), ("skip", "own_package"))
+        self.assertEqual(self.go(environment, {"server"}), 0)
+        self.assertEqual(self.row(environment, "server")["state"], "done")
+        self.assertEqual(sorted(u.rsplit("/", 1)[1] for u in self.device.downloads), ["hydra-server-1.0.0.tgz", "hydra-server-1.0.0.tgz.sha256", "hydra-server-1.0.0.tgz.sig"])
+        self.assertTrue(all(u.startswith("https://github.com/JuanenRac/HYDRA-UMC-SERVER/releases/download/v1.0.0/") for u in self.device.downloads))
+        python = [c for c in self.device.calls if c[0] == "python3"]
+        self.assertTrue(python[0][1].endswith("package_component.py") and python[0][2] == "verify")
+        self.assertTrue(python[1][1].endswith("deploy_release.py") and python[1][4] == "install")
+        self.assertFalse([c for c in self.device.calls if c[0] == "bash"])
+        self.assertFalse([c for c in self.device.calls if c[0] == "tar" or c[:2] == ["git", "checkout"]])
+        self.assertEqual(json.loads((self.device.root / "server" / "hydra-umc.project.json").read_text())["version"], "1.0.0")
+
+    def test_a_program_without_a_package_that_runs_from_its_link_is_never_touched_by_its_installer(self) -> None:
+        self.device.wire("datalake")
+        environment = self.planned(usePackages=True)
+        row = self.row(environment, "datalake")
+        self.assertEqual((row["action"], row["reason"]), ("skip", "migrated_no_package"))
+        self.go(environment)
+        self.assertEqual(row["state"], "waiting")
+        self.assertFalse([c for c in self.device.calls if c[0] == "bash" and "install_datalake" in c[1]])
+
+    def test_a_package_whose_signature_does_not_hold_is_discarded_and_nothing_is_installed(self) -> None:
+        self.device.bad_signature = True
+        environment = self.wired_server(usePackages=True)
+        self.assertEqual(self.go(environment, {"server"}), fu.EXIT_FAILED)
+        row = self.row(environment, "server")
+        self.assertEqual((row["state"], row["error"]), ("failed", "signature_invalid"))
+        self.assertIn("signature does not match", row["detail"])
+        self.assertFalse([c for c in self.device.calls if c[0] == "python3" and c[1].endswith("deploy_release.py")])
+        self.assertEqual(json.loads((self.device.root / "server" / "hydra-umc.project.json").read_text())["version"], "0.9.0")
+        self.assertFalse(list((environment.state_path.parent / "packages").glob("hydra-server-*")))
+
+    def test_a_download_that_is_cut_is_a_failure_before_anything_is_checked_or_installed(self) -> None:
+        self.device.download_fails = True
+        environment = self.wired_server(usePackages=True)
+        self.go(environment, {"server"})
+        row = self.row(environment, "server")
+        self.assertEqual((row["state"], row["error"]), ("failed", "download_failed"))
+        self.assertFalse([c for c in self.device.calls if c[0] == "python3"])
+
+    def test_an_install_the_deploy_tool_puts_back_is_reported_as_rolled_back_and_the_run_stops(self) -> None:
+        self.device.fail_package_install = True
+        environment = self.wired_server(usePackages=True)
+        self.assertEqual(self.go(environment, {"server"}), fu.EXIT_FAILED)
+        row = self.row(environment, "server")
+        self.assertEqual((row["state"], row["error"]), ("rolled_back", "installer_failed"))
+        self.assertIn("DEPLOY=FAIL", row["detail"])
+        self.assertEqual(self.device.rollbacks, [])        # the tool already went back by itself
+
+    def test_checks_that_fail_after_the_install_make_the_tool_go_back(self) -> None:
+        self.device.health_code = 503
+        environment = self.wired_server(usePackages=True)
+        self.assertEqual(self.go(environment, {"server"}), fu.EXIT_FAILED)
+        row = self.row(environment, "server")
+        self.assertEqual((row["state"], row["error"]), ("rolled_back", "not_healthy"))
+        self.assertEqual(self.device.rollbacks, ["server"])
+        self.assertEqual(json.loads((self.device.root / "server" / "hydra-umc.project.json").read_text())["version"], "0.9.0")
+
+    def test_the_address_of_a_download_is_only_a_file_of_a_release_on_github(self) -> None:
+        target = Path(self.tmp.name) / "x"
+        for bad in ("http://github.com/JuanenRac/HYDRA-UMC-SERVER/releases/download/v1.0.0/a.tgz", "https://evil.example/JuanenRac/HYDRA-UMC-SERVER/releases/download/v1.0.0/a.tgz",
+                    "https://github.com/JuanenRac/HYDRA-UMC-SERVER/archive/main.tar.gz", "https://github.com/JuanenRac/OTHER/releases/download/v1.0.0/a.tgz",
+                    "https://github.com/JuanenRac/HYDRA-UMC-SERVER/releases/download/v1.0.0/../a.tgz"):
+            with self.assertRaises(OSError, msg=bad):
+                fu.default_download(bad, target)
+        self.assertFalse(target.exists())
 
 
 if __name__ == "__main__":
