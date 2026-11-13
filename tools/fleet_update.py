@@ -22,7 +22,7 @@ it are not touched. Nothing here restarts the machine: a command that would is r
 The file (`hydra-fleet-update/1`) is written atomically at every step and a heartbeat file next to it is touched while the tool runs, so a reader can tell a run that was cut
 (the machine, the network or the server restarted) from one that is still going: that program is `interrupted` and `resume` takes it up from its first step.
 
-Settings, all optional, in `<state folder>/fleet-update.json` or `--config`: `requireSignedTags` (false), `minFreeMb` (800), `minFreeMbServer` (2500), `workspace` (~/hydra-umc),
+Settings, all optional, in `<state folder>/fleet-update.json` or `--config`: `signedTags` (the names of the programs whose release tag must verify with `git verify-tag`: the server and the critical services; the rest are trusted by "the tag is the commit GitHub gives" over TLS), `requireSignedTags` (false; true asks it of every program), `minFreeMb` (800), `minFreeMbServer` (2500), `workspace` (~/hydra-umc),
 `root` (/opt/hydra-umc), `backups` (/opt/hydra-umc-backups), `owner` (JuanenRac). Standard library only.
 """
 from __future__ import annotations
@@ -51,7 +51,7 @@ STALE_SECONDS = 60
 EXIT_FAILED = 2
 EXIT_BLOCKED = 3
 DEFAULTS: dict[str, Any] = {
-    "requireSignedTags": False, "minFreeMb": 800, "minFreeMbServer": 2500, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
+    "signedTags": ["server", "studio", "orchestrator", "safety-zones", "job-dispatcher"], "requireSignedTags": False, "minFreeMb": 800, "minFreeMbServer": 2500, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
     "backups": "/opt/hydra-umc-backups", "owner": OWNER,
 }
 ORDER = ["datalake", "twin", "swarm-sync", "telemetry-collector", "anomaly-detector", "detection-hef", "vision-node", "vision-streamer",
@@ -100,6 +100,11 @@ def load_config(path: Path | None, warn: Callable[[str], None] = lambda m: print
                 settings[key] = value
             else:
                 warn(f"{path}: {key} must be true or false; {default} is used")
+        elif isinstance(default, list):
+            if isinstance(value, list) and len(value) <= 60 and all(isinstance(v, str) and re.fullmatch(r"[a-z][a-z0-9-]{0,40}", v) for v in value):
+                settings[key] = list(value)
+            else:
+                warn(f"{path}: {key} must be a list of names of programs; the default list is used")
         elif isinstance(default, int):
             if isinstance(value, int) and not isinstance(value, bool) and 50 <= value <= 100000:
                 settings[key] = value
@@ -326,7 +331,7 @@ def make_plan(env: Env, include_inactive: bool = False, only: set[str] | None = 
             tag_now = (rs2 or {}).get("describe", "").split("-")[0] or None
             rows.append(dict(name="studio", kind="frontend", repo="HYDRA-UMC-STUDIO", unit="", script="", port=None, health=None, installed=tag_now, latest=srel and srel["tag"],
                              action=row["action"] if row["action"] == "update" and srel else ("current" if srel and tag_now == srel["tag"] else "skip"),
-                             reason="goes_with_server" if row["action"] == "update" else "", state="waiting", step="", detail="", log=[], active=False))
+                             reason="goes_with_server" if row["action"] == "update" else ("no_release" if srel is None else ""), state="waiting", step="", detail="", log=[], active=False))
     if only:
         for row in rows:
             if row["name"] not in only and row["action"] == "update":
@@ -378,6 +383,11 @@ def check_disk(env: Env, row: dict[str, Any]) -> None:
         raise StepFailed("low_disk", f"{free} MB free, {need} MB needed")
 
 
+def needs_signed_tag(env: Env, row: dict[str, Any]) -> bool:
+    """The tag must verify for the programs of the list `signedTags` (the server carries its Studio) and for all of them when `requireSignedTags` is on."""
+    return bool(env.config["requireSignedTags"]) or row["name"] in env.config["signedTags"]
+
+
 def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any]) -> str:
     path = str(env.workspace / repo)
     previous = env.sh(["git", "-C", path, "symbolic-ref", "-q", "--short", "HEAD"], 30)[1].strip() or env.sh(["git", "-C", path, "rev-parse", "HEAD"], 30)[1].strip()
@@ -387,7 +397,7 @@ def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any])
     commit = out.strip().splitlines()[-1] if out.strip() else ""
     if rc != 0 or not release.get("sha") or commit != release["sha"]:
         raise StepFailed("tag_mismatch", f"the tag {release['tag']} of {repo} is not the commit GitHub gives for it")
-    if env.config["requireSignedTags"]:
+    if needs_signed_tag(env, row):
         if env.sh(["git", "-C", path, "verify-tag", release["tag"]], 60)[0] != 0:
             raise StepFailed("tag_unsigned", f"the tag {release['tag']} of {repo} does not verify")
     if env.sh(["git", "-C", path, "checkout", "-q", "--detach", release["tag"]], 120)[0] != 0:
@@ -396,15 +406,18 @@ def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any])
 
 
 def backup(env: Env, row: dict[str, Any]) -> str:
+    """One copy per program under an exact name (`<name>.bak.tgz`: the rule of sudo needs no wildcard): the program, its unit and its drop-ins. A program that was cut in the
+    middle keeps the copy it already had, because what is installed now may be half of the new one."""
     name = row["name"]
-    out = env.backups / f"{name}.bak_{time.strftime('%Y%m%d_%H%M%S', time.gmtime(env.now()))}.tgz"
+    out = env.backups / f"{name}.bak.tgz"
+    if row.get("backup") == str(out) and row.get("resumedFrom") == "interrupted" and out.exists():
+        row["unitFilesBefore"] = row.get("unitFilesBefore") or unit_files(env, row["unit"])
+        env.say(row, f"{name}: the copy made before the cut is kept")
+        return str(out)
     unit = row["unit"]
-    members = [str(env.root / name).lstrip("/")]
-    for candidate in (env.unit_dir / unit, env.unit_dir / f"{unit}.d"):
-        if candidate.exists():
-            members.append(str(candidate).lstrip("/"))
-    rc, text = env.sh(sudo(["mkdir", "-p", str(env.backups)]), 60)
-    rc, text = env.sh(sudo(["tar", "czf", str(out), "-C", "/", *members]), 900)
+    members = [str(env.root / name).lstrip("/"), str(env.unit_dir / unit).lstrip("/"), str(env.unit_dir / f"{unit}.d").lstrip("/")]
+    env.sh(sudo(["mkdir", "-p", str(env.backups)]), 60)
+    rc, text = env.sh(sudo(["tar", "czf", str(out), "--ignore-failed-read", "-C", "/", *members]), 900)
     if rc != 0:
         raise StepFailed("backup_failed", text.strip()[-200:])
     row["backup"] = str(out)
@@ -561,7 +574,7 @@ def heartbeat_thread(env: Env, stop: threading.Event) -> threading.Thread:
 def run_plan(env: Env, names: set[str] | None = None) -> int:
     """Applies the rows of the file marked `update` (the ones named, when some are), in order; stops at the first that fails."""
     state = env.state
-    rows = [r for r in state["services"] if r["action"] == "update" and r["state"] in ("waiting", "interrupted", "failed", "rolled_back", "blocked") and (not names or r["name"] in names)]
+    rows = [r for r in state["services"] if r["action"] == "update" and r["state"] in ("waiting", "interrupted", "failed", "rolled_back", "blocked", "skipped") and (not names or r["name"] in names)]
     if not rows:
         env.say(None, "nothing to update")
         state["mode"], state["state"] = "run", "done"
@@ -570,6 +583,7 @@ def run_plan(env: Env, names: set[str] | None = None) -> int:
     state.update(mode="run", state="running", pid=os.getpid(), startedAt=iso(env.now()), error="")
     for row in state["services"]:
         if row in rows:
+            row["resumedFrom"] = row["state"]
             row.update(state="waiting", error="", step="", detail="")
     releases = dict(state["releases"])
     stop = threading.Event()
