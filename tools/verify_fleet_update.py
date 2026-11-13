@@ -26,6 +26,11 @@ assert _spec and _spec.loader
 fu = importlib.util.module_from_spec(_spec)
 sys.modules["fleet_update"] = fu
 _spec.loader.exec_module(fu)
+_spec2 = importlib.util.spec_from_file_location("make_fleet_sudoers", HERE / "make_fleet_sudoers.py")
+assert _spec2 and _spec2.loader
+ms = importlib.util.module_from_spec(_spec2)
+sys.modules["make_fleet_sudoers"] = ms
+_spec2.loader.exec_module(ms)
 
 SHA = {"v0.2.0": "a" * 40, "v0.3.0": "b" * 40, "v1.0.0": "c" * 40}
 INSTALLERS = [
@@ -66,6 +71,10 @@ class Device:
         self.restore_units = True
         self.build_fails = False
         self.free = 100000
+        self.fail_tar = False
+        self.install_noop: set[str] = set()
+        self.offline = False
+        self.dirty: set[str] = set()
 
     def write_version(self, name: str, version: str) -> None:
         folder = self.root / name
@@ -90,7 +99,7 @@ class Device:
             if verb == "symbolic-ref":
                 return 0, "main\n"
             if verb == "status":
-                return 0, ""
+                return 0, " M file.py\n" if repo in self.dirty else ""
             if verb == "verify-tag":
                 return (0 if self.verify_tag_ok else 1), ""
             return 0, ""
@@ -101,6 +110,8 @@ class Device:
                 return 0, "Environment=PYTHONPATH=/opt/hydra-umc/sdk\n"
             return 0, ""
         if argv[0] == "tar" and argv[1] == "czf":
+            if self.fail_tar:
+                return 2, "tar: No space left on device\n"
             Path(argv[2]).write_text("tar", encoding="utf-8")
             return 0, ""
         if argv[0] == "tar" and argv[1] == "xzf":
@@ -108,7 +119,7 @@ class Device:
             if self.restore_units:
                 for unit in self.units.glob("*.service"):
                     unit.write_text(f"[Service]\nExecStart=/opt/hydra-umc/{unit.stem.removeprefix('hydra-umc-')}/run\n", encoding="utf-8")
-            name = Path(argv[2]).name.split(".bak_")[0]
+            name = Path(argv[2]).name.split(".bak")[0]
             self.write_version(name, self.versions[name])
             return 0, ""
         if argv[0] == "rm":
@@ -129,6 +140,8 @@ class Device:
             if name in self.fail_install:
                 return 3, "DEPLOY=FAIL %s did not pass the health check; the release in use is %s\n" % (name, self.versions[name])
             repo = {"datalake": "HYDRA-UMC-DATALAKE", "semantic-planner": "HYDRA-UMC-SEMANTIC-PLANNER", "server": "HYDRA-UMC-SERVER"}[name]
+            if name in self.install_noop:
+                return 0, "install rc=0\n"
             self.write_version(name, self.releases[repo].lstrip("v"))
             unit = self.units / f"hydra-umc-{name}.service"
             if name in self.drop_in_on_install:
@@ -145,6 +158,8 @@ class Device:
         return 0, ""
 
     def http(self, url: str) -> Any:
+        if self.offline:
+            raise OSError("offline")
         repo = url.split("/repos/JuanenRac/")[1].split("/")[0]
         if "/releases/latest" in url:
             return {"tag_name": self.releases[repo], "assets": []}
@@ -418,6 +433,219 @@ class FleetTests(unittest.TestCase):
         row = self.row(environment, "datalake")
         environment.say(row, "connecting with api_key=SECRETVALUE")
         self.assertNotIn("SECRETVALUE", environment.state_path.read_text(encoding="utf-8"))
+
+
+    # ---- more cases of the simulated device -----------------------------------------------------------------------------------------------------------
+    def test_after_the_cause_is_fixed_a_failed_program_is_taken_up_and_the_run_goes_on(self) -> None:
+        self.device.fail_install.add("datalake")
+        environment = self.planned()
+        self.assertEqual(self.go(environment), fu.EXIT_FAILED)
+        self.assertEqual(self.row(environment, "semantic-planner")["state"], "skipped")
+        self.device.fail_install.clear()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(fu.main(["resume", "--state", str(environment.state_path), "--only", "datalake", "--yes"], environment), 0)
+        self.assertEqual(self.row(environment, "datalake")["state"], "done")
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(fu.main(["run", "--state", str(environment.state_path), "--yes"], environment), 0)
+        self.assertEqual(self.row(environment, "semantic-planner")["state"], "done")
+        self.assertEqual(environment.state["state"], "done")
+
+    def test_a_second_run_after_everything_is_current_has_nothing_to_do(self) -> None:
+        environment = self.planned()
+        self.assertEqual(self.go(environment), 0)
+        environment = self.planned()
+        self.assertEqual({r["action"] for r in environment.state["services"]}, {"current"})
+        before = len([c for c in self.device.calls if c[0] == "tar"])
+        self.assertEqual(self.go(environment), 0)
+        self.assertEqual(len([c for c in self.device.calls if c[0] == "tar"]), before)
+
+    def test_an_installer_that_ends_well_but_changes_nothing_is_a_version_failure_and_is_put_back(self) -> None:
+        self.device.install_noop.add("datalake")
+        environment = self.planned()
+        self.go(environment, {"datalake"})
+        row = self.row(environment, "datalake")
+        self.assertEqual((row["state"], row["error"]), ("rolled_back", "version_mismatch"))
+
+    def test_a_backup_that_cannot_be_made_stops_before_the_installer_runs(self) -> None:
+        self.device.fail_tar = True
+        environment = self.planned()
+        self.assertEqual(self.go(environment), fu.EXIT_FAILED)
+        row = self.row(environment, "datalake")
+        self.assertEqual((row["state"], row["error"]), ("failed", "backup_failed"))
+        self.assertIn("No space left", row["detail"])
+        self.assertFalse([c for c in self.device.calls if c[0] == "bash" and c[1].endswith(".sh")])
+
+    def test_a_checkout_of_the_tools_that_does_not_match_stops_before_any_service(self) -> None:
+        self.device.releases["HYDRA-UMC-OS"] = "v0.7.0"
+        self.device.bad_commit.add("HYDRA-UMC-OS")
+        environment = self.planned()
+        self.assertEqual(self.row(environment, "os-tools")["action"], "update")
+        self.assertEqual(self.go(environment), fu.EXIT_FAILED)
+        self.assertEqual(self.row(environment, "os-tools")["error"], "tag_mismatch")
+        self.assertEqual(self.row(environment, "datalake")["state"], "skipped")
+        self.assertFalse([c for c in self.device.calls if c[0] == "tar"])
+
+    def test_the_studio_tag_that_does_not_match_fails_the_server_before_it_is_built(self) -> None:
+        self.device.releases["HYDRA-UMC-SERVER"] = "v1.0.0"
+        self.device.releases["HYDRA-UMC-STUDIO"] = "v1.0.0"
+        self.device.bad_commit.add("HYDRA-UMC-STUDIO")
+        environment = self.planned()
+        self.go(environment, {"server", "studio"})
+        row = self.row(environment, "server")
+        self.assertEqual(row["error"], "tag_mismatch")
+        self.assertFalse([c for c in self.device.calls if c[0] == "bash" and c[1] == "-c"])
+
+    def test_an_unreachable_github_is_no_release_and_never_a_failure_or_a_change(self) -> None:
+        self.device.offline = True
+        environment = self.planned()
+        self.assertEqual({r["action"] for r in environment.state["services"]}, {"skip"})
+        self.assertEqual({r["reason"] for r in environment.state["services"]}, {"no_release"})
+        self.assertEqual(self.go(environment), 0)
+        self.assertFalse([c for c in self.device.calls if c[0] == "tar"])
+
+    def test_a_checkout_with_local_changes_is_left_alone(self) -> None:
+        self.device.dirty.add("HYDRA-UMC-DATALAKE")
+        environment = self.planned()
+        self.assertEqual((self.row(environment, "datalake")["action"], self.row(environment, "datalake")["reason"]), ("skip", "repo_dirty"))
+        self.go(environment)
+        self.assertEqual(self.row(environment, "datalake")["state"], "waiting")
+        self.assertEqual(self.row(environment, "semantic-planner")["state"], "done")
+
+    def test_an_inactive_unit_is_updated_only_when_asked_and_is_not_started_or_judged_by_its_health(self) -> None:
+        self.device.active["hydra-umc-datalake.service"] = "inactive"
+        self.device.health_code = 503
+        environment = self.device.env()
+        environment.state = fu.make_plan(environment, include_inactive=True)
+        environment.save()
+        self.go(environment, {"datalake"})
+        row = self.row(environment, "datalake")
+        self.assertEqual(row["state"], "done")
+        self.assertFalse([c for c in self.device.calls if c[:2] == ["systemctl", "restart"]])
+
+    def test_the_log_of_a_program_keeps_the_last_sixty_lines_and_the_file_stays_valid_json(self) -> None:
+        environment = self.planned()
+        row = self.row(environment, "datalake")
+        for index in range(200):
+            environment.say(row, f"line {index}")
+        self.assertEqual(len(row["log"]), 60)
+        saved = json.loads(environment.state_path.read_text(encoding="utf-8"))
+        self.assertEqual(next(r for r in saved["services"] if r["name"] == "datalake")["log"][-1]["text"], "line 199")
+
+    def test_a_file_that_is_not_a_plan_is_refused_and_never_applied(self) -> None:
+        environment = self.device.env()
+        environment.state_path.parent.mkdir(parents=True, exist_ok=True)
+        environment.state_path.write_text(json.dumps({"schema": "other/1"}), encoding="utf-8")
+        with self.assertRaises(SystemExit):
+            fu.load_state(environment)
+        environment.state_path.write_text("{bad", encoding="utf-8")
+        with self.assertRaises(SystemExit):
+            fu.load_state(environment)
+
+
+    # ---- the signed tags of the critical programs, the cut copy and the rule of sudo -----------------------------------------------------------------
+    def test_only_the_programs_of_the_list_need_a_tag_that_verifies(self) -> None:
+        self.device.verify_tag_ok = False
+        self.device.releases["HYDRA-UMC-SERVER"] = "v1.0.0"
+        self.device.releases["HYDRA-UMC-STUDIO"] = "v1.0.0"
+        environment = self.planned()
+        self.assertEqual(self.go(environment), fu.EXIT_FAILED)
+        self.assertEqual(self.row(environment, "datalake")["state"], "done")
+        self.assertEqual(self.row(environment, "semantic-planner")["state"], "done")
+        server = self.row(environment, "server")
+        self.assertEqual((server["state"], server["error"]), ("failed", "tag_unsigned"))
+        self.assertFalse([c for c in self.device.calls if c[0] == "bash" and c[1] == "-c"])
+
+    def test_the_list_of_critical_programs_is_a_setting_and_an_empty_one_asks_nothing(self) -> None:
+        self.device.verify_tag_ok = False
+        self.device.releases["HYDRA-UMC-SERVER"] = "v1.0.0"
+        self.device.releases["HYDRA-UMC-STUDIO"] = "v1.0.0"
+        environment = self.planned(signedTags=[])
+        self.assertEqual(self.go(environment), 0)
+        self.assertEqual(self.row(environment, "server")["state"], "done")
+        self.assertTrue(fu.needs_signed_tag(self.device.env(signedTags=["datalake"]), {"name": "datalake"}))
+        self.assertFalse(fu.needs_signed_tag(self.device.env(signedTags=["datalake"]), {"name": "twin"}))
+        warnings: list[str] = []
+        path = Path(self.tmp.name) / "list.json"
+        path.write_text(json.dumps({"signedTags": ["ok", "Bad Name"]}), encoding="utf-8")
+        self.assertEqual(fu.load_config(path, warnings.append)["signedTags"], fu.DEFAULTS["signedTags"])
+        self.assertEqual(len(warnings), 1)
+        path.write_text(json.dumps({"signedTags": ["server", "orchestrator"]}), encoding="utf-8")
+        self.assertEqual(fu.load_config(path, warnings.append)["signedTags"], ["server", "orchestrator"])
+
+    def test_the_copy_of_a_program_has_one_exact_name_and_a_cut_program_keeps_the_copy_it_had(self) -> None:
+        environment = self.planned()
+        self.go(environment, {"datalake"})
+        row = self.row(environment, "datalake")
+        self.assertTrue(row["backup"].endswith("datalake.bak.tgz"))
+        tars = [c for c in self.device.calls if c[:2] == ["tar", "czf"]]
+        self.assertEqual(len(tars), 1)
+        self.assertIn("--ignore-failed-read", tars[0])
+        # a second program cut in the middle: its copy is not made again over what may be half of the new program
+        self.device.releases["HYDRA-UMC-SEMANTIC-PLANNER"] = "v0.3.0"
+        environment = self.planned()
+        planner = self.row(environment, "semantic-planner")
+        planner.update(state="interrupted", backup=str(self.device.backups / "semantic-planner.bak.tgz"), unitFilesBefore={})
+        (self.device.backups / "semantic-planner.bak.tgz").write_text("good copy", encoding="utf-8")
+        environment.save()
+        environment.state["state"] = "interrupted"
+        environment.save()
+        before = len([c for c in self.device.calls if c[:2] == ["tar", "czf"]])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(fu.main(["resume", "--state", str(environment.state_path), "--only", "semantic-planner", "--yes"], environment), 0)
+        self.assertEqual(len([c for c in self.device.calls if c[:2] == ["tar", "czf"]]), before)
+        self.assertEqual((self.device.backups / "semantic-planner.bak.tgz").read_text(encoding="utf-8"), "good copy")
+
+    def test_every_command_the_tool_passes_to_sudo_is_a_line_of_the_rule_and_the_rule_has_no_wildcard(self) -> None:
+        self.device.fail_install.add("semantic-planner")
+        self.device.releases["HYDRA-UMC-SERVER"] = "v1.0.0"
+        self.device.releases["HYDRA-UMC-STUDIO"] = "v1.0.0"
+        original = fu.sudo
+        issued: list[list[str]] = []
+        fu.sudo = lambda argv: (issued.append(list(argv)), ["sudo", "-n", *argv])[1]
+        try:
+            environment = self.planned()
+            self.go(environment)
+            self.device.fail_install.clear()
+            self.go(environment, {"semantic-planner", "server", "studio"})
+        finally:
+            fu.sudo = original
+        self.assertTrue(issued)
+        allowed = ms.commands(INSTALLERS, self.device.workspace.as_posix(), self.device.root.as_posix(), self.device.backups.as_posix(), self.device.units.as_posix())
+        norm = [[w.replace("\\", "/") for w in c] for c in issued]
+        allowed = [[w.replace("\\", "/") for w in c] for c in allowed]
+        outside = [c for c in norm if c not in allowed]
+        self.assertEqual(outside, [], "commands outside the rule")
+        kinds = {c[0] for c in norm}
+        self.assertTrue({"mkdir", "tar", "bash", "journalctl", "rm", "systemctl"} <= kinds, kinds)
+        text = ms.render("hydra-umc", INSTALLERS, "/home/hydra-umc/hydra-umc", "/opt/hydra-umc", "/opt/hydra-umc-backups", "/etc/systemd/system")
+        self.assertNotIn("*", text.replace("# Written", ""))
+        self.assertIn("hydra-umc ALL=(root) NOPASSWD: HYDRA_FLEET", text)
+        self.assertIn("/usr/bin/bash /home/hydra-umc/hydra-umc/HYDRA-UMC-OS/provisioning/install_server.sh --apply", text)
+        self.assertIn("/usr/bin/systemctl restart hydra-umc-datalake.service", text)
+        with self.assertRaises(ValueError):
+            ms.escape("a*b")
+
+
+    def test_a_program_cut_after_its_installer_finished_is_taken_up_by_the_checks_alone(self) -> None:
+        """The server's installer restarts the unit that runs the tool: the run is cut with the new version in place."""
+        self.device.releases["HYDRA-UMC-SERVER"] = "v1.0.0"
+        self.device.releases["HYDRA-UMC-STUDIO"] = "v1.0.0"
+        environment = self.planned()
+        server = self.row(environment, "server")
+        server.update(state="running", step="installing", backup=str(self.device.backups / "server.bak.tgz"))
+        environment.state.update(state="running", pid=99999999)
+        environment.save()
+        environment.heartbeat_path.write_text(str(environment.now() - 900), encoding="utf-8")
+        self.device.write_version("server", "1.0.0")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(fu.main(["resume", "--state", str(environment.state_path), "--only", "server", "--yes"], environment), 0)
+        self.assertEqual(self.row(environment, "server")["state"], "done")
+        self.assertFalse([c for c in self.device.calls if c[0] == "tar" or (c[0] == "bash" and c[1] == "-c")])
+        self.assertFalse([c for c in self.device.calls if c[0] == "git" and c[3] == "checkout"])
+        self.assertTrue(any("only the checks are left" in e["text"] for e in self.row(environment, "server")["log"]))
 
 
 if __name__ == "__main__":
