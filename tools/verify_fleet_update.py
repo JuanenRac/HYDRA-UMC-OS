@@ -628,5 +628,25 @@ class FleetTests(unittest.TestCase):
             ms.escape("a*b")
 
 
+    def test_a_program_cut_after_its_installer_finished_is_taken_up_by_the_checks_alone(self) -> None:
+        """The server's installer restarts the unit that runs the tool: the run is cut with the new version in place."""
+        self.device.releases["HYDRA-UMC-SERVER"] = "v1.0.0"
+        self.device.releases["HYDRA-UMC-STUDIO"] = "v1.0.0"
+        environment = self.planned()
+        server = self.row(environment, "server")
+        server.update(state="running", step="installing", backup=str(self.device.backups / "server.bak.tgz"))
+        environment.state.update(state="running", pid=99999999)
+        environment.save()
+        environment.heartbeat_path.write_text(str(environment.now() - 900), encoding="utf-8")
+        self.device.write_version("server", "1.0.0")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(fu.main(["resume", "--state", str(environment.state_path), "--only", "server", "--yes"], environment), 0)
+        self.assertEqual(self.row(environment, "server")["state"], "done")
+        self.assertFalse([c for c in self.device.calls if c[0] == "tar" or (c[0] == "bash" and c[1] == "-c")])
+        self.assertFalse([c for c in self.device.calls if c[0] == "git" and c[3] == "checkout"])
+        self.assertTrue(any("only the checks are left" in e["text"] for e in self.row(environment, "server")["log"]))
+
+
 if __name__ == "__main__":
     unittest.main()

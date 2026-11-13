@@ -375,6 +375,13 @@ def unit_files(env: Env, unit: str) -> dict[str, str]:
     return out
 
 
+def installed_version(env: Env, name: str) -> str | None:
+    try:
+        return json.loads((env.root / name / "hydra-umc.project.json").read_text(encoding="utf-8")).get("version")
+    except (OSError, ValueError):
+        return None
+
+
 def check_disk(env: Env, row: dict[str, Any]) -> None:
     need = int(env.config["minFreeMbServer" if row["name"] == "server" else "minFreeMb"])
     free = min(env.free_mb(str(env.root)), env.free_mb(str(env.workspace)))
@@ -526,6 +533,13 @@ def update_one(env: Env, row: dict[str, Any], releases: dict[str, Any]) -> bool:
         step(env, row, "disk")
         if row["kind"] != "repo":
             check_disk(env, row)
+        if row["kind"] == "svc" and row.get("resumedFrom") == "interrupted" and installed_version(env, row["name"]) == release["tag"].lstrip("v"):
+            # The installer had finished when the run was cut (the usual case of the server, whose installer restarts the unit that runs this tool): only the checks are left.
+            env.say(row, f"{row['name']}: {release['tag']} is already installed; only the checks are left")
+            verify(env, row, release["tag"])
+            row["state"], row["step"], row["finishedAt"] = "done", "done", iso(env.now())
+            env.say(row, f"{row['name']}: {release['tag']} is in use")
+            return True
         step(env, row, "fetching", f"{row['installed']} -> {release['tag']}")
         previous = fetch_tag(env, row, row["repo"], release)
         if row["kind"] == "repo":
