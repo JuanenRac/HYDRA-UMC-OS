@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- **The shared tools and the CI jobs have time limits:** the project tool, the validators and the build test pass a timeout to every child process (`HYDRA_UMC_GIT_TIMEOUT_S`, 120 s by default, and `HYDRA_UMC_COMMAND_TIMEOUT_S`, 3600 s by default; a value that is not a positive number means the default), and the baseline and notify jobs of the workflows carry `timeout-minutes`, so a stuck step ends with a message instead of holding a runner.
 All notable changes to this project are documented here.
 
 - **More tests of the agent and a simulation bench with a coverage floor:** `agent/tests/test_agent_edges.py` (80 tests) covers every refusal of the configuration, probe, socket and profile readers, the probe verdicts with a runner that answers by itself, the boundaries of the health thresholds, the report gate, the command line (`describe`, `health`, `query`, `serve` with a stopped loop) and a seeded fuzz of the configuration reader. `agent/tests/test_simulated_cm5.py` (15 tests) runs the real agent against a simulated Compute Module 5 (a warm-up, a brown-out, a filling disk, a pulled cable, a dead service, tools that are missing or hang) and a seeded random timeline that checks the overall state is always the worst check. The new workflow "Simulation bench" runs them with the socket tests and a job measures the coverage of the agent with a floor that must not go down. Nothing was run on a real board.
