@@ -1,0 +1,60 @@
+# =============================================================================
+# HYDRA-UMC-OS - Simulation bench and coverage floor
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+#
+# Runs the real agent against a simulated Compute Module 5 (no board, no sensor, no service manager) and measures the coverage
+# of the agent with a floor that must not go down. It runs on every push and pull request and by hand.
+# =============================================================================
+name: Simulation bench
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulation:
+    name: Agent against a simulated CM5
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Run the simulated device scenarios and the socket tests
+        working-directory: agent
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+          PYTHONPATH: src
+        run: python -m unittest -v tests.test_simulated_cm5 tests.test_agent_socket tests.test_agent_probes
+
+  coverage:
+    name: Coverage floor of the agent
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Measure the coverage of the agent
+        working-directory: agent
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m pip install coverage==7.17.0
+          python -m coverage run --source=src -m unittest discover -s tests
+          python -m coverage report -m --fail-under=85
