@@ -22,7 +22,11 @@ it are not touched. Nothing here restarts the machine: a command that would is r
 The file (`hydra-fleet-update/1`) is written atomically at every step and a heartbeat file next to it is touched while the tool runs, so a reader can tell a run that was cut
 (the machine, the network or the server restarted) from one that is still going: that program is `interrupted` and `resume` takes it up from its first step.
 
-Settings, all optional, in `<state folder>/fleet-update.json` or `--config`: `requireSignedTags` (false), `minFreeMb` (800), `minFreeMbServer` (2500), `workspace` (~/hydra-umc),
+A program that runs from `<components>/<name>/current` (see `component_links.py`) is not touched by its installer, which would write into the release in use: with `usePackages` on (off by
+default) it is updated with the signed package of its release (`hydra-<name>-<version>.tgz`, its `.sha256` and its `.sig` from the same release; `package_component.py verify` checks hash and signature,
+`deploy_release.py install` keeps the release in use as `previous`, switches, restarts and goes back by itself); with it off, or when its release carries no package, it is left alone and said so.
+
+Settings, all optional, in `<state folder>/fleet-update.json` or `--config`: `signedTags` (the names of the programs whose release tag must verify with `git verify-tag`: the server and the critical services; the rest are trusted by "the tag is the commit GitHub gives" over TLS), `requireSignedTags` (false; true asks it of every program), `minFreeMb` (800), `minFreeMbServer` (2500), `workspace` (~/hydra-umc),
 `root` (/opt/hydra-umc), `backups` (/opt/hydra-umc-backups), `owner` (JuanenRac). Standard library only.
 """
 from __future__ import annotations
@@ -51,8 +55,8 @@ STALE_SECONDS = 60
 EXIT_FAILED = 2
 EXIT_BLOCKED = 3
 DEFAULTS: dict[str, Any] = {
-    "requireSignedTags": False, "minFreeMb": 800, "minFreeMbServer": 2500, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
-    "backups": "/opt/hydra-umc-backups", "owner": OWNER,
+    "signedTags": ["server", "studio", "orchestrator", "safety-zones", "job-dispatcher"], "requireSignedTags": False, "minFreeMb": 800, "minFreeMbServer": 2500, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
+    "backups": "/opt/hydra-umc-backups", "owner": OWNER, "usePackages": False, "components": "/opt/hydra-umc/.components", "python": "python3",
 }
 ORDER = ["datalake", "twin", "swarm-sync", "telemetry-collector", "anomaly-detector", "detection-hef", "vision-node", "vision-streamer",
          "visual-servoing-api", "vla-engine", "semantic-planner", "safety-zones", "cognitive-node", "docs-qa", "hil-bridge", "production-reports",
@@ -61,6 +65,8 @@ EXTRA = {
     "server": dict(script="server", repo="HYDRA-UMC-SERVER", unit="hydra-umc-server.service", port=18200, health="/api/hydra-info"),
     "os-agent": dict(script="local_agent", repo="HYDRA-UMC-OS", unit="hydra-umc-agent.service", port=None, health=None),
 }
+PACKAGE_COMPONENTS = {"server", "studio", "os-agent"}      # the components that have a signed package (tools/package_component.py LAYOUT)
+MAX_PACKAGE_BYTES = 300 * 1024 * 1024
 SKIP_NAMES = {"kiosk", "wifi-provision", "splashscreen", "cm5_base", "gateway-industrial", "mqtt-broker", "mtconnect-adapter", "opcua-server"}
 SERVER_BUILD = [("npm ci", "npm ci --no-audit --no-fund"), ("npm run build", "npm run build"), ("frontend", "bash build-frontend.sh")]
 JOURNAL_BAD = re.compile(r"ModuleNotFoundError|ImportError|No such file or directory|FileNotFoundError|cannot find module", re.I)
@@ -100,6 +106,11 @@ def load_config(path: Path | None, warn: Callable[[str], None] = lambda m: print
                 settings[key] = value
             else:
                 warn(f"{path}: {key} must be true or false; {default} is used")
+        elif isinstance(default, list):
+            if isinstance(value, list) and len(value) <= 60 and all(isinstance(v, str) and re.fullmatch(r"[a-z][a-z0-9-]{0,40}", v) for v in value):
+                settings[key] = list(value)
+            else:
+                warn(f"{path}: {key} must be a list of names of programs; the default list is used")
         elif isinstance(default, int):
             if isinstance(value, int) and not isinstance(value, bool) and 50 <= value <= 100000:
                 settings[key] = value
@@ -110,6 +121,25 @@ def load_config(path: Path | None, warn: Callable[[str], None] = lambda m: print
         else:
             warn(f"{path}: {key} must be text; {default} is used")
     return settings
+
+
+def default_download(url: str, destination: Path, max_bytes: int = MAX_PACKAGE_BYTES) -> None:
+    """Fetches one file of a release from github.com (and nowhere else) to `destination`, through a temporary name; a file past the limit or an answer that is not 200 leaves nothing."""
+    if not re.fullmatch(r"https://github\.com/[A-Za-z0-9-]{1,39}/HYDRA-UMC-[A-Z0-9-]{1,60}/releases/download/v?[0-9.]{1,20}/[A-Za-z0-9._-]{1,120}", url):
+        raise OSError("not the address of a file of a release")
+    partial = destination.with_name(destination.name + ".part")
+    request = urllib.request.Request(url, headers={"User-Agent": "hydra-umc-os-fleet-update"})
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response, partial.open("wb") as out:  # nosec - https://github.com only (checked above)
+            size = 0
+            while chunk := response.read(1 << 20):
+                size += len(chunk)
+                if size > max_bytes:
+                    raise OSError("the file is larger than the limit")
+                out.write(chunk)
+        os.replace(partial, destination)
+    finally:
+        partial.unlink(missing_ok=True)
 
 
 def default_sh(argv: list[str], timeout: int = 1800, on_line: Callable[[str], None] | None = None) -> tuple[int, str]:
@@ -154,12 +184,15 @@ class Env:
 
     def __init__(self, state: Path, config: dict[str, Any] | None = None, sh: Sh = default_sh, http: Callable[[str], Any] = http_json,
                  health: Callable[[str], int] = http_status, now: Callable[[], float] = time.time, sleep: Callable[[float], None] = time.sleep,
-                 log: Callable[[str], None] | None = None, free_mb: Callable[[str], int] | None = None) -> None:
+                 log: Callable[[str], None] | None = None, free_mb: Callable[[str], int] | None = None, download: Callable[[str, Path], None] = default_download) -> None:
         self.state_path = state
         self.config = config or dict(DEFAULTS)
         self.sh, self.http, self.health, self.now, self.sleep = sh, http, health, now, sleep
         self.log = log or (lambda m: print(redact(m), flush=True))
         self.free_mb = free_mb or self._free_mb
+        self.download = download
+        self.components = Path(str(self.config['components']))
+        self.tools = Path(__file__).resolve().parent
         self.workspace = Path(os.path.expanduser(str(self.config["workspace"])))
         self.root = Path(str(self.config["root"]))
         self.backups = Path(str(self.config["backups"]))
@@ -288,6 +321,12 @@ def classify(row: dict[str, Any], repo_state: dict[str, Any] | None, release: di
     return "update", ""
 
 
+def is_wired(env: Env, name: str) -> bool:
+    """The program runs from `<components>/<name>/current` (the unit still points at `<root>/<name>`, which is a link)."""
+    link = env.root / name
+    return link.is_symlink() and os.path.realpath(link) == os.path.realpath(env.components / name / "current")
+
+
 def unit_state(env: Env, unit: str) -> str:
     rc, out = env.sh(["systemctl", "is-active", unit], 30)
     return out.strip().splitlines()[-1] if out.strip() else "unknown"
@@ -319,14 +358,21 @@ def make_plan(env: Env, include_inactive: bool = False, only: set[str] | None = 
         row = dict(name=svc["name"], kind="svc", repo=svc["repo"], unit=svc["unit"], script=svc["script"], port=svc["port"], health=svc["health"],
                    installed=current["version"], latest=rel and rel["tag"], active=active, state="waiting", step="", detail="", log=[])
         row["action"], row["reason"] = classify(row, rs, rel, include_inactive)
+        row["wired"] = is_wired(env, svc["name"])
+        if row["wired"] and row["action"] == "update":
+            row["mode"] = "package"
+            if not env.config["usePackages"]:
+                row["action"], row["reason"] = "skip", "migrated_needs_packages"
+            elif svc["name"] not in PACKAGE_COMPONENTS:
+                row["action"], row["reason"] = "skip", "migrated_no_package"
         rows.append(row)
         if svc["name"] == "server":     # the frontend travels with the server: it is built from its newest release before the installer runs
             srel = release("HYDRA-UMC-STUDIO")
             rs2 = inv["repos"].get("HYDRA-UMC-STUDIO")
             tag_now = (rs2 or {}).get("describe", "").split("-")[0] or None
             rows.append(dict(name="studio", kind="frontend", repo="HYDRA-UMC-STUDIO", unit="", script="", port=None, health=None, installed=tag_now, latest=srel and srel["tag"],
-                             action=row["action"] if row["action"] == "update" and srel else ("current" if srel and tag_now == srel["tag"] else "skip"),
-                             reason="goes_with_server" if row["action"] == "update" else "", state="waiting", step="", detail="", log=[], active=False))
+                             action="skip" if row.get("mode") == "package" else row["action"] if row["action"] == "update" and srel else ("current" if srel and tag_now == srel["tag"] else "skip"),
+                             reason="own_package" if row.get("mode") == "package" else "goes_with_server" if row["action"] == "update" else ("no_release" if srel is None else ""), state="waiting", step="", detail="", log=[], active=False))
     if only:
         for row in rows:
             if row["name"] not in only and row["action"] == "update":
@@ -370,12 +416,24 @@ def unit_files(env: Env, unit: str) -> dict[str, str]:
     return out
 
 
+def installed_version(env: Env, name: str) -> str | None:
+    try:
+        return json.loads((env.root / name / "hydra-umc.project.json").read_text(encoding="utf-8")).get("version")
+    except (OSError, ValueError):
+        return None
+
+
 def check_disk(env: Env, row: dict[str, Any]) -> None:
     need = int(env.config["minFreeMbServer" if row["name"] == "server" else "minFreeMb"])
     free = min(env.free_mb(str(env.root)), env.free_mb(str(env.workspace)))
     row["freeMb"], row["needMb"] = free, need
     if free < need:
         raise StepFailed("low_disk", f"{free} MB free, {need} MB needed")
+
+
+def needs_signed_tag(env: Env, row: dict[str, Any]) -> bool:
+    """The tag must verify for the programs of the list `signedTags` (the server carries its Studio) and for all of them when `requireSignedTags` is on."""
+    return bool(env.config["requireSignedTags"]) or row["name"] in env.config["signedTags"]
 
 
 def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any]) -> str:
@@ -387,7 +445,7 @@ def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any])
     commit = out.strip().splitlines()[-1] if out.strip() else ""
     if rc != 0 or not release.get("sha") or commit != release["sha"]:
         raise StepFailed("tag_mismatch", f"the tag {release['tag']} of {repo} is not the commit GitHub gives for it")
-    if env.config["requireSignedTags"]:
+    if needs_signed_tag(env, row):
         if env.sh(["git", "-C", path, "verify-tag", release["tag"]], 60)[0] != 0:
             raise StepFailed("tag_unsigned", f"the tag {release['tag']} of {repo} does not verify")
     if env.sh(["git", "-C", path, "checkout", "-q", "--detach", release["tag"]], 120)[0] != 0:
@@ -396,15 +454,18 @@ def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any])
 
 
 def backup(env: Env, row: dict[str, Any]) -> str:
+    """One copy per program under an exact name (`<name>.bak.tgz`: the rule of sudo needs no wildcard): the program, its unit and its drop-ins. A program that was cut in the
+    middle keeps the copy it already had, because what is installed now may be half of the new one."""
     name = row["name"]
-    out = env.backups / f"{name}.bak_{time.strftime('%Y%m%d_%H%M%S', time.gmtime(env.now()))}.tgz"
+    out = env.backups / f"{name}.bak.tgz"
+    if row.get("backup") == str(out) and row.get("resumedFrom") == "interrupted" and out.exists():
+        row["unitFilesBefore"] = row.get("unitFilesBefore") or unit_files(env, row["unit"])
+        env.say(row, f"{name}: the copy made before the cut is kept")
+        return str(out)
     unit = row["unit"]
-    members = [str(env.root / name).lstrip("/")]
-    for candidate in (env.unit_dir / unit, env.unit_dir / f"{unit}.d"):
-        if candidate.exists():
-            members.append(str(candidate).lstrip("/"))
-    rc, text = env.sh(sudo(["mkdir", "-p", str(env.backups)]), 60)
-    rc, text = env.sh(sudo(["tar", "czf", str(out), "-C", "/", *members]), 900)
+    members = [str(env.root / name).lstrip("/"), str(env.unit_dir / unit).lstrip("/"), str(env.unit_dir / f"{unit}.d").lstrip("/")]
+    env.sh(sudo(["mkdir", "-p", str(env.backups)]), 60)
+    rc, text = env.sh(sudo(["tar", "czf", str(out), "--ignore-failed-read", "-C", "/", *members]), 900)
     if rc != 0:
         raise StepFailed("backup_failed", text.strip()[-200:])
     row["backup"] = str(out)
@@ -505,14 +566,65 @@ def roll_back(env: Env, row: dict[str, Any], previous: str | None) -> None:
         env.sh(["git", "-C", str(env.workspace / (row["repo"] or "")), "checkout", "-q", previous], 120)
 
 
+def package_files(env: Env, row: dict[str, Any], release: dict[str, Any]) -> list[tuple[str, str]]:
+    version = release["tag"].lstrip("v")
+    package = f"hydra-{row['name']}-{version}.tgz"
+    base = f"https://github.com/{env.config['owner']}/{row['repo']}/releases/download/{release['tag']}"
+    return [(f"{base}/{package}{suffix}", f"{package}{suffix}") for suffix in ("", ".sha256", ".sig")]
+
+
+def install_package(env: Env, row: dict[str, Any], release: dict[str, Any]) -> None:
+    """A program that runs from its link: the signed package of its release, checked by the check of the family, installed by the deploy tool, which keeps the release in use and goes back by itself."""
+    python = str(env.config["python"])
+    work = env.state_path.parent / "packages"
+    work.mkdir(parents=True, exist_ok=True)
+    files = package_files(env, row, release)
+    step(env, row, "fetching", f"the signed package {files[0][1]}")
+    try:
+        for url, name in files:
+            (work / name).unlink(missing_ok=True)
+            env.download(url, work / name)
+    except (OSError, ValueError) as error:
+        raise StepFailed("download_failed", redact(str(error))[:200]) from error
+    package = work / files[0][1]
+    row["mode"] = "package"
+    rc, text = env.sh([python, str(env.tools / "package_component.py"), "verify", str(package)], 600)
+    match = re.search(r"^PACKAGE=OK (\S+) (\S+) ([0-9a-f]{64})\s*$", text, re.M)
+    if rc != 0 or not match or match.group(1) != row["name"] or match.group(2) != release["tag"].lstrip("v"):
+        for _url, name in files:
+            (work / name).unlink(missing_ok=True)
+        raise StepFailed("signature_invalid", (text.strip().splitlines() or ["the package was refused"])[-1][:200])
+    step(env, row, "installing", "the deploy tool keeps the release in use and goes back by itself")
+    rc, text = env.sh([python, str(env.tools / "deploy_release.py"), "--root", str(env.components), "install", str(package)], 3000, lambda line: (row.update(detail=redact(line)[:200]), env.beat()))
+    row["installerStatus"] = rc
+    if rc != 0:
+        marker = [ln for ln in text.splitlines() if ln.startswith("DEPLOY=FAIL")]
+        raise StepFailed("installer_failed", marker[-1] if marker else text.strip()[-200:])
+    try:
+        verify(env, row, release["tag"])
+    except StepFailed:
+        env.say(row, f"{row['name']}: the checks failed; going back to the release that was in use")
+        env.sh([python, str(env.tools / "deploy_release.py"), "--root", str(env.components), "rollback", row["name"]], 900)
+        raise
+
+
 def update_one(env: Env, row: dict[str, Any], releases: dict[str, Any]) -> bool:
     release = releases[row["repo"]]
+    if row.get("mode") == "package":
+        return update_one_by_package(env, row, release)
     row["state"], row["startedAt"], row["error"] = "running", iso(env.now()), ""
     previous: str | None = None
     try:
         step(env, row, "disk")
         if row["kind"] != "repo":
             check_disk(env, row)
+        if row["kind"] == "svc" and row.get("resumedFrom") == "interrupted" and installed_version(env, row["name"]) == release["tag"].lstrip("v"):
+            # The installer had finished when the run was cut (the usual case of the server, whose installer restarts the unit that runs this tool): only the checks are left.
+            env.say(row, f"{row['name']}: {release['tag']} is already installed; only the checks are left")
+            verify(env, row, release["tag"])
+            row["state"], row["step"], row["finishedAt"] = "done", "done", iso(env.now())
+            env.say(row, f"{row['name']}: {release['tag']} is in use")
+            return True
         step(env, row, "fetching", f"{row['installed']} -> {release['tag']}")
         previous = fetch_tag(env, row, row["repo"], release)
         if row["kind"] == "repo":
@@ -549,6 +661,27 @@ def update_one(env: Env, row: dict[str, Any], releases: dict[str, Any]) -> bool:
     return False
 
 
+def update_one_by_package(env: Env, row: dict[str, Any], release: dict[str, Any]) -> bool:
+    row["state"], row["startedAt"], row["error"] = "running", iso(env.now()), ""
+    try:
+        step(env, row, "disk")
+        check_disk(env, row)
+        install_package(env, row, release)
+        row["state"], row["step"], row["finishedAt"] = "done", "done", iso(env.now())
+        env.say(row, f"{row['name']}: {release['tag']} is in use")
+        return True
+    except StepFailed as failure:
+        row["error"], row["detail"] = failure.code, failure.detail[:200]
+        row["state"] = "blocked" if failure.code == "low_disk" else "rolled_back" if failure.code in ("installer_failed", "not_healthy", "journal_errors", "version_mismatch", "sdk_not_importable") else "failed"
+    except Exception as failure:
+        row["error"], row["detail"], row["state"] = "unexpected", redact(str(failure))[:200], "failed"
+    reason = row["detail"]
+    env.say(row, f"{row['name']}: FAILED ({row['error']}) {reason}")
+    row["detail"] = reason
+    row["finishedAt"] = iso(env.now())
+    return False
+
+
 def heartbeat_thread(env: Env, stop: threading.Event) -> threading.Thread:
     def loop() -> None:
         while not stop.wait(HEARTBEAT_SECONDS):
@@ -561,7 +694,7 @@ def heartbeat_thread(env: Env, stop: threading.Event) -> threading.Thread:
 def run_plan(env: Env, names: set[str] | None = None) -> int:
     """Applies the rows of the file marked `update` (the ones named, when some are), in order; stops at the first that fails."""
     state = env.state
-    rows = [r for r in state["services"] if r["action"] == "update" and r["state"] in ("waiting", "interrupted", "failed", "rolled_back", "blocked") and (not names or r["name"] in names)]
+    rows = [r for r in state["services"] if r["action"] == "update" and r["state"] in ("waiting", "interrupted", "failed", "rolled_back", "blocked", "skipped") and (not names or r["name"] in names)]
     if not rows:
         env.say(None, "nothing to update")
         state["mode"], state["state"] = "run", "done"
@@ -570,6 +703,7 @@ def run_plan(env: Env, names: set[str] | None = None) -> int:
     state.update(mode="run", state="running", pid=os.getpid(), startedAt=iso(env.now()), error="")
     for row in state["services"]:
         if row in rows:
+            row["resumedFrom"] = row["state"]
             row.update(state="waiting", error="", step="", detail="")
     releases = dict(state["releases"])
     stop = threading.Event()
