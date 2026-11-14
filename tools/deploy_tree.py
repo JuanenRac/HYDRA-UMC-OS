@@ -57,6 +57,10 @@ EXIT_REFUSED = dr.EXIT_REFUSED
 EXIT_ROLLED_BACK = dr.EXIT_ROLLED_BACK
 STATE_DIRS = ("data", "models", "workspace")
 DEFAULT_RESTART = "systemctl try-restart {unit}"
+DEFAULT_RELOAD = "systemctl daemon-reload"
+DEFAULT_UNIT_DIR = "/etc/systemd/system"
+UNITS_FOLDER = "units"
+PENDING_UNITS = "pending"
 TREE_DEFAULTS: dict[str, Any] = {"restartOnDeploy": True, "rollbackOnFailure": True}
 TREE_KEEP = 2
 
@@ -78,6 +82,7 @@ def load_settings(root: Path, warn: Callable[[str], None] = lambda message: prin
                 settings[key] = raw[key]
             else:
                 warn(f"{path}: {key} must be true or false; {str(default).lower()} is used")
+    settings["reloadCommand"] = raw["reloadCommand"] if isinstance(raw, dict) and isinstance(raw.get("reloadCommand"), str) else DEFAULT_RELOAD
     return settings
 
 
@@ -168,9 +173,61 @@ def restore(release: Path, target: Path, state_dirs: tuple[str, ...]) -> None:
         shutil.rmtree(aside, ignore_errors=True)
 
 
-def begin(root: Path, name: str, target: Path, *, state_dirs: tuple[str, ...] = STATE_DIRS) -> dict[str, Any]:
-    """Remember the program that is installed now, so that `settle` can put it back. Returns the state."""
+def snapshot_units(unit_dir: Path, units: list[str], destination: Path) -> None:
+    """Keep the unit files and the drop-in folders (`<unit>.d`) of `units` as they are now, and which of them do not exist, so that `restore_units` can put them back exactly."""
+    if destination.exists():
+        shutil.rmtree(destination)
+    destination.mkdir(parents=True)
+    entries: dict[str, str] = {}
+    for unit in units:
+        for relative in (unit, unit + ".d"):
+            source = unit_dir / relative
+            if source.is_dir() and not source.is_symlink():
+                shutil.copytree(source, destination / relative, symlinks=True)
+                entries[relative] = "dir"
+            elif source.is_file() or source.is_symlink():
+                shutil.copy2(source, destination / relative, follow_symlinks=False)
+                entries[relative] = "file"
+            else:
+                entries[relative] = "absent"
+    (destination / "manifest.json").write_text(json.dumps({"unitDir": str(unit_dir), "entries": entries}, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+
+
+def restore_units(snapshot: Path) -> list[str]:
+    """Put the unit files and drop-in folders of a snapshot back: what the snapshot has replaces what is there now, and what it says did not exist is removed. Returns the names that were put back or removed."""
+    try:
+        manifest = json.loads((snapshot / "manifest.json").read_text(encoding="utf-8"))
+        unit_dir = Path(manifest["unitDir"])
+        entries = manifest["entries"]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise DeployError(f"the kept units in {snapshot} cannot be read: {error}") from error
+    changed: list[str] = []
+    for relative, kind in sorted(entries.items()):
+        if "/" in relative or "\\" in relative or relative in ("", ".", ".."):
+            continue
+        current = unit_dir / relative
+        if current.is_dir() and not current.is_symlink():
+            shutil.rmtree(current)
+        elif current.exists() or current.is_symlink():
+            current.unlink()
+        if kind == "dir":
+            shutil.copytree(snapshot / relative, current, symlinks=True)
+        elif kind == "file":
+            shutil.copy2(snapshot / relative, current, follow_symlinks=False)
+        changed.append(relative)
+    return changed
+
+
+def begin(root: Path, name: str, target: Path, *, state_dirs: tuple[str, ...] = STATE_DIRS, units: list[str] | None = None, unit_dir: Path | None = None) -> dict[str, Any]:
+    """Remember the program that is installed now, so that `settle` can put it back. Returns the state.
+
+    With `units` the unit files and drop-in folders of those units (in `unit_dir`, /etc/systemd/system by default) are kept too: the installer changes them outside the target,
+    and a program that is put back with a unit that no longer fits it does not start."""
     component = dr.Component(root, name)
+    if units:
+        snapshot_units(unit_dir or Path(DEFAULT_UNIT_DIR), units, component.base / UNITS_FOLDER / PENDING_UNITS)
+    else:
+        shutil.rmtree(component.base / UNITS_FOLDER / PENDING_UNITS, ignore_errors=True)
     state = component.state()
     entries = payload(target, state_dirs)
     if not entries:
@@ -184,6 +241,27 @@ def begin(root: Path, name: str, target: Path, *, state_dirs: tuple[str, ...] = 
             state["pending"] = keep_copy(component, target, state_dirs, digest, tree_version(target))
     component.write_state(state)
     return state
+
+
+def promote_units(component: Any, release: str) -> None:
+    """The units kept by `begin` are what the PREVIOUS program needs: keep them as `before-<release>` of the release that was just installed, and drop the ones of releases no longer kept."""
+    folder = component.base / UNITS_FOLDER
+    pending = folder / PENDING_UNITS
+    if pending.is_dir():
+        destination = folder / f"before-{release}"
+        shutil.rmtree(destination, ignore_errors=True)
+        os.replace(pending, destination)
+    state = component.state()
+    wanted = {f"before-{entry['release']}" for entry in (state["current"], state["previous"]) if entry and isinstance(entry.get("release"), str)}
+    for old in folder.glob("before-*") if folder.is_dir() else []:
+        if old.name not in wanted:
+            shutil.rmtree(old, ignore_errors=True)
+
+
+def put_back_units(snapshot: Path, settings: dict[str, Any], values: dict[str, str]) -> None:
+    """Restore the kept unit files and drop-ins and make systemd read them again."""
+    restore_units(snapshot)
+    dr.run_command(settings.get("reloadCommand") or DEFAULT_RELOAD, values)
 
 
 def systemd_is_active(unit: str) -> bool:
@@ -253,15 +331,18 @@ def settle(root: Path, name: str, target: Path, *, unit: str | None = None, heal
     history = [*state["history"], {"event": "install", "version": version, "at": entry["installedAt"]}][-dr.HISTORY_LIMIT:]
     in_use = pending if pending else state["current"]
     component.write_state({"current": entry, "previous": in_use, "history": history, "pending": None})
+    pending_units = component.base / UNITS_FOLDER / PENDING_UNITS
     values = {"component": name, "version": version, "release": str(component.releases / entry["release"]), "root": str(root), "unit": unit or "", "target": str(target)}
     running = bool(unit) and is_active(str(unit))
     if not running or not settings["restartOnDeploy"]:
+        promote_units(component, entry["release"])
         dr.prune(root, name, int(settings["keep"]))
         return {**component.state(), "result": "installed" if not running else "installed-not-restarted"}
     restart = settings["restartCommand"] or DEFAULT_RESTART
     started = dr.run_command(restart, values)
     ok = started and healthy(settings, values, unit=unit, health_url=health_url, sleep=sleep, is_active=is_active, probe=probe)
     if ok:
+        promote_units(component, entry["release"])
         dr.prune(root, name, int(settings["keep"]))
         return {**component.state(), "result": "deployed"}
     reason = "restart" if not started else "health"
@@ -273,6 +354,8 @@ def settle(root: Path, name: str, target: Path, *, unit: str | None = None, heal
     if not old_path or not old_path.is_dir():
         raise DeployError(f"{name} {version} did not {'restart' if not started else 'pass the health check'} and the earlier release is not kept any more", EXIT_ROLLED_BACK)
     restore(old_path, target, state_dirs)
+    if pending_units.is_dir():
+        put_back_units(pending_units, settings, values)  # the unit files and drop-ins the installer changed go back with the program
     failed = [*state["history"], {"event": "install-failed", "version": version, "at": dr.now_text(), "reason": reason}]
     component.write_state({"current": in_use, "previous": state["previous"], "history": failed[-dr.HISTORY_LIMIT:], "pending": None})
     back = {**values, "version": str(in_use.get("version", "")), "release": str(old_path)}
@@ -292,6 +375,10 @@ def rollback(root: Path, name: str, *, unit: str | None = None, health_url: str 
         raise DeployError(f"refused: {name} has no earlier installed program to go back to")
     target = Path(previous["target"])
     restore(path, target, state_dirs)
+    current_entry = state["current"] if isinstance(state.get("current"), dict) else None
+    kept_units = component.base / UNITS_FOLDER / f"before-{current_entry['release']}" if current_entry and isinstance(current_entry.get("release"), str) else None
+    if kept_units is not None and kept_units.is_dir():
+        put_back_units(kept_units, settings, {"component": name, "version": str(previous.get("version", "")), "release": str(path), "root": str(root), "unit": unit or "", "target": str(target)})
     history = [*state["history"], {"event": "rollback", "version": previous.get("version"), "at": dr.now_text()}][-dr.HISTORY_LIMIT:]
     component.write_state({"current": previous, "previous": state["current"], "history": history, "pending": None})
     if unit and is_active(unit) and settings["restartOnDeploy"]:
@@ -319,6 +406,9 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_argument("--state-dirs", help="comma separated folders that hold state and are never touched (default: data,models,workspace)")
         if word != "rollback":
             sub.add_argument("--target", type=Path, required=True)
+        if word == "begin":
+            sub.add_argument("--unit", action="append", default=[], help="a unit whose file and drop-ins are kept with the program and put back with it (repeatable)")
+            sub.add_argument("--unit-dir", type=Path, default=None, help="where the unit files are (default /etc/systemd/system, or HYDRA_UMC_UNIT_DIR)")
         if word != "begin":
             sub.add_argument("--unit")
             sub.add_argument("--health-url")
@@ -330,7 +420,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             dirs = state_dirs_of(args.state_dirs)
             if args.command == "begin":
-                result = begin(args.root, args.component, args.target, state_dirs=dirs)
+                unit_dir = args.unit_dir or (Path(os.environ["HYDRA_UMC_UNIT_DIR"]) if os.environ.get("HYDRA_UMC_UNIT_DIR") else None)
+                result = begin(args.root, args.component, args.target, state_dirs=dirs, units=list(args.unit), unit_dir=unit_dir)
             elif args.command == "settle":
                 result = settle(args.root, args.component, args.target, unit=args.unit, health_url=args.health_url, state_dirs=dirs)
             else:

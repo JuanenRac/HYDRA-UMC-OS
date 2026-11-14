@@ -139,7 +139,16 @@ def generate(row: dict[str, Any], config: dict[str, Any]) -> str:
         lines.append('source "$HOOK"')
     else:
         lines.append('if [[ -f "$HOOK" ]]; then source "$HOOK"; fi')
-    for folder in ([] if short in config["no_copy_dirs"] else config["copy_dirs"]):
+    # A file the unit names (its configuration) must be in the source BEFORE anything is installed: a missing one stops the installer with status 2,
+    # and the folders that hold such files are copied next to src (config "extra_copy_dirs").
+    for required in config.get("required_files", {}).get(short, []):
+        lines.append(f'[[ -f "$SOURCE/{required}" ]] || {{ echo "{name} source is missing {required}: $SOURCE" >&2; exit 2; }}')
+    sdk_modules = config.get("needs_sdk", {}).get(short)
+    if sdk_modules:
+        # The code imports hydra_umc_sdk: the package is put in a folder every service can read and imported from there BEFORE the program is copied,
+        # so a missing SDK stops the installation with the earlier program in place (deploy_lib.sh: provide_sdk_python, verify_sdk_importable).
+        lines += ["provide_sdk_python", "verify_sdk_importable " + " ".join(sdk_modules)]
+    for folder in ([] if short in config["no_copy_dirs"] else [*config["copy_dirs"], *config.get("extra_copy_dirs", {}).get(short, [])]):
         lines += [
             f'if [[ -d "$SOURCE/{folder}" ]]; then',
             f'  rm -rf "$TARGET/{folder}"',
