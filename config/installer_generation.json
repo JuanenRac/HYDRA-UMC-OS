@@ -8,6 +8,9 @@
   "hook_dir": "build_hooks",
   "preflights": ["node-healing"],
   "no_health_announce": ["node-healing"],
+  "needs_sdk": {"semantic-planner": ["hydra_umc_sdk.mcu_errors"]},
+  "extra_copy_dirs": {"semantic-planner": ["configs"]},
+  "required_files": {"semantic-planner": ["configs/deploy-cm5.json"]},
   "health_open": [
     "anomaly-detector", "cognitive-node", "datalake", "detection-hef", "docs-qa", "production-reports", "safety-zones", "semantic-planner",
     "vision-node", "visual-servoing-api"

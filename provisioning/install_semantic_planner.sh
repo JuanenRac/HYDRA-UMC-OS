@@ -28,11 +28,20 @@ install -d -o root -g root -m 0755 "$TARGET"
 HOOK="$HERE/build_hooks/semantic-planner.sh"
 [[ -f "$HOOK" ]] || { echo "HYDRA-UMC-SEMANTIC-PLANNER needs its build hook build_hooks/semantic-planner.sh: $HOOK" >&2; exit 2; }
 source "$HOOK"
+[[ -f "$SOURCE/configs/deploy-cm5.json" ]] || { echo "HYDRA-UMC-SEMANTIC-PLANNER source is missing configs/deploy-cm5.json: $SOURCE" >&2; exit 2; }
+provide_sdk_python
+verify_sdk_importable hydra_umc_sdk.mcu_errors
 if [[ -d "$SOURCE/src" ]]; then
   rm -rf "$TARGET/src"
   cp -a "$SOURCE/src" "$TARGET/"
   chown -R root:root "$TARGET/src"
   chmod -R go-w "$TARGET/src"
+fi
+if [[ -d "$SOURCE/configs" ]]; then
+  rm -rf "$TARGET/configs"
+  cp -a "$SOURCE/configs" "$TARGET/"
+  chown -R root:root "$TARGET/configs"
+  chmod -R go-w "$TARGET/configs"
 fi
 install -m 0644 "$SOURCE/systemd/hydra-umc-semantic-planner.service" /etc/systemd/system/hydra-umc-semantic-planner.service
 install -d -m 0755 /etc/systemd/system/hydra-umc-semantic-planner.service.d

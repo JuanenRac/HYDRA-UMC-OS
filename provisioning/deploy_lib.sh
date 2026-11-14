@@ -14,7 +14,8 @@
 #
 # NAME is the service of the registry (HYDRA-UMC-SERVER...); the unit, the port and the health route come from provisioning/ports.yaml, the
 # component is the last part of TARGET. A unit that is not running is never started or restarted (the operator enables it after review), and
-# the folders data, models and workspace of TARGET are never touched.
+# the folders data, models and workspace of TARGET are never touched. The unit file of the service and its drop-ins (/etc/systemd/system/<unit> and <unit>.d,
+# HYDRA_UMC_UNIT_DIR names another folder) are kept by deploy_begin and put back, with a daemon-reload, when the new program does not hold and by `rollback`.
 #
 # Settings: /opt/hydra-umc/.releases/deploy.json (keep, healthTimeoutS, healthIntervalS, restartCommand, healthCommand, restartOnDeploy,
 # rollbackOnFailure; see tools/deploy_tree.py). HYDRA_UMC_DEPLOY=off skips both steps (the installer then behaves as it did before the
@@ -47,11 +48,17 @@ _deploy_contract_ok() {
 }
 
 deploy_begin() {
-  local name="$1" target="$2" component
+  local name="$1" target="$2" component unit="" args=()
   _deploy_contract_ok || exit 2
   _deploy_enabled || return 0
   component="$(basename "$target")"
-  python3 "$HYDRA_DEPLOY_TOOL" --root "$HYDRA_DEPLOY_ROOT" begin "$component" --target "$target" >/dev/null || {
+  # shellcheck source=service_registry.sh
+  source "$HYDRA_DEPLOY_LIB_DIR/service_registry.sh"
+  unit="$(service_field "$name" systemd_unit 2>/dev/null || true)"
+  [[ -n "$unit" ]] || unit="hydra-umc-$component.service"
+  # the unit file and its drop-ins are kept with the program: the installer changes them outside the target, and a rollback must put them back too
+  args=(--root "$HYDRA_DEPLOY_ROOT" begin "$component" --target "$target" --unit "$unit")
+  python3 "$HYDRA_DEPLOY_TOOL" "${args[@]}" >/dev/null || {
     echo "Deploy: the program installed now could not be kept, so there would be nothing to go back to: nothing was installed." >&2
     exit 1
   }
@@ -125,4 +132,50 @@ hydra_npm_in() {
   else
     (cd "$dir" && npm "$@")
   fi
+}
+
+# --- the Python SDK for the services whose code imports it ---------------------------------------------------------------------------------
+#
+# A service that runs from /opt/hydra-umc/<component>/src with PYTHONPATH set to that folder cannot import `hydra_umc_sdk`, which lives in the
+# HYDRA-UMC-SDK repository. `provide_sdk_python` copies the package to one folder that every service can read (default /opt/hydra-umc/sdk-python,
+# HYDRA_UMC_SDK_PYTHON_DIR names another) and the unit of the service lists that folder in its PYTHONPATH. `verify_sdk_importable MODULE...` then
+# imports each module from that folder alone, as the service user when it can, and ends the installer with status 2 when one cannot be imported,
+# BEFORE the program is copied, so a missing SDK stops the installation with the earlier program untouched instead of leaving a service that
+# starts and dies with ModuleNotFoundError. Both are called by the generated installers of the services named in "needs_sdk" of
+# config/installer_generation.json, after the build hook and before the copy; they need $ROOT (and $SVC_USER for the check).
+#
+# Settings: HYDRA_UMC_SDK_SOURCE (the folder of the package, default $ROOT/HYDRA-UMC-SDK/clients/python/src/hydra_umc_sdk) and
+# HYDRA_UMC_SDK_PYTHON_DIR (where it is put), HYDRA_UMC_PYTHON (the interpreter of the check, default python3; the tests use it).
+HYDRA_SDK_PYTHON_DIR="${HYDRA_UMC_SDK_PYTHON_DIR:-/opt/hydra-umc/sdk-python}"
+
+provide_sdk_python() {
+  local source="${HYDRA_UMC_SDK_SOURCE:-$ROOT/HYDRA-UMC-SDK/clients/python/src/hydra_umc_sdk}"
+  if [[ ! -f "$source/__init__.py" ]]; then
+    echo "The Python SDK is missing: $source/__init__.py does not exist. Put the HYDRA-UMC-SDK repository next to the others (or set HYDRA_UMC_SDK_SOURCE); nothing was installed." >&2
+    exit 2
+  fi
+  install -d -m 0755 "$HYDRA_SDK_PYTHON_DIR"
+  rm -rf "$HYDRA_SDK_PYTHON_DIR/hydra_umc_sdk"
+  cp -a "$source" "$HYDRA_SDK_PYTHON_DIR/hydra_umc_sdk"
+  find "$HYDRA_SDK_PYTHON_DIR/hydra_umc_sdk" -name __pycache__ -type d -prune -exec rm -rf {} +
+  if [[ $EUID -eq 0 ]]; then chown -R root:root "$HYDRA_SDK_PYTHON_DIR/hydra_umc_sdk"; fi
+  chmod -R go-w "$HYDRA_SDK_PYTHON_DIR/hydra_umc_sdk"
+  chmod -R a+rX "$HYDRA_SDK_PYTHON_DIR/hydra_umc_sdk"
+  echo "SDK: the Python SDK is in $HYDRA_SDK_PYTHON_DIR."
+}
+
+verify_sdk_importable() {
+  local module status=0
+  local runner=()
+  if [[ $EUID -eq 0 && -n "${SVC_USER:-}" ]] && id -u "$SVC_USER" >/dev/null 2>&1 && command -v runuser >/dev/null 2>&1; then
+    runner=(runuser -u "$SVC_USER" --)
+  fi
+  for module in "$@"; do
+    ${runner[@]+"${runner[@]}"} env "PYTHONPATH=$HYDRA_SDK_PYTHON_DIR" "${HYDRA_UMC_PYTHON:-python3}" -I -c "import sys; sys.path.insert(0, sys.argv[2]); __import__(sys.argv[1])" "$module" "$HYDRA_SDK_PYTHON_DIR" >/dev/null 2>&1 || status=$?
+    if [[ $status -ne 0 ]]; then
+      echo "SDK=FAIL the service user cannot import $module from $HYDRA_SDK_PYTHON_DIR: nothing was installed." >&2
+      exit 2
+    fi
+  done
+  echo "SDK=PASS $* can be imported from $HYDRA_SDK_PYTHON_DIR."
 }
