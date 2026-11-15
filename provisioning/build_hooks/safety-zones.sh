@@ -24,9 +24,8 @@ SZ_CONFIG_DIR="${HYDRA_UMC_SAFETY_ZONES_CONFIG_DIR:-/etc/hydra-umc-safety-zones}
 SZ_ZONES_FILE="$SZ_CONFIG_DIR/zones.json"
 SZ_LEGACY_FILE="${HYDRA_UMC_SAFETY_ZONES_LEGACY_FILE:-/etc/hydra-umc/safety-zones.zones.json}"
 SZ_PYTHON="${HYDRA_UMC_PYTHON:-python3}"
-# a folder that the service account can enter; mkdir (not mktemp, whose result differs between coreutils builds) refuses a name that already exists
-SZ_STAGE="${TMPDIR:-/tmp}/hydra-safety-zones-check.$$.$RANDOM"
-mkdir -m 0755 "$SZ_STAGE"
+# a folder that the service account can enter, made by the interpreter itself (tempfile refuses a name that exists and works the same on every system)
+SZ_STAGE="$("$SZ_PYTHON" -c 'import os, tempfile; d = tempfile.mkdtemp(prefix="hydra-safety-zones-"); os.chmod(d, 0o755); print(d)')"
 cp -a "$SOURCE/src" "$SZ_STAGE/src"
 chmod -R a+rX "$SZ_STAGE/src"
 
