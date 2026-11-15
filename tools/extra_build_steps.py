@@ -63,6 +63,7 @@ def run_agent_checks() -> None:
     run(sys.executable, "tools/verify_component_links.py", env=environment)
     run(sys.executable, "tools/verify_deploy_tree.py", env=environment)
     run(sys.executable, "tools/verify_sdk_provision.py", env=environment)
+    run(sys.executable, "tools/verify_safety_zones_install.py", env=environment)
     run(sys.executable, "tools/verify_install_plan.py", env=environment)
     run(sys.executable, "tools/verify_profiles.py", env=environment)
     run(sys.executable, "tools/verify_platform_profile.py", env=environment)

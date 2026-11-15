@@ -110,6 +110,7 @@ jobs:
           python tools/verify_component_links.py
           python tools/verify_deploy_tree.py
           python tools/verify_sdk_provision.py
+          python tools/verify_safety_zones_install.py
           python tools/verify_install_plan.py
           python tools/verify_platform_profile.py
           python tools/platform_profile.py --check
