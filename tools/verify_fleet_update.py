@@ -64,6 +64,7 @@ class Device:
                          "HYDRA-UMC-SERVER": "v0.9.0", "HYDRA-UMC-STUDIO": "v0.9.0"}
         self.calls: list[list[str]] = []
         self.fail_install: set[str] = set()
+        self.refuse_install: dict[str, str] = {}
         self.health_code = 200
         self.journal = ""
         self.sdk_ok = True
@@ -167,6 +168,8 @@ class Device:
             name = Path(argv[1]).name.removeprefix("install_").removesuffix(".sh").replace("_", "-")
             if on_line:
                 on_line("compiling")
+            if name in self.refuse_install:
+                return 2, self.refuse_install[name] + "\n"
             if name in self.fail_install:
                 return 3, "DEPLOY=FAIL %s did not pass the health check; the release in use is %s\n" % (name, self.versions[name])
             repo = {"datalake": "HYDRA-UMC-DATALAKE", "semantic-planner": "HYDRA-UMC-SEMANTIC-PLANNER", "server": "HYDRA-UMC-SERVER"}[name]
@@ -324,6 +327,16 @@ class FleetTests(unittest.TestCase):
         self.assertEqual(self.device.restored, datalake["backup"])
         self.assertEqual(json.loads((self.device.root / "datalake" / "hydra-umc.project.json").read_text())["version"], "0.1.0")
         self.assertFalse([c for c in self.device.calls if c[0] == "bash" and "semantic_planner" in c[1]])
+
+    def test_an_installer_that_refuses_before_it_copies_anything_leaves_the_earlier_program_and_says_why(self) -> None:
+        # the installer of the safety zones ends with status 2 when the account of the service cannot read its zones file, before it touches the program in use
+        self.device.refuse_install["datalake"] = "SAFETY_ZONES=REFUSED the account cannot read its zones file: nothing was installed and the program that runs now was not touched."
+        environment = self.planned()
+        self.assertEqual(self.go(environment), fu.EXIT_FAILED)
+        datalake = self.row(environment, "datalake")
+        self.assertEqual((datalake["state"], datalake["error"], datalake["installerStatus"]), ("rolled_back", "installer_failed", 2))
+        self.assertIn("SAFETY_ZONES=REFUSED", datalake["detail"])
+        self.assertEqual(json.loads((self.device.root / "datalake" / "hydra-umc.project.json").read_text())["version"], "0.1.0")
 
     def test_a_health_check_that_fails_puts_the_earlier_program_back(self) -> None:
         self.device.health_code = 503
