@@ -111,6 +111,8 @@ jobs:
           python tools/verify_deploy_tree.py
           python tools/verify_sdk_provision.py
           python tools/verify_install_plan.py
+          python tools/verify_platform_profile.py
+          python tools/platform_profile.py --check
           python tools/verify_updater_sudoers.py
           python tools/make_updater_sudoers.py --check
           python tools/verify_mqtt_tls.py

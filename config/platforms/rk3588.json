@@ -1,0 +1,26 @@
+{
+  "format": "hydra-platform/1",
+  "platform": "rk3588",
+  "label": "Generic RK3588 module (no board chosen)",
+  "arch": "arm64",
+  "generic": true,
+  "base_image": {
+    "kind": "generic-arm64-debian",
+    "variant": "minimal",
+    "release": "trixie",
+    "source": "a Debian arm64 root file system plus the vendor kernel, device tree and boot loader of the board, supplied by the person who builds",
+    "note": "no model is chosen: nothing here depends on a board"
+  },
+  "packages": [
+    "u-boot-tools",
+    "device-tree-compiler"
+  ],
+  "remove_packages": [],
+  "units": [],
+  "build_backends": [
+    "chroot",
+    "nspawn"
+  ],
+  "status": "generic profile: no module or carrier board has been chosen",
+  "evidence": "simulator"
+}

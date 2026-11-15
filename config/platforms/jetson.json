@@ -1,0 +1,30 @@
+{
+  "format": "hydra-platform/1",
+  "platform": "jetson",
+  "label": "NVIDIA Jetson module (Orin NX class)",
+  "arch": "arm64",
+  "generic": false,
+  "base_image": {
+    "kind": "nvidia-l4t-rootfs",
+    "variant": "jetpack",
+    "release": "ubuntu-22.04",
+    "source": "the root file system of the JetPack release the module runs; supplied by the person who builds",
+    "note": "assumed release: confirm it against the JetPack in use before building"
+  },
+  "packages": [
+    "nvidia-jetpack"
+  ],
+  "remove_packages": [],
+  "units": [
+    {
+      "name": "nvpmodel.service",
+      "enable": true
+    }
+  ],
+  "build_backends": [
+    "chroot",
+    "nspawn"
+  ],
+  "status": "prepared in simulation: the package and unit names are those of JetPack as far as known and are confirmed on a module",
+  "evidence": "simulator"
+}
