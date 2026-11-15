@@ -1,0 +1,15 @@
+# =============================================================================
+# HYDRA-UMC-OS - Fleet update helper trigger (starts hydra-umc-fleet.service when the server leaves a request)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+
+[Unit]
+Description=HYDRA-UMC fleet update helper: a request of the server is waiting
+
+[Path]
+PathExists=/opt/hydra-umc/server/data/fleet-update/request.json
+Unit=hydra-umc-fleet.service
+
+[Install]
+WantedBy=multi-user.target

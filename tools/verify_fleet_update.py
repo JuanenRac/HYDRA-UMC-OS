@@ -68,6 +68,7 @@ class Device:
         self.journal = ""
         self.sdk_ok = True
         self.verify_tag_ok = True
+        self.verify_args: list[str] = []
         self.bad_commit: set[str] = set()
         self.drop_in_on_install: set[str] = set()
         self.damage_unit_on_install: set[str] = set()
@@ -113,7 +114,10 @@ class Device:
             return 0, "DEPLOY=PASS\n"
         if argv[0] == "git":
             repo = Path(argv[2]).name
-            verb = argv[3]
+            at = 3
+            while argv[at] == "-c":      # options of git between the folder and the verb
+                at += 2
+            verb = argv[at]
             if verb == "describe":
                 return 0, {"HYDRA-UMC-OS": "v0.6.0", "HYDRA-UMC-SDK": "v0.6.0", "HYDRA-UMC-DATALAKE": "v0.1.0", "HYDRA-UMC-SEMANTIC-PLANNER": "v0.1.0", "HYDRA-UMC-SERVER": "v0.9.0", "HYDRA-UMC-STUDIO": "v0.9.0"}[repo] + "\n"
             if verb in ("rev-parse",) and argv[4] == "HEAD":
@@ -126,6 +130,7 @@ class Device:
             if verb == "status":
                 return 0, " M file.py\n" if repo in self.dirty else ""
             if verb == "verify-tag":
+                self.verify_args = list(argv[3:at])
                 return (0 if self.verify_tag_ok else 1), ""
             return 0, ""
         if argv[0] == "systemctl":
@@ -777,6 +782,149 @@ class FleetTests(unittest.TestCase):
             with self.assertRaises(OSError, msg=bad):
                 fu.default_download(bad, target)
         self.assertFalse(target.exists())
+
+    # ---- the way in for a server that cannot run the tool itself --------------------------------------------------------------------------------------
+    def ask(self, environment, body: Any, name: str = "request.json") -> tuple[int, dict | None]:
+        """Leaves a request the way the server does, runs the tool on it and reads the answer file."""
+        request = environment.state_path.with_name(name)
+        request.parent.mkdir(parents=True, exist_ok=True)
+        request.write_text(body if isinstance(body, str) else json.dumps(body), encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            code = fu.main(["request", "--state", str(environment.state_path), "--request", str(request)], environment)
+        self.assertFalse(request.exists(), "the request is taken away whatever it holds")
+        done = environment.state_path.with_name(environment.state_path.name + ".done")
+        return code, (json.loads(done.read_text(encoding="utf-8")) if done.exists() else None)
+
+    def test_a_request_to_look_makes_the_plan_and_is_answered_with_its_id(self) -> None:
+        environment = self.device.env()
+        code, answer = self.ask(environment, {"v": 1, "id": "ab12", "command": "plan", "names": []})
+        self.assertEqual((code, answer), (0, {"id": "ab12", "command": "plan", "exit": 0}))
+        self.assertEqual(json.loads(environment.state_path.read_text(encoding="utf-8"))["state"], "planned")
+        self.assertFalse([c for c in self.device.calls if c[0] in ("tar", "bash")])
+
+    def test_a_request_to_run_applies_only_the_programs_it_names_and_resume_takes_up_one(self) -> None:
+        environment = self.planned()
+        code, answer = self.ask(environment, {"v": 1, "id": "r1", "command": "run", "names": ["datalake"]})
+        self.assertEqual((code, answer), (0, {"id": "r1", "command": "run", "exit": 0}))
+        self.assertEqual(json.loads(environment.state_path.read_text(encoding="utf-8"))["state"], "done")
+        installed = [c[1] for c in self.device.calls if c[0] == "bash" and c[1].endswith(".sh")]
+        self.assertEqual([Path(i).name for i in installed], ["install_datalake.sh"])
+        self.device.fail_install.add("semantic-planner")
+        self.ask(environment, {"v": 1, "id": "r2", "command": "run", "names": ["semantic-planner"]})
+        self.device.fail_install.clear()
+        code, answer = self.ask(environment, {"v": 1, "id": "r3", "command": "resume", "names": ["semantic-planner"]})
+        self.assertEqual((code, answer), (0, {"id": "r3", "command": "resume", "exit": 0}))
+        self.assertEqual(len([c for c in self.device.calls if c[0] == "bash" and Path(c[1]).name == "install_semantic_planner.sh"]), 2)
+
+    def test_a_request_that_is_not_exactly_one_of_ours_changes_nothing(self) -> None:
+        environment = self.planned()
+        before = len(self.device.calls)
+        bad = [
+            "not json", json.dumps([1]), {"v": 2, "id": "a", "command": "plan"}, {"v": 1, "id": "A b", "command": "plan"}, {"v": 1, "id": "a", "command": "reboot"},
+            {"v": 1, "id": "a", "command": "run", "names": ["../etc"]}, {"v": 1, "id": "a", "command": "run", "names": "datalake"}, {"v": 1, "id": "a", "command": "run", "names": ["x"] * 61},
+            {"v": 1, "id": "a", "command": "resume", "names": ["datalake", "twin"]}, {"v": 1, "id": "a", "command": "resume", "names": []}, {"v": 1, "id": "a" * 41, "command": "plan"},
+            "{" + " " * 5000 + "}",
+        ]
+        for body in bad:
+            code, answer = self.ask(environment, body)
+            self.assertEqual(code, 64, body)
+            self.assertTrue(answer is None or answer["exit"] == 64, body)
+        self.assertEqual(len(self.device.calls), before, "no command was issued for a request that was refused")
+
+    def test_no_request_is_nothing_to_do_and_a_link_is_not_followed(self) -> None:
+        environment = self.device.env()
+        environment.state_path.parent.mkdir(parents=True, exist_ok=True)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(fu.main(["request", "--state", str(environment.state_path), "--request", str(environment.state_path.with_name("request.json"))], environment), 0)
+            self.assertEqual(fu.main(["request", "--state", str(environment.state_path)], environment), 64)
+        target = environment.state_path.with_name("elsewhere.json")
+        target.write_text(json.dumps({"v": 1, "id": "a", "command": "plan", "names": []}), encoding="utf-8")
+        link = environment.state_path.with_name("request.json")
+        try:
+            os.symlink(target, link)
+        except (OSError, NotImplementedError):
+            self.skipTest("this system does not make links")
+        if not hasattr(os, "O_NOFOLLOW"):
+            self.skipTest("this system cannot open a file without following a link")
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(fu.main(["request", "--state", str(environment.state_path), "--request", str(link)], environment), 0)
+        self.assertFalse(environment.state_path.exists(), "the request behind a link was not read")
+
+    def test_the_settings_of_a_request_never_come_from_the_folder_of_the_server(self) -> None:
+        environment = self.device.env()
+        folder_file = environment.state_path.with_name("fleet-update.json")
+        folder_file.parent.mkdir(parents=True, exist_ok=True)
+        folder_file.write_text(json.dumps({"requireSignedTags": False, "signedTags": [], "workspace": "/tmp/anywhere"}), encoding="utf-8")
+        asked: list[Any] = []
+        original = fu.load_config
+        fu.load_config = lambda path, *a, **k: (asked.append(path), original(path, *a, **k))[1]
+        try:
+            request = environment.state_path.with_name("request.json")
+            request.write_text("not json", encoding="utf-8")
+            with contextlib.redirect_stderr(io.StringIO()):
+                fu.handle_request(request, environment.state_path, None, None)
+            root_file = Path(self.tmp.name) / "root-owned.json"
+            request.write_text("not json", encoding="utf-8")
+            with contextlib.redirect_stderr(io.StringIO()):
+                fu.handle_request(request, environment.state_path, root_file, None)
+        finally:
+            fu.load_config = original
+        self.assertEqual(asked, [None, root_file])
+
+    def test_the_tag_is_checked_with_the_file_of_signers_of_the_device_whichever_account_runs_the_tool(self) -> None:
+        signers = Path(self.tmp.name) / "allowed_signers"
+        signers.write_text("hydra-release ssh-ed25519 AAAA\n", encoding="utf-8")
+        environment = self.planned(requireSignedTags=True, allowedSigners=str(signers))
+        self.assertEqual(self.go(environment, {"datalake"}), 0)
+        self.assertEqual(self.device.verify_args, ["-c", "gpg.format=ssh", "-c", f"gpg.ssh.allowedSignersFile={signers}"])
+        self.setUp()
+        environment = self.planned(requireSignedTags=True, allowedSigners=str(Path(self.tmp.name) / "missing"))
+        self.assertEqual(self.go(environment, {"datalake"}), 0)
+        self.assertEqual(self.device.verify_args, [], "without the file the git configuration of the account decides, as before")
+        self.assertEqual(fu.DEFAULTS["allowedSigners"], "/etc/hydra-umc/allowed_signers")
+
+    def test_the_units_of_the_helper_the_installer_and_the_rule_of_sudo_name_the_same_account_files_and_group(self) -> None:
+        root = HERE.parent
+        service = (root / "systemd" / "hydra-umc-fleet.service").read_text(encoding="utf-8")
+        trigger = (root / "systemd" / "hydra-umc-fleet.path").read_text(encoding="utf-8")
+        installer = (root / "provisioning" / "install_fleet_helper.sh").read_text(encoding="utf-8")
+
+        def get(text: str, key: str) -> str:
+            found = re.search(rf"^{key}=(.*)$", text, re.M)
+            return found.group(1).strip() if found else ""
+
+        exec_start = get(service, "ExecStart")
+        option = lambda name: re.search(rf"--{name} (\S+)", exec_start).group(1)      # noqa: E731
+        request, state, config = option("request"), option("state"), option("config")
+        self.assertEqual(get(trigger, "PathExists"), request)
+        self.assertEqual(get(service, "ConditionPathExists"), request)
+        self.assertEqual(get(trigger, "Unit"), "hydra-umc-fleet.service")
+        self.assertEqual(os.path.dirname(request), os.path.dirname(state))
+        self.assertEqual(os.path.dirname(state), "/opt/hydra-umc/server/data/fleet-update")
+        self.assertTrue(config.startswith("/etc/hydra-umc/"), "the settings of a request belong to root, not to the folder of the server")
+        self.assertEqual(get(service, "Group"), "hydra-umc-server")
+        self.assertEqual(get(service, "UMask"), "0007")
+        self.assertNotIn("NoNewPrivileges=true", service)      # the tool calls sudo
+        user = get(service, "User")
+        self.assertIn(f"HELPER_USER={user}", installer)
+        self.assertIn(f"/home/{user}/hydra-umc/HYDRA-UMC-OS/tools/fleet_update.py", exec_start)
+        self.assertIn("install -d -o \"$SERVER_USER\" -g \"$SERVER_USER\" -m 2770 \"$DATA/fleet-update\"", installer)
+        self.assertIn("DATA=/opt/hydra-umc/server/data", installer)
+        self.assertIn("/etc/hydra-umc/allowed_signers", installer)
+        self.assertIn("visudo -cf", installer)
+        # the rule of sudo written for that account defaults to the checkouts of its home, the same as the unit
+        out = io.StringIO()
+        plan = Path(self.tmp.name) / "plan.json"
+        plan.write_text(json.dumps({"installers": INSTALLERS}), encoding="utf-8")
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(ms.main(["--user", user, "--install-plan", str(plan)]), 0)
+        self.assertIn(f"/usr/bin/bash /home/{user}/hydra-umc/HYDRA-UMC-OS/provisioning/install_datalake.sh --apply", out.getvalue())
+        # and, when the checkout of the server is next to this one, its unit has the account, the group and the folder the helper expects
+        sibling = root.parent / "HYDRA-UMC-SERVER" / "systemd" / "hydra-umc-server.service"
+        if sibling.is_file():
+            unit = sibling.read_text(encoding="utf-8")
+            self.assertEqual(get(unit, "Group"), get(service, "Group"))
+            self.assertEqual(get(unit, "ReadWritePaths"), os.path.dirname(os.path.dirname(state)))
 
 
 if __name__ == "__main__":
