@@ -4,7 +4,7 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-"""Write the rule of sudo that lets the account of the server run exactly the commands of tools/fleet_update.py, and nothing else.
+"""Write the rule of sudo that lets the account that runs the tool (the one of `systemd/hydra-umc-fleet.service`, not the isolated account of the server) run exactly the commands of tools/fleet_update.py, and nothing else.
 
     python tools/make_fleet_sudoers.py --user hydra-umc --install-plan provisioning/install_plan.json > hydra-umc-fleet
     sudo visudo -cf hydra-umc-fleet && sudo install -m 0440 -o root -g root hydra-umc-fleet /etc/sudoers.d/hydra-umc-fleet
@@ -79,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--user", required=True)
     parser.add_argument("--install-plan", type=Path, required=True)
-    parser.add_argument("--workspace", default="/home/hydra-umc/hydra-umc")
+    parser.add_argument("--workspace", help="the folder of the checkouts of the account that runs the tool (default /home/<user>/hydra-umc; an account without that home must name it)")
     parser.add_argument("--root", default="/opt/hydra-umc")
     parser.add_argument("--backups", default="/opt/hydra-umc-backups")
     parser.add_argument("--unit-dir", default="/etc/systemd/system")
@@ -88,7 +88,8 @@ def main(argv: list[str] | None = None) -> int:
         print("the account name is not valid", file=sys.stderr)
         return 64
     installers = json.loads(args.install_plan.read_text(encoding="utf-8"))["installers"]
-    sys.stdout.write(render(args.user, installers, args.workspace, args.root, args.backups, args.unit_dir))
+    workspace = args.workspace or f"/home/{args.user}/hydra-umc"
+    sys.stdout.write(render(args.user, installers, workspace, args.root, args.backups, args.unit_dir))
     return 0
 
 

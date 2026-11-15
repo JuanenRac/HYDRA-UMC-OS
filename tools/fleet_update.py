@@ -27,7 +27,15 @@ default) it is updated with the signed package of its release (`hydra-<name>-<ve
 `deploy_release.py install` keeps the release in use as `previous`, switches, restarts and goes back by itself); with it off, or when its release carries no package, it is left alone and said so.
 
 Settings, all optional, in `<state folder>/fleet-update.json` or `--config`: `signedTags` (the names of the programs whose release tag must verify with `git verify-tag`: the server and the critical services; the rest are trusted by "the tag is the commit GitHub gives" over TLS), `requireSignedTags` (false; true asks it of every program), `minFreeMb` (800), `minFreeMbServer` (2500), `workspace` (~/hydra-umc),
-`root` (/opt/hydra-umc), `backups` (/opt/hydra-umc-backups), `owner` (JuanenRac). Standard library only.
+`root` (/opt/hydra-umc), `backups` (/opt/hydra-umc-backups), `owner` (JuanenRac), `allowedSigners` (/etc/hydra-umc/allowed_signers: the public keys that `git verify-tag` trusts;
+when the file exists it is passed to git for the check, so the result does not depend on the git configuration of the account that runs the tool). Standard library only.
+
+`request` is the way in for a server that cannot run the tool itself (the unit of HYDRA-UMC-SERVER has no privilege, no sudo and no view of /home): the server leaves one small
+file (`{"v":1,"id":..,"command":"plan"|"run"|"resume","names":[..]}`) in its data folder, a path unit of the device (`systemd/hydra-umc-fleet.path`) starts
+`systemd/hydra-umc-fleet.service` under the account that owns the checkout and the rule of sudo, and that unit runs `fleet_update.py request --state S --request R --config C`.
+The request is read without following a link, is taken away at once, is cut down to those fields (a name must match the pattern of a program, `run` and `resume` are
+applied as with `--yes` because the server asks for them only after its own confirmation, `resume` names exactly one program), and the answer `{"id","command","exit"}` is written to `<state>.done`. The settings of a request come from
+`--config` (a file that belongs to root) and never from the folder of the server, because a request must not be able to relax the signature check.
 """
 from __future__ import annotations
 
@@ -56,7 +64,7 @@ EXIT_FAILED = 2
 EXIT_BLOCKED = 3
 DEFAULTS: dict[str, Any] = {
     "signedTags": ["server", "studio", "orchestrator", "safety-zones", "job-dispatcher"], "requireSignedTags": False, "minFreeMb": 800, "minFreeMbServer": 2500, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
-    "backups": "/opt/hydra-umc-backups", "owner": OWNER, "usePackages": False, "components": "/opt/hydra-umc/.components", "python": "python3",
+    "backups": "/opt/hydra-umc-backups", "owner": OWNER, "usePackages": False, "allowedSigners": "/etc/hydra-umc/allowed_signers", "components": "/opt/hydra-umc/.components", "python": "python3",
 }
 ORDER = ["datalake", "twin", "swarm-sync", "telemetry-collector", "anomaly-detector", "detection-hef", "vision-node", "vision-streamer",
          "visual-servoing-api", "vla-engine", "semantic-planner", "safety-zones", "cognitive-node", "docs-qa", "hil-bridge", "production-reports",
@@ -436,6 +444,14 @@ def needs_signed_tag(env: Env, row: dict[str, Any]) -> bool:
     return bool(env.config["requireSignedTags"]) or row["name"] in env.config["signedTags"]
 
 
+def signer_options(env: Env) -> list[str]:
+    """The public keys the check of a tag trusts: the file of the device when it is there (the same for whichever account runs the tool), else the git configuration of that account."""
+    signers = str(env.config.get("allowedSigners") or "")
+    if signers and os.path.isfile(signers):
+        return ["-c", "gpg.format=ssh", "-c", f"gpg.ssh.allowedSignersFile={signers}"]
+    return []
+
+
 def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any]) -> str:
     path = str(env.workspace / repo)
     previous = env.sh(["git", "-C", path, "symbolic-ref", "-q", "--short", "HEAD"], 30)[1].strip() or env.sh(["git", "-C", path, "rev-parse", "HEAD"], 30)[1].strip()
@@ -446,7 +462,7 @@ def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any])
     if rc != 0 or not release.get("sha") or commit != release["sha"]:
         raise StepFailed("tag_mismatch", f"the tag {release['tag']} of {repo} is not the commit GitHub gives for it")
     if needs_signed_tag(env, row):
-        if env.sh(["git", "-C", path, "verify-tag", release["tag"]], 60)[0] != 0:
+        if env.sh(["git", "-C", path, *signer_options(env), "verify-tag", release["tag"]], 60)[0] != 0:
             raise StepFailed("tag_unsigned", f"the tag {release['tag']} of {repo} does not verify")
     if env.sh(["git", "-C", path, "checkout", "-q", "--detach", release["tag"]], 120)[0] != 0:
         raise StepFailed("checkout_failed", f"git checkout in {repo}")
@@ -770,15 +786,97 @@ def load_state(env: Env) -> dict[str, Any]:
     return state
 
 
+REQUEST_MAX_BYTES = 4096
+REQUEST_ID = re.compile(r"[a-z0-9]{1,40}")
+REQUEST_NAME = re.compile(r"[a-z][a-z0-9-]{0,40}")
+REQUEST_COMMANDS = ("plan", "run", "resume")
+
+
+def read_request(path: Path) -> tuple[dict[str, Any] | None, str]:
+    """The request left by the server, cut down to its fields, and why it is refused when it is. The file is opened without following a link, must be a plain small file, and is taken away."""
+    try:
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError:
+        return None, "missing"
+    try:
+        import stat as stat_module
+
+        if not stat_module.S_ISREG(os.fstat(descriptor).st_mode):
+            return None, "not a plain file"
+        raw = os.read(descriptor, REQUEST_MAX_BYTES + 1)
+    finally:
+        os.close(descriptor)
+        try:
+            path.unlink()
+        except OSError:
+            pass
+    if len(raw) > REQUEST_MAX_BYTES:
+        return None, "too long"
+    try:
+        body = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return None, "not JSON"
+    if not isinstance(body, dict) or body.get("v") != 1:
+        return None, "not a request of this tool"
+    ident, command, names = body.get("id"), body.get("command"), body.get("names", [])
+    if not isinstance(ident, str) or not REQUEST_ID.fullmatch(ident):
+        return None, "bad id"
+    if command not in REQUEST_COMMANDS:
+        return {"id": ident}, "bad command"
+    if not isinstance(names, list) or len(names) > 60 or not all(isinstance(n, str) and REQUEST_NAME.fullmatch(n) for n in names):
+        return {"id": ident}, "bad names"
+    if command == "resume" and len(names) != 1:
+        return {"id": ident}, "resume names one program"
+    return {"id": ident, "command": command, "names": list(dict.fromkeys(names))}, ""
+
+
+def answer_request(env: Env, ident: str, command: str, code: int) -> None:
+    """The answer the server waits for: written whole (a reader sees all of it or none of it), next to the progress file."""
+    target = env.state_path.with_name(env.state_path.name + ".done")
+    temporary = target.with_name(f"{target.name}.{os.getpid()}.tmp")
+    temporary.write_text(json.dumps({"id": ident, "command": command, "exit": code}), encoding="utf-8")
+    os.replace(temporary, target)
+
+
+def handle_request(request: Path, state: Path, config: Path | None, env: Env | None) -> int:
+    """Runs what a request asks (`plan`, `run --yes` or `resume --yes`) through the same code as the command line, then leaves the answer. No request: nothing to do."""
+    if env is None:
+        env = Env(state, load_config(config))      # never the file beside the progress file: the folder of the server must not be able to change the settings
+    body, why = read_request(request)
+    if body is None and why == "missing":
+        return 0
+    if why or body is None or "command" not in body:
+        print(f"FLEET=REFUSED the request is {why}", file=sys.stderr)
+        if body and body.get("id"):
+            answer_request(env, body["id"], "", 64)
+        return 64
+    argv = [body["command"], "--state", str(state)]
+    if config is not None:
+        argv += ["--config", str(config)]
+    if body["names"] and body["command"] != "plan":
+        argv += ["--only", ",".join(body["names"])]
+    if body["command"] != "plan":
+        argv.append("--yes")
+    code = main(argv, env)
+    answer_request(env, body["id"], body["command"], code)
+    return code
+
+
 def main(argv: list[str] | None = None, env: Env | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("command", choices=["plan", "run", "resume", "status"])
+    parser.add_argument("command", choices=["plan", "run", "resume", "status", "request"])
     parser.add_argument("--state", type=Path, required=True)
+    parser.add_argument("--request", type=Path, help="request: the file the server leaves")
     parser.add_argument("--config", type=Path)
     parser.add_argument("--only", help="names separated by commas")
     parser.add_argument("--include-inactive", action="store_true")
     parser.add_argument("--yes", action="store_true", help="really apply (without it run and resume only say what they would do)")
     args = parser.parse_args(argv)
+    if args.command == "request":
+        if args.request is None:
+            print("FLEET=FAIL request needs --request <file>", file=sys.stderr)
+            return 64
+        return handle_request(args.request, args.state, args.config, env)
     names = {n.strip() for n in (args.only or "").split(",") if n.strip()} or None
     if env is None:
         env = Env(args.state, load_config(args.config or args.state.with_name("fleet-update.json")))

@@ -1,0 +1,25 @@
+# =============================================================================
+# HYDRA-UMC-OS - Fleet update helper (runs tools/fleet_update.py for a request the server left)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+#
+# The unit of HYDRA-UMC-SERVER is isolated (its own account, NoNewPrivileges, no capabilities, no view of /home), so it cannot run the update tool, reach the checkouts or call sudo.
+# It leaves one request file in its data folder; hydra-umc-fleet.path starts this unit; this one runs as the account that owns the checkouts and the rule of sudo
+# (provisioning/install_fleet_helper.sh writes both) and answers in <state>.done. The group is the one of the server so that the files of the folder are shared with it and with no one else.
+# NoNewPrivileges is NOT set on purpose: the tool calls `sudo -n` for the installers, and the rule of sudo names every command.
+# The settings come from /etc/hydra-umc/fleet-update.json (root-owned, optional), never from the folder of the server.
+
+[Unit]
+Description=HYDRA-UMC fleet update helper (acts on a request left by the server)
+Documentation=https://github.com/JuanenRac/HYDRA-UMC-OS
+ConditionPathExists=/opt/hydra-umc/server/data/fleet-update/request.json
+
+[Service]
+Type=oneshot
+User=hydra-umc
+Group=hydra-umc-server
+UMask=0007
+ExecStart=/usr/bin/python3 /home/hydra-umc/hydra-umc/HYDRA-UMC-OS/tools/fleet_update.py request --state /opt/hydra-umc/server/data/fleet-update/state.json --request /opt/hydra-umc/server/data/fleet-update/request.json --config /etc/hydra-umc/fleet-update.json
+TimeoutStartSec=infinity
+Nice=10

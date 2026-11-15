@@ -143,6 +143,23 @@
       "user_dirs": []
     },
     {
+      "begins": null,
+      "clones": false,
+      "contract": null,
+      "deploy_exempt": null,
+      "finish_after_reload": false,
+      "finishes": null,
+      "installs_manifest": false,
+      "script": "install_fleet_helper.sh",
+      "source": null,
+      "target": null,
+      "units": [
+        "hydra-umc-fleet.service"
+      ],
+      "user": null,
+      "user_dirs": []
+    },
+    {
       "begins": "HYDRA-UMC-HIL-BRIDGE",
       "clones": false,
       "contract": 1,
