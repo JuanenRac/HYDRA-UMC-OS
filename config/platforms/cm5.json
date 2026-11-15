@@ -1,0 +1,24 @@
+{
+  "format": "hydra-platform/1",
+  "platform": "cm5",
+  "label": "Raspberry Pi Compute Module 5",
+  "arch": "arm64",
+  "generic": false,
+  "base_image": {
+    "kind": "raspberry-pi-os",
+    "variant": "lite",
+    "release": "trixie",
+    "source": "the official Raspberry Pi OS Lite image",
+    "note": "what the images of this project are built on today"
+  },
+  "packages": [],
+  "remove_packages": [],
+  "units": [],
+  "build_backends": [
+    "chroot",
+    "nspawn",
+    "pigen"
+  ],
+  "status": "in use: the platform of the pilot bench",
+  "evidence": "bench"
+}
