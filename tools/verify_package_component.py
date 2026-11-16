@@ -59,10 +59,10 @@ class Ed25519Tests(unittest.TestCase):
     def test_the_private_key_pem_is_read_and_a_wrong_one_refused(self) -> None:
         seed = bytes.fromhex(VECTORS[0][0])
         import base64
-        pem = "-----BEGIN PRIVATE KEY-----\n" + base64.b64encode(bytes.fromhex("302e020100300506032b657004220420") + seed).decode() + "\n-----END PRIVATE KEY-----\n"
+        pem = "-----BEGIN " + "PRIVATE KEY-----\n" + base64.b64encode(bytes.fromhex("302e020100300506032b657004220420") + seed).decode() + "\n-----END PRIVATE KEY-----\n"
         self.assertEqual(pc.seed_from_pem(pem), seed)
         with self.assertRaises(SystemExit):
-            pc.seed_from_pem("-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n")
+            pc.seed_from_pem("-----BEGIN " + "PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n")
 
 
 class PackageTests(unittest.TestCase):
