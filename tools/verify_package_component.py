@@ -118,6 +118,17 @@ class PackageTests(unittest.TestCase):
         self.assertEqual(self.package.name, "hydra-server-0.8.1.0.tgz")
         self.assertEqual(self.digest, hashlib.sha256(self.package.read_bytes()).hexdigest())
 
+    def test_the_archive_is_opened_from_the_bytes_that_were_verified(self) -> None:
+        component, _version, digest, data = pc.verify_package_bytes(self.package, self.public)
+        self.assertEqual(component, "server")
+        self.assertEqual(data, self.package.read_bytes())
+        self.assertEqual(digest, hashlib.sha256(data).hexdigest())
+        # a file that is swapped after the check does not count when the members are read from the verified bytes
+        forged = self.rebuild_with([("../evil", b"x", None)])
+        with self.assertRaises(pc.PackageRefused):
+            pc.check_members(forged, "server")
+        pc.check_members(forged, "server", data)
+
     def test_the_same_files_always_give_the_same_bytes(self) -> None:
         import os
         import time

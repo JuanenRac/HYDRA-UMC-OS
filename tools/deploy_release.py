@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import io
 import json
 import os
 import re
@@ -210,9 +211,10 @@ def wait_healthy(template: str, values: dict[str, str], timeout_s: float, interv
         sleep(interval_s)
 
 
-def extract(package: Path, destination: Path) -> None:
-    """The members were checked by verify_package (regular files below the layout); extract them with the data filter where the Python has it."""
-    with tarfile.open(package, "r:gz") as tar:
+def extract(package: Path, destination: Path, data: bytes | None = None) -> None:
+    """The members were checked by verify_package (regular files below the layout); extract them with the data filter where the Python has it.
+    With `data` (the bytes that were verified) the archive is opened from them and not from the file, which may have changed since."""
+    with tarfile.open(package, "r:gz") if data is None else tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
         if hasattr(tarfile, "data_filter"):
             tar.extractall(destination, filter="data")
         else:  # pragma: no cover - Python older than 3.12 without the backport
@@ -248,7 +250,7 @@ def install(package: Path, root: Path, *, trusted_key: str | None = None, allow_
             sleep: Callable[[float], None] = time.sleep) -> dict[str, Any]:
     settings = settings if settings is not None else load_settings(root)
     try:
-        name, version, digest = package_component.verify_package(package, trusted_key)
+        name, version, digest, verified = package_component.verify_package_bytes(package, trusted_key)
     except package_component.PackageRefused as error:
         raise DeployError(f"refused: {error}") from error
     component = Component(root, name)
@@ -261,7 +263,7 @@ def install(package: Path, root: Path, *, trusted_key: str | None = None, allow_
     release_name = next_release_name(component, version)
     staging = Path(tempfile.mkdtemp(prefix=".incoming-", dir=component.releases))
     try:
-        extract(package, staging)
+        extract(package, staging, verified)
         final = component.releases / release_name
         os.replace(staging, final)
         link_state(component, final, settings["stateDirs"])

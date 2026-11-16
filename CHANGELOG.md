@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **A package is installed from the bytes that were verified:** `verify_package_bytes` of `tools/package_component.py` hands back the bytes whose hash and signature were checked, and `deploy_release.py` checks the members and extracts the archive from those bytes instead of opening the file again, so a package swapped in the downloads folder between the check and the extraction is not installed. `verify_package` and `check_members` keep their calls. A test shows that the members are read from the verified bytes.
+
 - **A folder in a signed package is held to the same path rule as a file, and a restore that fails is not reported as put back:** `check_members` of `tools/package_component.py` skipped the path check for folder entries, so a folder named `../../x` passed the review (only the extraction filter of the Python stopped it); and `roll_back` of `tools/fleet_update.py` now reads the status of the restore (`tar`) and of the restart of the unit: when either fails the state stays `failed`, with the line that says the rollback failed and the copy to restore by hand, instead of `rolled_back` over a half-restored tree.
 
 - **The rule that lets the server account control services no longer covers the firewall and the fleet update units:** stopping the firewall unit deletes its table and leaves the broker reachable from any network, so `hydra-umc-firewall*` and `hydra-umc-fleet*` are now refused with the agent and the access-point units. `tools/verify_polkit_rules.py` lists the three new refusals.
