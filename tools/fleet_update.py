@@ -609,10 +609,15 @@ def roll_back(env: Env, row: dict[str, Any], previous: str | None) -> None:
     env.say(row, f"{name}: putting the earlier program back")
     if row.get("backup"):
         env.sh(sudo(["rm", "-rf", str(env.unit_dir / f"{unit}.d"), f"{env.root}/{name}.tmp"]), 120)
-        env.sh(sudo(["tar", "xzf", row["backup"], "-C", "/"]), 900)
+        # A step that fails is not "put back": the state stays failed and the line says by hand (a half-extracted copy is a mixed tree).
+        code, text = env.sh(sudo(["tar", "xzf", row["backup"], "-C", "/"]), 900)
+        if code != 0:
+            raise RuntimeError(f"the copy could not be restored (tar status {code}): {text.strip()[-100:]}")
         env.sh(sudo(["systemctl", "daemon-reload"]), 60)
         if row.get("active"):
-            env.sh(sudo(["systemctl", "restart", unit]), 120)
+            code, text = env.sh(sudo(["systemctl", "restart", unit]), 120)
+            if code != 0:
+                raise RuntimeError(f"the unit did not start after the restore (status {code})")
         after = unit_files(env, unit)
         before = row.get("unitFilesBefore") or {}
         row["unitRestored"] = after == before

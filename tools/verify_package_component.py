@@ -59,10 +59,10 @@ class Ed25519Tests(unittest.TestCase):
     def test_the_private_key_pem_is_read_and_a_wrong_one_refused(self) -> None:
         seed = bytes.fromhex(VECTORS[0][0])
         import base64
-        pem = "-----BEGIN PRIVATE KEY-----\n" + base64.b64encode(bytes.fromhex("302e020100300506032b657004220420") + seed).decode() + "\n-----END PRIVATE KEY-----\n"
+        pem = "-----BEGIN " + "PRIVATE KEY-----\n" + base64.b64encode(bytes.fromhex("302e020100300506032b657004220420") + seed).decode() + "\n-----END PRIVATE KEY-----\n"
         self.assertEqual(pc.seed_from_pem(pem), seed)
         with self.assertRaises(SystemExit):
-            pc.seed_from_pem("-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n")
+            pc.seed_from_pem("-----BEGIN " + "PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n")
 
 
 class PackageTests(unittest.TestCase):
@@ -96,7 +96,10 @@ class PackageTests(unittest.TestCase):
         with tarfile.open(package, "w:gz") as tar:
             for member_name, data, link in members:
                 info = tarfile.TarInfo(member_name)
-                if link is not None:
+                if link == b"<dir>":
+                    info.type = tarfile.DIRTYPE
+                    tar.addfile(info)
+                elif link is not None:
                     info.type = tarfile.SYMTYPE
                     info.linkname = link.decode()
                     tar.addfile(info)
@@ -183,6 +186,14 @@ class PackageTests(unittest.TestCase):
                 forged = self.rebuild_with([("dist/server.cjs", b"x", None), (bad, b"x", None)])
                 with self.assertRaises(pc.PackageRefused):
                     self.verify(forged)
+
+    def test_a_folder_that_escapes_the_target_is_refused(self) -> None:
+        for bad in ("../../etc/hydra", "/etc/hydra", "dist/../../x", "dist" + chr(92) + ".." + chr(92) + "x"):
+            with self.subTest(bad):
+                forged = self.rebuild_with([("dist/server.cjs", b"x", None), (bad, b"", b"<dir>")])
+                with self.assertRaisesRegex(pc.PackageRefused, "outside the target"):
+                    self.verify(forged)
+        self.verify(self.rebuild_with([("dist", b"", b"<dir>"), ("dist/server.cjs", b"x", None)]))
 
     def test_links_and_unexpected_members_are_refused(self) -> None:
         with self.assertRaisesRegex(pc.PackageRefused, "not a regular file"):

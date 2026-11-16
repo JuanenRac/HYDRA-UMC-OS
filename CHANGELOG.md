@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **A folder in a signed package is held to the same path rule as a file, and a restore that fails is not reported as put back:** `check_members` of `tools/package_component.py` skipped the path check for folder entries, so a folder named `../../x` passed the review (only the extraction filter of the Python stopped it); and `roll_back` of `tools/fleet_update.py` now reads the status of the restore (`tar`) and of the restart of the unit: when either fails the state stays `failed`, with the line that says the rollback failed and the copy to restore by hand, instead of `rolled_back` over a half-restored tree.
+
 - **The rule that lets the server account control services no longer covers the firewall and the fleet update units:** stopping the firewall unit deletes its table and leaves the broker reachable from any network, so `hydra-umc-firewall*` and `hydra-umc-fleet*` are now refused with the agent and the access-point units. `tools/verify_polkit_rules.py` lists the three new refusals.
 
 - **`cm5_recovery.sh backup` no longer changes the mode of a folder that was already there:** asking for the archive in `/tmp` (as the install check does) turned `/tmp` from `1777` into `0700`. Only a folder the script makes is private now, and the archive is written under `umask 077`. `tools/verify_recovery_scope.py` checks the mode of an existing shared folder.

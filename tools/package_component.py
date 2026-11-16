@@ -307,12 +307,13 @@ def check_members(package: Path, component: str) -> None:
         with tarfile.open(package, "r:gz") as tar:
             for member in tar.getmembers():
                 name = member.name
-                if member.isdir():
-                    continue
-                if not member.isreg():
+                if not member.isdir() and not member.isreg():
                     raise PackageRefused(f"{name} is not a regular file")
+                # A folder is held to the same path rule as a file: its path decides where it is created.
                 if name.startswith(("/", "\\")) or ".." in Path(name).parts or "\\" in name or re.match(r"^[A-Za-z]:", name):
                     raise PackageRefused(f"{name} would be written outside the target")
+                if member.isdir():
+                    continue
                 if not any(name == target or name.startswith(target + "/") for target in allowed):
                     raise PackageRefused(f"{name} is not part of a {component} package")
     except (tarfile.TarError, OSError, EOFError) as error:
