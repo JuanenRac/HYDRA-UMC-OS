@@ -734,6 +734,31 @@ class FleetTests(unittest.TestCase):
         self.assertIn('SERVICE_TMP="$(mktemp)"', installer)
         self.assertIn('rm -f "$RULE" "$SERVICE_TMP"', installer)
 
+    def test_a_saved_plan_that_was_changed_is_not_obeyed_the_releases_and_rows_come_from_a_plan_made_now(self) -> None:
+        environment = self.planned()
+        state = json.loads(environment.state_path.read_text(encoding="utf-8"))
+        state["releases"]["HYDRA-UMC-DATALAKE"] = {"tag": "v0.0.1", "sha": "e" * 40, "assets": []}      # an older release, as the account of the server could write it
+        state["services"] = [dict(r, backup="/etc/passwd") if r["name"] == "datalake" else r for r in state["services"]]
+        environment.state_path.write_text(json.dumps(state), encoding="utf-8")
+        self.assertEqual(self.go(environment, {"datalake"}), 0)
+        self.assertEqual(environment.state["releases"]["HYDRA-UMC-DATALAKE"]["tag"], "v0.2.0")
+        self.assertEqual(json.loads((self.device.root / "datalake" / "hydra-umc.project.json").read_text(encoding="utf-8"))["version"], "0.2.0")      # the newest release is installed, not the one the file named
+        self.assertTrue(self.row(environment, "datalake")["backup"].endswith("datalake.bak.tgz"))
+
+    def test_a_row_of_the_saved_plan_that_names_another_script_or_unit_than_the_device_says_stops_the_run_before_any_command(self) -> None:
+        for key, value in (("script", "safety_zones"), ("unit", "hydra-umc-twin.service"), ("repo", "HYDRA-UMC-OS"), ("kind", "repo"), ("name", "twin")):
+            self.setUp()
+            environment = self.planned()
+            state = json.loads(environment.state_path.read_text(encoding="utf-8"))
+            for row in state["services"]:
+                if row["name"] == "datalake":
+                    row[key] = value
+            environment.state_path.write_text(json.dumps(state), encoding="utf-8")
+            calls_before = len(self.device.calls)
+            self.assertEqual(self.go(environment), fu.EXIT_FAILED, key)
+            self.assertFalse([c for c in self.device.calls[calls_before:] if c[0] in ("tar", "bash") or c[:2] == ["git", "-C"] and "checkout" in c], key)
+            self.assertEqual(environment.state["state"], "failed")
+
     def test_the_copy_of_a_program_has_one_exact_name_and_a_cut_program_keeps_the_copy_it_had(self) -> None:
         environment = self.planned()
         self.go(environment, {"datalake"})
