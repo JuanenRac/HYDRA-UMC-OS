@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **The rule that lets the server account control services no longer covers the firewall and the fleet update units:** stopping the firewall unit deletes its table and leaves the broker reachable from any network, so `hydra-umc-firewall*` and `hydra-umc-fleet*` are now refused with the agent and the access-point units. `tools/verify_polkit_rules.py` lists the three new refusals.
+
 - **`cm5_recovery.sh backup` no longer changes the mode of a folder that was already there:** asking for the archive in `/tmp` (as the install check does) turned `/tmp` from `1777` into `0700`. Only a folder the script makes is private now, and the archive is written under `umask 077`. `tools/verify_recovery_scope.py` checks the mode of an existing shared folder.
 
 - **`fleet_update.py run` and `resume` no longer obey the plan saved in the folder of the server:** the progress file sits in a folder that the account of the server can write, and the tool took from it the release (tag and commit) and the fields of every row (script, unit, repository, kind, copy to put back), so a changed file could install an older release or point the checks of one program at another. Before anything is applied the tool now makes a plan again (the inventory of the device and the newest releases, with the rules of `plan`), takes the releases and the fields of the rows from it, stops with `plan_changed` when a row of the file is not one that the plan says to update (a cut program may also be one that is already current), and puts back only the exact copy it makes (`<name>.bak.tgz`). Two new cases in `tools/verify_fleet_update.py`.
