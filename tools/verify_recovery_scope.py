@@ -13,6 +13,7 @@ import importlib.util
 import os
 import shutil
 import sqlite3
+import stat
 import subprocess
 import sys
 import tarfile
@@ -149,6 +150,14 @@ def check_script() -> None:
                 expect("etc/systemd/system/hydra-umc-voice-ui.service" in names, "the unit of every program must be in the archive")
                 expect("opt/hydra-umc/job-dispatcher/data/jobs.sqlite" in names, "a file that is not a database is copied as it is")
                 expect(not any(name.startswith("opt/hydra-umc/server/dist") for name in names), "the program code is not part of the state")
+            # a folder that was already there keeps its mode (the archive may be asked for in /tmp)
+            if os.name != "nt":
+                shared = Path(folder) / "shared"
+                shared.mkdir()
+                shared.chmod(0o1777)
+                result = run("backup", (shared / "state.tar.gz").as_posix(), "--apply", env=env)
+                expect(result.returncode == 0, f"the backup into an existing folder must pass: {result.stdout} {result.stderr}")
+                expect(stat.S_IMODE(shared.stat().st_mode) == 0o1777, "the mode of a folder that was already there must not change")
             # change the state, then restore: the rows and the files come back, a stale write-ahead log is dropped
             writer.execute("DELETE FROM readings")
             writer.commit()

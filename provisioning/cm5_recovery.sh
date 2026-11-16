@@ -35,7 +35,10 @@ command -v python3 >/dev/null || { echo "python3 is required (it computes the sc
 RECOVERY_ROOT="${HYDRA_UMC_RECOVERY_ROOT:-/}"
 
 if [[ "$ACTION" == backup ]]; then
-  install -d -m 0700 "$(dirname "$ARCHIVE")"
+  # A folder that is already there keeps its mode (it may be /tmp, or the home of the person who asked); only a folder made here is private.
+  ARCHIVE_DIR="$(dirname "$ARCHIVE")"
+  [[ -d "$ARCHIVE_DIR" ]] || install -d -m 0700 "$ARCHIVE_DIR"
+  umask 077
   # The scope is what is installed (configuration, state, the data folder of every program, units, polkit rules), not a fixed list.
   mapfile -t PATHS < <(python3 "$SCOPE" list --root "$RECOVERY_ROOT")
   # The work files live next to the archive (a folder this script just made private), not in a shared /tmp that may not be writable.
