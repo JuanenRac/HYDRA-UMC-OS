@@ -32,6 +32,7 @@ import argparse
 import base64
 import gzip
 import hashlib
+import io
 import json
 import os
 import re
@@ -274,6 +275,11 @@ class PackageRefused(Exception):
 
 def verify_package(package: Path, public_key_hex: str | None = None) -> tuple[str, str, str]:
     """Return (component, version, sha256) for a package that passes every check; raise PackageRefused otherwise."""
+    return verify_package_bytes(package, public_key_hex)[:3]
+
+
+def verify_package_bytes(package: Path, public_key_hex: str | None = None) -> tuple[str, str, str, bytes]:
+    """Like verify_package, and also returns the bytes that were verified: whoever installs the package must open the archive from these, not read the file again."""
     match = NAME_PATTERN.match(package.name)
     if not match:
         raise PackageRefused(f"{package.name} is not named hydra-<component>-<version>.tgz")
@@ -296,15 +302,16 @@ def verify_package(package: Path, public_key_hex: str | None = None) -> tuple[st
     key = public_key_hex or trusted_key()
     if not signature_ok(component, version, digest, sig_file.read_text(encoding="ascii"), key):
         raise PackageRefused("the signature is not valid for this component, this version and this hash")
-    check_members(package, component)
-    return component, version, digest
+    check_members(package, component, data)
+    return component, version, digest, data
 
 
-def check_members(package: Path, component: str) -> None:
-    """Only regular files and directories, only paths below the layout of the component: nothing can be written outside the target."""
+def check_members(package: Path, component: str, data: bytes | None = None) -> None:
+    """Only regular files and directories, only paths below the layout of the component: nothing can be written outside the target.
+    With `data` the archive is read from those bytes (the ones whose hash and signature were checked) and the file is not opened."""
     allowed = tuple(target for _source, target in LAYOUT[component][1])
     try:
-        with tarfile.open(package, "r:gz") as tar:
+        with tarfile.open(package, "r:gz") if data is None else tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
             for member in tar.getmembers():
                 name = member.name
                 if not member.isdir() and not member.isreg():
