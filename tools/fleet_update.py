@@ -44,6 +44,7 @@ import hashlib
 import json
 import os
 import re
+import secrets
 import shlex
 import subprocess
 import sys
@@ -63,7 +64,7 @@ STALE_SECONDS = 60
 EXIT_FAILED = 2
 EXIT_BLOCKED = 3
 DEFAULTS: dict[str, Any] = {
-    "signedTags": ["server", "studio", "orchestrator", "safety-zones", "job-dispatcher"], "requireSignedTags": False, "minFreeMb": 800, "minFreeMbServer": 2500, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
+    "signedTags": ["os-tools", "os-agent", "server", "studio", "orchestrator", "safety-zones", "job-dispatcher"], "requireSignedTags": False, "verifyInstallerCheckout": True, "minFreeMb": 800, "minFreeMbServer": 2500, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
     "backups": "/opt/hydra-umc-backups", "owner": OWNER, "usePackages": False, "allowedSigners": "/etc/hydra-umc/allowed_signers", "components": "/opt/hydra-umc/.components", "python": "python3",
 }
 ORDER = ["datalake", "twin", "swarm-sync", "telemetry-collector", "anomaly-detector", "detection-hef", "vision-node", "vision-streamer",
@@ -80,6 +81,24 @@ SERVER_BUILD = [("npm ci", "npm ci --no-audit --no-fund"), ("npm run build", "np
 JOURNAL_BAD = re.compile(r"ModuleNotFoundError|ImportError|No such file or directory|FileNotFoundError|cannot find module", re.I)
 STEPS = ["disk", "fetching", "backup", "building", "installing", "verifying"]
 Sh = Callable[..., "tuple[int, str]"]
+
+
+def write_atomically(target: Path, text: str) -> None:
+    """Writes `target` whole through a new temporary file of an unpredictable name that is created exclusively and without following a link (`O_EXCL | O_NOFOLLOW`), then renames it over the target.
+    The folders of the progress files are shared with the account of the server, which can create links in them: a link left under the name of the temporary file, or in place of the target,
+    is never written through (the rename replaces the link itself)."""
+    temporary = target.with_name(f"{target.name}.{os.getpid()}.{secrets.token_hex(4)}.tmp")
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0), 0o666)
+    try:
+        with os.fdopen(descriptor, "wb") as out:
+            out.write(text.encode("utf-8"))
+        os.replace(temporary, target)
+    except BaseException:
+        try:
+            temporary.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def redact(text: str) -> str:
@@ -223,13 +242,11 @@ class Env:
     def save(self) -> None:
         self.state["updatedAt"] = iso(self.now())
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.state_path.with_name(f"{self.state_path.name}.{os.getpid()}.tmp")
-        temporary.write_text(json.dumps(self.state, indent=1), encoding="utf-8")
-        os.replace(temporary, self.state_path)
+        write_atomically(self.state_path, json.dumps(self.state, indent=1))
 
     def beat(self) -> None:
         try:
-            self.heartbeat_path.write_text(str(self.now()), encoding="utf-8")
+            write_atomically(self.heartbeat_path, str(self.now()))
         except OSError:
             pass
 
@@ -469,6 +486,28 @@ def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any])
     return previous
 
 
+INSTALLER_TAG = re.compile(r"v?\d+(\.\d+){1,4}")
+
+
+def verify_installer_checkout(env: Env) -> str:
+    """The installers run as root from the checkout of this repository, so before any of them runs that checkout must be exactly at a release tag that verifies with `git verify-tag`,
+    with no tracked file changed. This does not depend on `signedTags` (a program may be trusted by the commit GitHub gives, the code that installs it as root may not). Off only with
+    `verifyInstallerCheckout` false in the settings file of root. Returns the tag."""
+    if not env.config.get("verifyInstallerCheckout", True):
+        return ""
+    path = str(env.workspace / "HYDRA-UMC-OS")
+    rc, out = env.sh(["git", "-C", path, "describe", "--exact-match", "--tags", "HEAD"], 30)
+    tags = [t for t in out.split() if INSTALLER_TAG.fullmatch(t)]
+    if rc != 0 or not tags:
+        raise StepFailed("installer_checkout_untagged", "the checkout of HYDRA-UMC-OS that holds the installers is not at a release tag")
+    changed = [ln for ln in env.sh(["git", "-C", path, "status", "--porcelain", "--untracked-files=no"], 60)[1].splitlines() if ln.strip()]
+    if changed:
+        raise StepFailed("installer_checkout_dirty", "the checkout of HYDRA-UMC-OS that holds the installers has changed files")
+    if env.sh(["git", "-C", path, *signer_options(env), "verify-tag", tags[0]], 60)[0] != 0:
+        raise StepFailed("tag_unsigned", f"the tag {tags[0]} of the checkout of HYDRA-UMC-OS that holds the installers does not verify")
+    return tags[0]
+
+
 def backup(env: Env, row: dict[str, Any]) -> str:
     """One copy per program under an exact name (`<name>.bak.tgz`: the rule of sudo needs no wildcard): the program, its unit and its drop-ins. A program that was cut in the
     middle keeps the copy it already had, because what is installed now may be half of the new one."""
@@ -502,6 +541,7 @@ def build_server(env: Env, row: dict[str, Any], release: dict[str, Any], studio:
 
 
 def install(env: Env, row: dict[str, Any]) -> None:
+    row["installersTag"] = verify_installer_checkout(env)
     script = env.workspace / "HYDRA-UMC-OS" / "provisioning" / f"install_{row['script']}.sh"
     step(env, row, "installing", "the installer compiles and restarts the unit; this can take minutes")
     started = env.now()
@@ -647,6 +687,7 @@ def update_one(env: Env, row: dict[str, Any], releases: dict[str, Any]) -> bool:
             row["state"] = "done"
             env.say(row, f"{row['name']}: checkout done")
             return True
+        row["installersTag"] = verify_installer_checkout(env)
         step(env, row, "backup")
         backup(env, row)
         if row["name"] == "server":
@@ -833,9 +874,7 @@ def read_request(path: Path) -> tuple[dict[str, Any] | None, str]:
 def answer_request(env: Env, ident: str, command: str, code: int) -> None:
     """The answer the server waits for: written whole (a reader sees all of it or none of it), next to the progress file."""
     target = env.state_path.with_name(env.state_path.name + ".done")
-    temporary = target.with_name(f"{target.name}.{os.getpid()}.tmp")
-    temporary.write_text(json.dumps({"id": ident, "command": command, "exit": code}), encoding="utf-8")
-    os.replace(temporary, target)
+    write_atomically(target, json.dumps({"id": ident, "command": command, "exit": code}))
 
 
 def handle_request(request: Path, state: Path, config: Path | None, env: Env | None) -> int:

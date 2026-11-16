@@ -62,7 +62,8 @@ fi
 
 # The rule of sudo: one line per command of the tool, written from the install plan of this checkout, checked by visudo before it is put in place.
 RULE="$(mktemp)"
-trap 'rm -f "$RULE" /tmp/hydra-umc-fleet.service.$$' EXIT
+SERVICE_TMP="$(mktemp)"
+trap 'rm -f "$RULE" "$SERVICE_TMP"' EXIT
 python3 "$ROOT/tools/make_fleet_sudoers.py" --user "$HELPER_USER" --install-plan "$ROOT/provisioning/install_plan.json" --workspace "$WORKSPACE" > "$RULE"
 if $APPLY; then
   visudo -cf "$RULE" >/dev/null || { echo "visudo refuses the rule; nothing was installed." >&2; exit 2; }
@@ -70,7 +71,6 @@ fi
 run install -m 0440 -o root -g root "$RULE" /etc/sudoers.d/hydra-umc-fleet
 
 # The two units of this repository, with the account and the folder of the checkouts put in.
-SERVICE_TMP="/tmp/hydra-umc-fleet.service.$$"
 sed -e "s|^User=hydra-umc\$|User=$HELPER_USER|" -e "s|/home/hydra-umc/hydra-umc/HYDRA-UMC-OS/tools/fleet_update.py|$TOOL|" "$ROOT/systemd/hydra-umc-fleet.service" > "$SERVICE_TMP"
 run install -m 0644 "$SERVICE_TMP" /etc/systemd/system/hydra-umc-fleet.service
 run install -m 0644 "$ROOT/systemd/hydra-umc-fleet.path" /etc/systemd/system/hydra-umc-fleet.path
