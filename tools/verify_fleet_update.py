@@ -371,7 +371,7 @@ class FleetTests(unittest.TestCase):
 
     def test_a_tag_that_does_not_verify_is_refused_only_when_signed_tags_are_required(self) -> None:
         self.device.verify_tag_ok = False
-        environment = self.planned()
+        environment = self.planned(verifyInstallerCheckout=False)
         self.go(environment, {"datalake"})
         self.assertEqual(self.row(environment, "datalake")["state"], "done")
         self.device = Device(Path(self.tmp.name) / "second")
@@ -606,7 +606,7 @@ class FleetTests(unittest.TestCase):
         self.device.verify_tag_ok = False
         self.device.releases["HYDRA-UMC-SERVER"] = "v1.0.0"
         self.device.releases["HYDRA-UMC-STUDIO"] = "v1.0.0"
-        environment = self.planned()
+        environment = self.planned(verifyInstallerCheckout=False)
         self.assertEqual(self.go(environment), fu.EXIT_FAILED)
         self.assertEqual(self.row(environment, "datalake")["state"], "done")
         self.assertEqual(self.row(environment, "semantic-planner")["state"], "done")
@@ -618,7 +618,7 @@ class FleetTests(unittest.TestCase):
         self.device.verify_tag_ok = False
         self.device.releases["HYDRA-UMC-SERVER"] = "v1.0.0"
         self.device.releases["HYDRA-UMC-STUDIO"] = "v1.0.0"
-        environment = self.planned(signedTags=[])
+        environment = self.planned(signedTags=[], verifyInstallerCheckout=False)
         self.assertEqual(self.go(environment), 0)
         self.assertEqual(self.row(environment, "server")["state"], "done")
         self.assertTrue(fu.needs_signed_tag(self.device.env(signedTags=["datalake"]), {"name": "datalake"}))
@@ -630,6 +630,109 @@ class FleetTests(unittest.TestCase):
         self.assertEqual(len(warnings), 1)
         path.write_text(json.dumps({"signedTags": ["server", "orchestrator"]}), encoding="utf-8")
         self.assertEqual(fu.load_config(path, warnings.append)["signedTags"], ["server", "orchestrator"])
+
+    def test_the_tag_of_the_checkout_that_holds_the_installers_is_checked_before_any_installer_runs(self) -> None:
+        self.assertIn("os-agent", fu.DEFAULTS["signedTags"])
+        self.assertIn("os-tools", fu.DEFAULTS["signedTags"])
+        self.assertTrue(fu.DEFAULTS["verifyInstallerCheckout"])
+        self.device.verify_tag_ok = False
+        environment = self.planned()      # the defaults: no switch relaxed, the program itself is not in the signed list
+        self.assertFalse(fu.needs_signed_tag(environment, {"name": "datalake"}))
+        self.assertEqual(self.go(environment), fu.EXIT_FAILED)
+        row = self.row(environment, "datalake")
+        self.assertEqual((row["state"], row["error"]), ("failed", "tag_unsigned"))
+        self.assertFalse([c for c in self.device.calls if c[0] == "bash" and c[1].endswith(".sh")], "no installer ran")
+        self.assertFalse([c for c in self.device.calls if c[:2] == ["tar", "czf"]], "nothing was even copied")
+        # a good signature lets the same run through and the tag that was checked is in the file
+        self.setUp()
+        environment = self.planned()
+        self.assertEqual(self.go(environment), 0)
+        self.assertEqual(self.row(environment, "datalake")["installersTag"], "v0.6.0")
+
+    def test_a_checkout_of_the_installers_that_is_not_on_a_tag_or_has_changed_files_runs_nothing(self) -> None:
+        original = self.device.sh
+
+        def untagged(argv, timeout=0, on_line=None):
+            if "describe" in argv and "--exact-match" in argv:
+                return 128, "fatal: no tag exactly matches\n"
+            return original(argv, timeout, on_line)
+        self.device.sh = untagged       # type: ignore[method-assign]
+        environment = self.planned()
+        self.assertEqual(self.go(environment), fu.EXIT_FAILED)
+        self.assertEqual(self.row(environment, "datalake")["error"], "installer_checkout_untagged")
+        self.assertFalse([c for c in self.device.calls if c[0] == "bash" and c[1].endswith(".sh")])
+        self.setUp()
+        self.device.dirty.add("HYDRA-UMC-OS")
+        environment = self.planned()
+        with self.assertRaises(fu.StepFailed) as raised:
+            fu.verify_installer_checkout(environment)
+        self.assertEqual(raised.exception.code, "installer_checkout_dirty")
+
+    def test_the_check_of_the_installers_checkout_has_a_switch_and_it_is_a_setting_of_root(self) -> None:
+        self.device.verify_tag_ok = False
+        environment = self.planned(verifyInstallerCheckout=False)
+        self.assertEqual(fu.verify_installer_checkout(environment), "")
+        path = Path(self.tmp.name) / "switch.json"
+        path.write_text(json.dumps({"verifyInstallerCheckout": "no"}), encoding="utf-8")
+        warnings: list[str] = []
+        self.assertTrue(fu.load_config(path, warnings.append)["verifyInstallerCheckout"])
+        self.assertEqual(len(warnings), 1)
+        path.write_text(json.dumps({"verifyInstallerCheckout": False}), encoding="utf-8")
+        self.assertFalse(fu.load_config(path, warnings.append)["verifyInstallerCheckout"])
+
+    def test_the_temporary_files_are_created_exclusively_without_following_a_link(self) -> None:
+        seen: list[int] = []
+        real_open = os.open
+
+        def spy(path, flags, *rest, **named):
+            if str(path).endswith(".tmp"):
+                seen.append(flags)
+            return real_open(path, flags, *rest, **named)
+        folder = Path(self.tmp.name) / "shared"
+        folder.mkdir()
+        environment = self.device.env()
+        environment.state_path = folder / "state.json"
+        environment.state = {"schema": fu.SCHEMA, "services": []}
+        os.open = spy        # type: ignore[assignment]
+        try:
+            environment.save()
+            environment.beat()
+            fu.write_atomically(folder / "answer.json", "{}")
+        finally:
+            os.open = real_open        # type: ignore[assignment]
+        self.assertEqual(len(seen), 3)
+        for flags in seen:
+            self.assertTrue(flags & os.O_EXCL and flags & os.O_CREAT)
+            if hasattr(os, "O_NOFOLLOW"):
+                self.assertTrue(flags & os.O_NOFOLLOW)
+        self.assertEqual(sorted(p.name for p in folder.iterdir()), ["answer.json", "state.json", "state.json.hb"], "no temporary file is left")
+
+    def test_a_link_left_in_the_shared_folder_is_replaced_and_never_written_through(self) -> None:
+        folder = Path(self.tmp.name) / "shared2"
+        folder.mkdir()
+        victim = Path(self.tmp.name) / "victim.txt"
+        victim.write_text("keep", encoding="utf-8")
+        try:
+            os.symlink(victim, folder / "state.json")
+        except (OSError, NotImplementedError):
+            self.skipTest("this host cannot create links")
+        environment = self.device.env()
+        environment.state_path = folder / "state.json"
+        environment.state = {"schema": fu.SCHEMA, "services": []}
+        environment.save()
+        self.assertEqual(victim.read_text(encoding="utf-8"), "keep")
+        self.assertFalse((folder / "state.json").is_symlink())
+        self.assertEqual(json.loads((folder / "state.json").read_text(encoding="utf-8"))["schema"], fu.SCHEMA)
+        # the same for a link under the name of the temporary file: the name is not predictable and the creation is exclusive
+        os.symlink(victim, folder / f"state.json.{os.getpid()}.00000000.tmp")
+        environment.save()
+        self.assertEqual(victim.read_text(encoding="utf-8"), "keep")
+
+    def test_the_helper_installer_makes_its_temporary_files_with_mktemp_not_with_a_name_in_tmp(self) -> None:
+        installer = (HERE.parent / "provisioning" / "install_fleet_helper.sh").read_text(encoding="utf-8")
+        self.assertNotIn("/tmp/", installer)
+        self.assertIn('SERVICE_TMP="$(mktemp)"', installer)
+        self.assertIn('rm -f "$RULE" "$SERVICE_TMP"', installer)
 
     def test_the_copy_of_a_program_has_one_exact_name_and_a_cut_program_keeps_the_copy_it_had(self) -> None:
         environment = self.planned()
