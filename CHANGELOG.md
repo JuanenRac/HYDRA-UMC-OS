@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **`cm5_recovery.sh backup` no longer changes the mode of a folder that was already there:** asking for the archive in `/tmp` (as the install check does) turned `/tmp` from `1777` into `0700`. Only a folder the script makes is private now, and the archive is written under `umask 077`. `tools/verify_recovery_scope.py` checks the mode of an existing shared folder.
+
 - **`fleet_update.py run` and `resume` no longer obey the plan saved in the folder of the server:** the progress file sits in a folder that the account of the server can write, and the tool took from it the release (tag and commit) and the fields of every row (script, unit, repository, kind, copy to put back), so a changed file could install an older release or point the checks of one program at another. Before anything is applied the tool now makes a plan again (the inventory of the device and the newest releases, with the rules of `plan`), takes the releases and the fields of the rows from it, stops with `plan_changed` when a row of the file is not one that the plan says to update (a cut program may also be one that is already current), and puts back only the exact copy it makes (`<name>.bak.tgz`). Two new cases in `tools/verify_fleet_update.py`.
 
 - **The README states the URTC bootloader check correctly and points to its own honesty check:** the shared safety notice no longer says that the URTC bootloaders behind the relay take a shared-key HMAC-SHA256 (the main board verifies an Ed25519 record and an expansion board installs only an image the main board confirmed), and the status lines no longer send the reader to a check "above" that is further down. README and its seven translations regenerated.
