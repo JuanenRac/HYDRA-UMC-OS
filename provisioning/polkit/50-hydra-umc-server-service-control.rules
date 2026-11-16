@@ -31,6 +31,8 @@ polkit.addRule(function (action, subject) {
   var verb = action.lookup("verb");
   if (verb !== "start" && verb !== "stop" && verb !== "restart") return;
   if (unit === "hydra-umc-wifi-provision.service" || unit === "hydra-umc-agent.service") return;
+  // nor the units that guard the machine or carry out an update as root: stopping the firewall unit deletes its table
+  if (/^hydra-umc-(firewall|fleet)[a-z0-9-]*\.service$/.test(unit)) return;
   if (/^hydra-umc-[a-z0-9-]+\.service$/.test(unit)) {
     return polkit.Result.YES;
   }
