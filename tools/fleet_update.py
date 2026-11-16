@@ -757,6 +757,29 @@ def run_plan(env: Env, names: set[str] | None = None) -> int:
         state["mode"], state["state"] = "run", "done"
         env.save()
         return 0
+    # The progress file lives in a folder that the account of the server can write, so nothing in it is trusted to say WHAT to install: the rows and the releases are taken from a plan
+    # made now (the inventory of the device and the newest releases of GitHub, with the same rules as `plan`), and the file only says which of them to apply and how far they got.
+    fresh = make_plan(env, include_inactive=True)
+    by_name = {item["name"]: item for item in fresh["services"]}
+    for row in rows:
+        now_row = by_name.get(row["name"])
+        interrupted = row["state"] == "interrupted"
+        if now_row is None or now_row["action"] not in (("update", "current") if interrupted else ("update",)) or any(now_row.get(key) != row.get(key) for key in ("kind", "repo", "script", "unit")):
+            state.update(mode="run", state="failed", error=row["name"], stoppedAt=row["name"])
+            row.update(state="failed", error="plan_changed", detail="the saved plan does not match what the device and the releases say now; run plan again")
+            env.say(None, f"{row['name']}: the saved plan does not match the device; nothing was applied")
+            env.save()
+            return EXIT_FAILED
+    for row in rows:
+        now_row = by_name[row["name"]]
+        for key in ("port", "health", "mode", "wired", "installed", "latest", "action"):
+            if key in now_row:
+                row[key] = now_row[key]
+            else:
+                row.pop(key, None)
+        if row.get("backup") != str(env.backups / f"{row['name']}.bak.tgz"):
+            row.pop("backup", None)      # only the exact copy this tool makes is ever put back
+    state["releases"] = dict(fresh["releases"])
     state.update(mode="run", state="running", pid=os.getpid(), startedAt=iso(env.now()), error="")
     for row in state["services"]:
         if row in rows:
