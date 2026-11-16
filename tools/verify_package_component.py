@@ -96,7 +96,10 @@ class PackageTests(unittest.TestCase):
         with tarfile.open(package, "w:gz") as tar:
             for member_name, data, link in members:
                 info = tarfile.TarInfo(member_name)
-                if link is not None:
+                if link == b"<dir>":
+                    info.type = tarfile.DIRTYPE
+                    tar.addfile(info)
+                elif link is not None:
                     info.type = tarfile.SYMTYPE
                     info.linkname = link.decode()
                     tar.addfile(info)
@@ -183,6 +186,14 @@ class PackageTests(unittest.TestCase):
                 forged = self.rebuild_with([("dist/server.cjs", b"x", None), (bad, b"x", None)])
                 with self.assertRaises(pc.PackageRefused):
                     self.verify(forged)
+
+    def test_a_folder_that_escapes_the_target_is_refused(self) -> None:
+        for bad in ("../../etc/hydra", "/etc/hydra", "dist/../../x", "dist" + chr(92) + ".." + chr(92) + "x"):
+            with self.subTest(bad):
+                forged = self.rebuild_with([("dist/server.cjs", b"x", None), (bad, b"", b"<dir>")])
+                with self.assertRaisesRegex(pc.PackageRefused, "outside the target"):
+                    self.verify(forged)
+        self.verify(self.rebuild_with([("dist", b"", b"<dir>"), ("dist/server.cjs", b"x", None)]))
 
     def test_links_and_unexpected_members_are_refused(self) -> None:
         with self.assertRaisesRegex(pc.PackageRefused, "not a regular file"):

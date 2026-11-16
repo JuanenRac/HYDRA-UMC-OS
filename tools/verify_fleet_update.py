@@ -83,6 +83,7 @@ class Device:
         self.downloads: list[str] = []
         self.rollbacks: list[str] = []
         self.fail_tar = False
+        self.fail_untar = False
         self.install_noop: set[str] = set()
         self.offline = False
         self.dirty: set[str] = set()
@@ -146,6 +147,8 @@ class Device:
             Path(argv[2]).write_text("tar", encoding="utf-8")
             return 0, ""
         if argv[0] == "tar" and argv[1] == "xzf":
+            if self.fail_untar:
+                return 2, "tar: Unexpected EOF in archive"
             self.restored = argv[2]
             if self.restore_units:
                 for unit in self.units.glob("*.service"):
@@ -337,6 +340,15 @@ class FleetTests(unittest.TestCase):
         self.assertEqual((datalake["state"], datalake["error"], datalake["installerStatus"]), ("rolled_back", "installer_failed", 2))
         self.assertIn("SAFETY_ZONES=REFUSED", datalake["detail"])
         self.assertEqual(json.loads((self.device.root / "datalake" / "hydra-umc.project.json").read_text())["version"], "0.1.0")
+
+    def test_a_restore_that_fails_is_not_reported_as_rolled_back(self) -> None:
+        self.device.fail_install.add("datalake")
+        self.device.fail_untar = True
+        environment = self.planned()
+        self.assertEqual(self.go(environment), fu.EXIT_FAILED)
+        row = self.row(environment, "datalake")
+        self.assertEqual((row["state"], row["error"]), ("failed", "installer_failed"))
+        self.assertFalse(hasattr(self.device, "restored"))
 
     def test_a_health_check_that_fails_puts_the_earlier_program_back(self) -> None:
         self.device.health_code = 503
