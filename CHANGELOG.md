@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.6.4]
+
 - **A package is installed from the bytes that were verified:** `verify_package_bytes` of `tools/package_component.py` hands back the bytes whose hash and signature were checked, and `deploy_release.py` checks the members and extracts the archive from those bytes instead of opening the file again, so a package swapped in the downloads folder between the check and the extraction is not installed. `verify_package` and `check_members` keep their calls. A test shows that the members are read from the verified bytes.
 
 - **A folder in a signed package is held to the same path rule as a file, and a restore that fails is not reported as put back:** `check_members` of `tools/package_component.py` skipped the path check for folder entries, so a folder named `../../x` passed the review (only the extraction filter of the Python stopped it); and `roll_back` of `tools/fleet_update.py` now reads the status of the restore (`tar`) and of the restart of the unit: when either fails the state stays `failed`, with the line that says the rollback failed and the copy to restore by hand, instead of `rolled_back` over a half-restored tree.
@@ -15,6 +17,7 @@
 - **The README states the URTC bootloader check correctly and points to its own honesty check:** the shared safety notice no longer says that the URTC bootloaders behind the relay take a shared-key HMAC-SHA256 (the main board verifies an Ed25519 record and an expansion board installs only an image the main board confirmed), and the status lines no longer send the reader to a check "above" that is further down. README and its seven translations regenerated.
 - **The update of the programs checks the tag of the checkout that holds the installers before any installer runs, and asks a signed tag of the OS tools and the OS agent by default:** the installers run as root from the checkout of this repository, so `fleet_update.py` now requires that checkout to be exactly at a release tag that verifies with `git verify-tag` and to have no changed tracked file (`verifyInstallerCheckout`, on by default; it fails with `installer_checkout_untagged`, `installer_checkout_dirty` or `tag_unsigned` before anything is copied or installed), whatever `signedTags` says; `os-tools` and `os-agent` join the default `signedTags`. The progress, heartbeat and answer files are written through a temporary file with an unpredictable name created with `O_EXCL | O_NOFOLLOW`, and `install_fleet_helper.sh` uses `mktemp` instead of a name in `/tmp`. `docs/UPDATE_MODEL.md` says what the rule of sudo is worth (the helper account is root-equivalent; the isolation that holds is the server account against it). Six new cases in `tools/verify_fleet_update.py`. Not run on a CM5.
 
+- Build version synchronized with `hydra-umc.project.json` and the repository-native version source.
 
 ## [0.6.3]
 
