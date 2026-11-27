@@ -364,7 +364,7 @@ class Helper:
             if not present and action != "update":
                 continue
             previous = dr.Component(self.device.components, component).state()["previous"]
-            rows.append({"name": component, "kind": "frontend" if component == "studio" else "svc", "repo": pc.LAYOUT[component][0], "installed": installed, "latest": latest,
+            rows.append({"name": component, "kind": "frontend" if component == "studio" else "svc", "repo": pc.LAYOUT[component][0], "installed": installed, "latest": latest and f"v{latest}",
                          "previous": (previous or {}).get("version"), "mode": "package", "action": action, "reason": reason, "state": "waiting", "step": "", "detail": "", "error": "",
                          "log": [], "order": len(rows)})
         return rows
@@ -444,7 +444,7 @@ class Helper:
                 if self.free_mb() < self.settings["minFreeMb"]:
                     raise pi.InstallError("low_disk", f"{self.free_mb()} MB free")
                 self.say(row, f"{name}: downloading {row['latest']}", "fetching")
-                package = self.get(name, row["latest"])
+                package = self.get(name, row["latest"].lstrip("v"))
                 self.say(row, f"{name}: installing {row['latest']}", "installing")
                 done = pi.install(package, self.device, allow_first_install=self.settings["allowFirstInstall"])
                 row["installed"], row["previous"], row["state"] = done["version"], done["previous"], "done"

@@ -293,7 +293,7 @@ class HelperTests(Base):
         self.signed = False
         self.request("plan")
         rows = self.report()["services"]
-        self.assertEqual([(r["name"], r["installed"], r["latest"], r["action"], r["reason"]) for r in rows], [("datalake", "0.2.6", "0.2.7", "skip", "no_signed_package")])
+        self.assertEqual([(r["name"], r["installed"], r["latest"], r["action"], r["reason"]) for r in rows], [("datalake", "0.2.6", "v0.2.7", "skip", "no_signed_package")])
 
     def test_two_steps_and_a_code_then_the_update_runs(self) -> None:
         plan_id = self.prepare()
