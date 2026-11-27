@@ -72,12 +72,20 @@ class BackupTests(unittest.TestCase):
         for needle in (SECRET.encode(), b"users.json", b"armed", b"ustar"):
             self.assertNotIn(needle, raw)
         self.assertTrue(self.sidecar(".sha256").is_file())
-        self.assertRegex(self.sidecar(".hmac").read_text(), r"^[0-9a-f]{64}  hydra-umc-data-.*\.tar\.gz\.enc\n$")
+        self.assertRegex(self.sidecar(".hmac").read_text(), r"^v2:[0-9a-f]{32}:[0-9a-f]{64}  hydra-umc-data-.*\.tar\.gz\.enc\n$")
 
     def test_the_keyed_hash_is_the_documented_one(self) -> None:
+        version, salt, value = self.sidecar(".hmac").read_text().split()[0].split(":")
+        word = self.passfile.read_bytes().splitlines()[0]
+        key = hashlib.pbkdf2_hmac("sha256", word, b"hydra-backup-mac-v2:" + bytes.fromhex(salt), 200000)
+        self.assertEqual(version, "v2")
+        self.assertEqual(value, hmac.new(key, self.archive.read_bytes(), hashlib.sha256).hexdigest())
+
+    def test_an_archive_with_the_earlier_keyed_hash_is_still_restored(self) -> None:
         key = hashlib.sha256(b"hydra-backup-mac:" + self.passfile.read_bytes()).digest()
-        expected = hmac.new(key, self.archive.read_bytes(), hashlib.sha256).hexdigest()
-        self.assertEqual(self.sidecar(".hmac").read_text().split()[0], expected)
+        self.sidecar(".hmac").write_text(hmac.new(key, self.archive.read_bytes(), hashlib.sha256).hexdigest() + "  " + self.archive.name + "\n", encoding="utf-8")
+        result = self.restore("restored", None, "--apply")
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_a_dry_run_lists_and_changes_nothing(self) -> None:
         result = self.restore("restored")

@@ -23,8 +23,10 @@ run install -d -o root -g "$SERVICE_USER" -m 0750 /etc/hydra-umc
 run cp -a "$ROOT/agent/src/hydra_umc_os" "$TARGET/"
 run chown -R root:root "$TARGET/hydra_umc_os"
 run chmod -R go-w "$TARGET/hydra_umc_os"
+# the backups that root restores live in a folder of root alone, not in one the account of the agent owns
+run install -d -o root -g root -m 0700 /var/lib/hydra-umc-rollback
 run python3 "$ROOT/provisioning/rollback.py" backup /etc/systemd/system/hydra-umc-agent.service \
-  --backup-dir /var/lib/hydra-umc/rollback --manifest /var/lib/hydra-umc/rollback/manifest.json
+  --backup-dir /var/lib/hydra-umc-rollback --manifest /var/lib/hydra-umc-rollback/manifest.json
 run install -m 0644 "$ROOT/systemd/hydra-umc-agent.service" /etc/systemd/system/hydra-umc-agent.service
 # Real bug found live: every install_*.sh here updated the deployed
 # build/binary but never this project's OWN hydra-umc.project.json -

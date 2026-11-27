@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import sys
 from dataclasses import dataclass, field
@@ -73,6 +74,19 @@ class RollbackManifest:
         return cls(entries=[RollbackEntry(**item) for item in raw])
 
 
+def _refuse_link(path: Path) -> None:
+    if path.is_symlink():
+        raise RollbackError(f"{path} is a symbolic link: nothing is read or written through it")
+
+
+def _write_without_following(path: Path, data: bytes) -> None:
+    """Writes `path` for its owner alone, refusing a link left in its place (`O_NOFOLLOW` where the system has it)."""
+    _refuse_link(path)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
+    with os.fdopen(os.open(path, flags, 0o600), "wb") as out:
+        out.write(data)
+
+
 def backup_before_write(target: Path, backup_dir: Path, manifest_path: Path) -> None:
     """Real backup of `target` before an installer overwrites it, and a
     real, append-only record of what happened so `restore_all()` later
@@ -80,6 +94,8 @@ def backup_before_write(target: Path, backup_dir: Path, manifest_path: Path) -> 
     one session are recorded in order and restored most-recent-first
     (LIFO) - correct for this project's real installers, which each
     write a given system file at most once per run."""
+    _refuse_link(backup_dir)
+    _refuse_link(manifest_path)
     manifest = (
         RollbackManifest.from_json(manifest_path.read_text(encoding="utf-8"))
         if manifest_path.is_file()
@@ -89,14 +105,15 @@ def backup_before_write(target: Path, backup_dir: Path, manifest_path: Path) -> 
     existed = target.is_file()
     backup_path: str | None = None
     if existed:
-        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         destination = backup_dir / f"{len(manifest.entries):04d}-{target.name}"
-        shutil.copy2(target, destination)
+        _write_without_following(destination, target.read_bytes())
+        shutil.copystat(target, destination)  # the restore puts the file back with the mode it had
         backup_path = str(destination)
 
     manifest.entries.append(RollbackEntry(target=str(target), existed_before=existed, backup_path=backup_path))
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(manifest.to_json(), encoding="utf-8")
+    manifest_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    _write_without_following(manifest_path, manifest.to_json().encode("utf-8"))
 
 
 def restore_all(manifest_path: Path) -> list[str]:
@@ -121,6 +138,7 @@ def restore_all(manifest_path: Path) -> list[str]:
     `PartialRestoreError` instead, reporting exactly which targets were
     already restored.
     """
+    _refuse_link(manifest_path)
     if not manifest_path.is_file():
         raise RollbackError(f"no rollback manifest at {manifest_path} - nothing to restore")
     manifest = RollbackManifest.from_json(manifest_path.read_text(encoding="utf-8"))
@@ -130,6 +148,7 @@ def restore_all(manifest_path: Path) -> list[str]:
         if entry.existed_before:
             if not entry.backup_path:
                 raise RollbackError(f"{entry.target}: recorded as pre-existing but has no backup path")
+            _refuse_link(Path(entry.backup_path))
             if not Path(entry.backup_path).is_file():
                 raise RollbackError(f"{entry.target}: backup {entry.backup_path} is missing - cannot restore safely")
 
@@ -140,6 +159,8 @@ def restore_all(manifest_path: Path) -> list[str]:
             if entry.existed_before:
                 backup = Path(entry.backup_path)  # non-empty, already validated above
                 target.parent.mkdir(parents=True, exist_ok=True)
+                if target.is_symlink():
+                    target.unlink()  # the link is replaced by the file, what it points to is left alone
                 shutil.copy2(backup, target)
             else:
                 target.unlink(missing_ok=True)
@@ -150,7 +171,11 @@ def restore_all(manifest_path: Path) -> list[str]:
 
 
 def _cmd_backup(args: argparse.Namespace) -> int:
-    backup_before_write(args.target, args.backup_dir, args.manifest)
+    try:
+        backup_before_write(args.target, args.backup_dir, args.manifest)
+    except RollbackError as exc:
+        print(f"ROLLBACK_BACKUP=FAIL {exc}", file=sys.stderr)
+        return 1
     print(f"ROLLBACK_BACKUP=PASS target={args.target}")
     return 0
 

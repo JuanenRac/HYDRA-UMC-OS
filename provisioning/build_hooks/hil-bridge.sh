@@ -14,5 +14,5 @@ if ! command -v cargo >/dev/null; then
   apt-get install -y cargo
 fi
 command -v cargo >/dev/null || { echo "cargo installed but still not on PATH." >&2; exit 2; }
-( cd "$SOURCE" && cargo build --release )
+( cd "$SOURCE" && cargo build --release --locked )
 install -m 0755 -o root -g root "$SOURCE/target/release/hydra-umc-hil-bridge" "$TARGET/hydra-umc-hil-bridge"
