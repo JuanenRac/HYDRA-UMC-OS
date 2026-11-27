@@ -1,0 +1,17 @@
+# =============================================================================
+# HYDRA-UMC-OS - Root helper trigger (starts hydra-umc-helper.service when the server leaves a request)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Not together with hydra-umc-fleet.path: both would take the same request (the installer of the helper disables that one).
+
+[Unit]
+Description=HYDRA-UMC root helper: a request of the server is waiting
+Conflicts=hydra-umc-fleet.path
+
+[Path]
+PathExists=/opt/hydra-umc/server/data/fleet-update/request.json
+Unit=hydra-umc-helper.service
+
+[Install]
+WantedBy=multi-user.target

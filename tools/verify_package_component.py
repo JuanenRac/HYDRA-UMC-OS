@@ -84,7 +84,36 @@ class NamesTheServerLooksForTests(unittest.TestCase):
             self.assertTrue(pc.NAME_PATTERN.match(f"hydra-{component}-0.1.0.tgz"))
         for component in pc.LAYOUT:
             self.assertRegex(workflow, rf"(?m)^          - {component}$", component)
-            self.assertRegex(workflow, rf"{component}\) repository={pc.LAYOUT[component][0]} ;;", component)
+
+
+class EveryProgramOfTheDeviceHasAPackage(unittest.TestCase):
+    """A program the installers put on the device can travel as a package, with the same units and a description the root helper can follow."""
+
+    def test_every_installer_row_with_a_program_folder_has_a_layout_with_its_units(self) -> None:
+        rows = json.loads((ROOT / "provisioning" / "install_plan.json").read_text(encoding="utf-8"))["installers"]
+        # the setup of the machine itself (Wi-Fi setup) is not a program with its own releases
+        programs = {str(r["target"]).rsplit("/", 1)[-1]: r for r in rows if r.get("target") and not str(r["target"]).endswith("/wifi-provision")}
+        for name, row in sorted(programs.items()):
+            with self.subTest(program=name):
+                self.assertIn(name, pc.LAYOUT)
+                spec = pc.install_spec(name, "1.0.0")
+                self.assertTrue(set(row.get("units") or []) <= set(spec["units"]), spec["units"])
+                targets = {target for _source, target in pc.LAYOUT[name][1]}
+                self.assertTrue({f"systemd/{unit}" for unit in spec["units"]} <= targets, spec["units"])
+                self.assertEqual(spec["user"] is None, name in ("local-technician", "os-agent"), spec["user"])
+        helper = pc.install_spec("helper", "1.0.0")
+        self.assertEqual((helper["units"], helper["mainUnit"], helper["user"]), (["hydra-umc-helper.service", "hydra-umc-helper.path"], "hydra-umc-helper.path", None))
+
+    def test_the_spec_says_what_the_installer_did(self) -> None:
+        self.assertEqual(pc.install_spec("datalake", "1.0.0")["health"], {"port": 8095, "path": "/stats"})
+        self.assertEqual(pc.install_spec("datalake", "1.0.0")["dropins"], {"hydra-umc-datalake.service.d/10-health-open.conf": "[Service]\nEnvironment=HYDRA_UMC_DATALAKE_HEALTH_OPEN=1\n"})
+        planner = pc.install_spec("semantic-planner", "1.0.0")
+        self.assertIn("/opt/hydra-umc/semantic-planner/pydeps", planner["dropins"]["hydra-umc-semantic-planner.service.d/20-pydeps.conf"])
+        self.assertEqual(planner["python"], "3.13")
+        server = pc.install_spec("server", "1.0.0")
+        self.assertEqual((server["user"], server["homeInData"], server["userDirs"], server["needsFiles"]), ("hydra-umc-server", True, ["data"], ["/etc/hydra-umc/server.env"]))
+        self.assertEqual(pc.install_spec("voice-ui", "1.0.0")["mainUnit"], "hydra-umc-voice-ui.service")
+        self.assertIsNone(pc.install_spec("vision-streamer", "1.0.0")["mainUnit"])
 
 
 class PackageTests(unittest.TestCase):
@@ -137,7 +166,7 @@ class PackageTests(unittest.TestCase):
     def test_the_rust_programs_pack_what_the_build_left_and_verify(self) -> None:
         for component, repository, extra in (("twin", "HYDRA-UMC-TWIN", "package/workspace/HYDRA-UMC-HIL-BRIDGE/hydra-umc.project.json"), ("orchestrator", "HYDRA-UMC-ORCHESTRATOR", "")):
             repo = self.root / repository
-            files = ["hydra-umc.project.json", f"package/hydra-umc-{component}"] + ([extra] if extra else [])
+            files = ["hydra-umc.project.json", f"package/hydra-umc-{component}", f"systemd/hydra-umc-{component}.service"] + ([extra] if extra else [])
             for relative in files:
                 target = repo / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
@@ -147,7 +176,7 @@ class PackageTests(unittest.TestCase):
             self.assertEqual(self.verify(built)[:2], (component, "0.2.1"))
             with tarfile.open(built) as tar:
                 names = {member.name for member in tar.getmembers()}
-            self.assertEqual(names, {name.removeprefix("package/") for name in files})
+            self.assertEqual(names, {name.removeprefix("package/") for name in files} | {"hydra-install.json"})
 
     def test_every_package_installs_with_the_version_where_the_fleet_update_reads_it(self) -> None:
         # the real packer and the real installer, no stand-ins: pack, sign, install, read <component>/current/hydra-umc.project.json
@@ -158,7 +187,7 @@ class PackageTests(unittest.TestCase):
         sources = {
             "server": ("HYDRA-UMC-SERVER", ["dist/server.cjs", "public/index.html", "package.json", "package-lock.json", "systemd/hydra-umc-server.service", "node_modules/a/index.js"]),
             "studio": ("HYDRA-UMC-STUDIO", ["dist/index.html"]),
-            "os-agent": ("HYDRA-UMC-OS", ["agent/src/hydra_umc_os/agent.py", "agent/pyproject.toml"]),
+            "os-agent": ("HYDRA-UMC-OS", ["agent/src/hydra_umc_os/agent.py", "agent/pyproject.toml", "systemd/hydra-umc-agent.service"]),
         }
         expected = {"server": "dist/server.cjs", "studio": "dist/index.html", "os-agent": "hydra_umc_os/agent.py"}
         for component, (repository, files) in sources.items():
@@ -186,7 +215,7 @@ class PackageTests(unittest.TestCase):
         with tarfile.open(self.package) as tar:
             names = {member.name for member in tar.getmembers()}
         self.assertEqual(names, {"dist/server.cjs", "public/index.html", "package.json", "package-lock.json", "systemd/hydra-umc-server.service",
-                                 "node_modules/a/index.js", "node_modules/a/node_modules/b/index.js", "hydra-umc.project.json"})
+                                 "node_modules/a/index.js", "node_modules/a/node_modules/b/index.js", "hydra-umc.project.json", "hydra-install.json"})
         self.assertEqual(self.package.name, "hydra-server-0.8.1.0.tgz")
         self.assertEqual(self.digest, hashlib.sha256(self.package.read_bytes()).hexdigest())
 

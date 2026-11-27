@@ -1,0 +1,32 @@
+# =============================================================================
+# HYDRA-UMC-OS - Root helper (installs signed releases for the request the server left)
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+#
+# It runs as root because it replaces programs and their units. It installs nothing but signed release packages of the family, newer than what is installed, and
+# only when /etc/hydra-umc/helper.json (root-owned) says "enabled": true; applying needs the identifier of a look and a one-time code. See tools/root_helper.py.
+
+[Unit]
+Description=HYDRA-UMC root helper: signed updates the server asked for
+Documentation=https://github.com/JuanenRac/HYDRA-UMC-OS
+ConditionPathExists=/opt/hydra-umc/server/data/fleet-update/request.json
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+UMask=0022
+ExecStart=/usr/bin/python3 -I /opt/hydra-umc/helper/tools/root_helper.py request --state /opt/hydra-umc/server/data/fleet-update/state.json --request /opt/hydra-umc/server/data/fleet-update/request.json
+TimeoutStartSec=infinity
+Nice=10
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ProtectClock=true
+LockPersonality=true
+RestrictRealtime=true

@@ -48,26 +48,110 @@ TRUST_FILE = Path(__file__).resolve().parent.parent / "config" / "release_key.pu
 MESSAGE_PREFIX = "hydra-pkg/1"
 NAME_PATTERN = re.compile(r"^hydra-([a-z][a-z0-9-]*)-(\d+\.\d+\.\d+(?:\.\d+)?)\.tgz$")
 
-# component -> (repository, [(path in the repository, path in the package)], what must be there before packing). Every package carries `hydra-umc.project.json`:
-# the fleet update reads the installed version from it.
-LAYOUT: dict[str, tuple[str, list[tuple[str, str]], list[str]]] = {
-    "server": (
-        "HYDRA-UMC-SERVER",
-        [("dist", "dist"), ("public", "public"), ("package.json", "package.json"), ("package-lock.json", "package-lock.json"), ("systemd/hydra-umc-server.service", "systemd/hydra-umc-server.service"),
-         # the libraries travel with the program: the device installs nothing from the network (`npm ci --omit=dev` runs where the package is built)
-         ("node_modules", "node_modules"), ("hydra-umc.project.json", "hydra-umc.project.json")],
-        ["dist/server.cjs", "public", "package.json", "package-lock.json", "node_modules", "hydra-umc.project.json"],
-    ),
-    "studio": ("HYDRA-UMC-STUDIO", [("dist", "dist"), ("hydra-umc.project.json", "hydra-umc.project.json")], ["dist/index.html", "hydra-umc.project.json"]),
+# component -> (repository, [(path in the repository, path in the package)], what must be there before packing). Every package carries `hydra-umc.project.json`
+# (the fleet update reads the installed version from it) and `hydra-install.json` (what the root helper does with it; see `install_spec`).
+# `package/` is what the build in GitHub Actions leaves (the arm64 program, the built web page, the libraries of Python), never a file of the repository.
+Entry = tuple[str, list[tuple[str, str]], list[str]]
+MANIFEST = "hydra-umc.project.json"
+SPEC_NAME = "hydra-install.json"
+SPEC_FORMAT = "hydra-install/1"
+
+
+def _entry(repository: str, parts: list[tuple[str, str]], units: tuple[str, ...] = ()) -> Entry:
+    parts = [*parts, *((f"systemd/{unit}", f"systemd/{unit}") for unit in units), (MANIFEST, MANIFEST)]
+    return repository, parts, [source for source, _target in parts]
+
+
+def _python(name: str, units: tuple[str, ...] | None = None, *extra: tuple[str, str]) -> Entry:
+    return _entry("HYDRA-UMC-" + name.upper(), [("src", "src"), *extra], (f"hydra-umc-{name}.service",) if units is None else units)
+
+
+def _binary(name: str, program: str = "") -> Entry:
+    program = program or f"hydra-umc-{name}"
+    return _entry("HYDRA-UMC-" + name.upper(), [(f"package/{program}", program)], (f"hydra-umc-{name}.service",))
+
+
+_PYDEPS = ("package/pydeps", "pydeps")
+_WORKSPACE = ("package/workspace", "workspace")
+_DATALAKE_UNITS = tuple(f"hydra-umc-datalake{suffix}" for suffix in (".service", "-downsample.service", "-downsample.timer", "-retention.service", "-retention.timer"))
+
+# the root helper updates itself like any program: its tools and the key it trusts travel together
+_HELPER_FILES = ("tools/root_helper.py", "tools/package_install.py", "tools/package_component.py", "tools/deploy_release.py", "tools/component_links.py", "config/release_key.pub")
+
+LAYOUT: dict[str, Entry] = {
+    "helper": _entry("HYDRA-UMC-OS", [(name, name) for name in _HELPER_FILES], ("hydra-umc-helper.service", "hydra-umc-helper.path")),
+    # the libraries travel with the program: the device installs nothing from the network (`npm ci --omit=dev` runs where the package is built)
+    "server": _entry("HYDRA-UMC-SERVER", [("dist", "dist"), ("public", "public"), ("package.json", "package.json"), ("package-lock.json", "package-lock.json"), ("node_modules", "node_modules")],
+                     ("hydra-umc-server.service",)),
+    "studio": _entry("HYDRA-UMC-STUDIO", [("dist", "dist")]),
     # the agent runs with PYTHONPATH=<its folder>, so `hydra_umc_os/` is at the root of the package, where install_local_agent.sh puts it
-    "os-agent": ("HYDRA-UMC-OS", [("agent/src/hydra_umc_os", "hydra_umc_os"), ("agent/pyproject.toml", "pyproject.toml"), ("hydra-umc.project.json", "hydra-umc.project.json")],
-                 ["agent/src/hydra_umc_os/agent.py", "hydra-umc.project.json"]),
-    # The Rust programs travel built: `package/` is what the build in GitHub Actions leaves (the arm64 program, and for the twin the manifests of its children).
-    "twin": ("HYDRA-UMC-TWIN", [("package/hydra-umc-twin", "hydra-umc-twin"), ("package/workspace", "workspace"), ("hydra-umc.project.json", "hydra-umc.project.json")],
-             ["package/hydra-umc-twin", "package/workspace", "hydra-umc.project.json"]),
-    "orchestrator": ("HYDRA-UMC-ORCHESTRATOR", [("package/hydra-umc-orchestrator", "hydra-umc-orchestrator"), ("hydra-umc.project.json", "hydra-umc.project.json")],
-                     ["package/hydra-umc-orchestrator", "hydra-umc.project.json"]),
+    "os-agent": ("HYDRA-UMC-OS", [("agent/src/hydra_umc_os", "hydra_umc_os"), ("agent/pyproject.toml", "pyproject.toml"), ("systemd/hydra-umc-agent.service", "systemd/hydra-umc-agent.service"), (MANIFEST, MANIFEST)],
+                 ["agent/src/hydra_umc_os/agent.py", "systemd/hydra-umc-agent.service", MANIFEST]),
+    "twin": _entry("HYDRA-UMC-TWIN", [("package/hydra-umc-twin", "hydra-umc-twin"), _WORKSPACE], ("hydra-umc-twin.service",)),
+    "orchestrator": _binary("orchestrator"),
+    "hil-bridge": _binary("hil-bridge"),
+    "swarm-sync": _binary("swarm-sync"),
+    "job-dispatcher": _binary("job-dispatcher"),
+    "node-healing": _binary("node-healing"),
+    "telemetry-collector": _binary("telemetry-collector", "telemetry-collector"),
+    "anomaly-detector": _python("anomaly-detector", None, _PYDEPS),
+    "cognitive-node": _python("cognitive-node", None, _WORKSPACE),
+    "dashboard-ai": _entry("HYDRA-UMC-DASHBOARD-AI", [("package/dist", "dist"), ("scripts/serve_static.py", "serve_static.py")], ("hydra-umc-dashboard-ai.service",)),
+    "datalake": _python("datalake", _DATALAKE_UNITS, ("systemd/hydra-umc-datalake-downsample.sh", "bin/downsample.sh")),
+    "detection-hef": _python("detection-hef"),
+    "docs-qa": _python("docs-qa", None, ("README.md", "README.md"), ("CHANGELOG.md", "CHANGELOG.md")),
+    "local-technician": _python("local-technician", (), ("contracts", "contracts")),
+    "production-reports": _python("production-reports", None, _PYDEPS),
+    "safety-zones": _python("safety-zones"),
+    "semantic-planner": _python("semantic-planner", None, ("configs", "configs"), _PYDEPS),
+    "vision-node": _python("vision-node", None, _WORKSPACE),
+    "vision-streamer": _python("vision-streamer", ("hydra-umc-vision-streamer@.service",)),
+    "visual-servoing-api": _python("visual-servoing-api"),
+    "vla-engine": _python("vla-engine"),
+    "voice-ui": _python("voice-ui", None, ("deploy", "deploy")),
 }
+
+
+def _read(relative: str) -> dict:
+    return json.loads((Path(__file__).resolve().parent.parent / relative).read_text(encoding="utf-8"))
+
+
+def install_spec(component: str, version: str) -> dict:
+    """What the root helper of the device does with a package, from the install plan and `config/package_install.json` of this repository. It is written inside the
+    package, so it is covered by the signature, and the device needs neither of those two files."""
+    config = _read("config/package_install.json")
+    generation = _read("config/installer_generation.json")
+    own = config["components"].get(component, {})
+    row = next((r for r in _read("provisioning/install_plan.json")["installers"] if str(r.get("target") or "").rsplit("/", 1)[-1] == component), {})
+    units = list(own.get("units", row.get("units") or []))
+    main = own["mainUnit"] if "mainUnit" in own else row.get("unit") or (units[0] if units else None)
+    target = f"/opt/hydra-umc/{component}"
+    pydeps = component in config["pythonDependencies"]
+    dropins: dict[str, str] = {}
+    if main and component in generation.get("health_open", []):
+        dropins[f"{main}.d/10-health-open.conf"] = "[Service]\nEnvironment=HYDRA_UMC_" + component.upper().replace("-", "_") + "_HEALTH_OPEN=1\n"
+    if main and pydeps:
+        dropins[f"{main}.d/20-pydeps.conf"] = f"[Service]\nEnvironment=PYTHONPATH={target}/src:{target}/pydeps:/opt/hydra-umc/sdk-python\n"
+    user_dirs, root_dirs = list(row.get("user_dirs") or []), list(own.get("rootDirs", []))
+    health = {"port": row["port"], "path": row["health_path"]} if row.get("port") and row.get("health_path") else None
+    return {"format": SPEC_FORMAT, "component": component, "version": version, "units": units, "mainUnit": main, "dropins": dropins,
+            "user": own.get("user", row.get("user")), "homeInData": component in generation.get("home_in_data", []), "userDirs": user_dirs,
+            "stateDirs": user_dirs + root_dirs, "health": health, "python": config["python"] if pydeps else None,
+            "needsFiles": own.get("needsFiles", []), "createIfMissing": own.get("createIfMissing", []), "wrappers": own.get("wrappers", []),
+            "aptPackages": own.get("aptPackages", [])}
+
+
+# what proves that a build or a checkout is complete, beyond the sources themselves being there
+for _component, (_repository, _parts, _required) in LAYOUT.items():
+    if _parts[0] == ("src", "src"):
+        _required.append("src/hydra_umc_" + _component.replace("-", "_"))
+LAYOUT["server"][2].append("dist/server.cjs")
+LAYOUT["studio"][2].append("dist/index.html")
+
+
+def spec_bytes(component: str, version: str) -> bytes:
+    return (json.dumps(install_spec(component, version), indent=2, sort_keys=True) + "\n").encode("utf-8")
+
 
 # ---- Ed25519 (RFC 8032), pure Python ----------------------------------------------------------------------------------------------------------------------------------------
 _P = 2**255 - 19
@@ -243,7 +327,8 @@ def build(component: str, repo: Path, out: Path) -> tuple[Path, str, str]:
             info.uid = info.gid = 0
             info.uname = info.gname = ""
             info.mtime = epoch
-            info.mode = 0o755 if info.mode & 0o111 else 0o644
+            # what runs is executable whatever the machine that packs it says: the programs of the build and the scripts of bin/
+            info.mode = 0o755 if info.mode & 0o111 or arcname.startswith("bin/") or arcname in (component, f"hydra-umc-{component}") else 0o644
             with open(path, "rb") as handle:
                 tar.addfile(info, handle)
 
@@ -254,6 +339,10 @@ def build(component: str, repo: Path, out: Path) -> tuple[Path, str, str]:
                     add(item, f"{target}/{item.relative_to(path).as_posix()}")
             elif path.is_file():
                 add(path, target)
+        generated = spec_bytes(component, version)
+        info = tarfile.TarInfo(SPEC_NAME)
+        info.size, info.mtime, info.mode = len(generated), epoch, 0o644
+        tar.addfile(info, io.BytesIO(generated))
     digest = hashlib.sha256(package.read_bytes()).hexdigest()
     (out / (package.name + ".sha256")).write_text(f"{digest}  {package.name}\n", encoding="utf-8", newline="\n")
     return package, version, digest
@@ -322,7 +411,7 @@ def verify_package_bytes(package: Path, public_key_hex: str | None = None) -> tu
 def check_members(package: Path, component: str, data: bytes | None = None) -> None:
     """Only regular files and directories, only paths below the layout of the component: nothing can be written outside the target.
     With `data` the archive is read from those bytes (the ones whose hash and signature were checked) and the file is not opened."""
-    allowed = tuple(target for _source, target in LAYOUT[component][1])
+    allowed = (*(target for _source, target in LAYOUT[component][1]), SPEC_NAME)
     try:
         with tarfile.open(package, "r:gz") if data is None else tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
             for member in tar.getmembers():
