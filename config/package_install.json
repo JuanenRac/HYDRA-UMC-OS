@@ -3,6 +3,7 @@
   "python": "3.13",
   "pythonDependencies": ["anomaly-detector", "production-reports", "semantic-planner"],
   "components": {
+    "helper": {"units": ["hydra-umc-helper.service", "hydra-umc-helper.path"], "mainUnit": "hydra-umc-helper.path"},
     "detection-hef": {"rootDirs": ["models"], "createIfMissing": [{"path": "/etc/hydra-umc-detection-hef/registry.json", "content": "[]\n", "mode": "0644"}]},
     "node-healing": {"createIfMissing": [{"path": "/etc/hydra-umc-node-healing/journal.env", "content": "HYDRA_UMC_NODE_HEALING_JOURNAL_ARGS=--journal /var/lib/hydra-umc-node-healing/journal.jsonl\n", "mode": "0644"}]},
     "safety-zones": {"needsFiles": ["/etc/hydra-umc-safety-zones/zones.json"]},

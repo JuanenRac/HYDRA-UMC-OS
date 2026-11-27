@@ -101,6 +101,8 @@ class EveryProgramOfTheDeviceHasAPackage(unittest.TestCase):
                 targets = {target for _source, target in pc.LAYOUT[name][1]}
                 self.assertTrue({f"systemd/{unit}" for unit in spec["units"]} <= targets, spec["units"])
                 self.assertEqual(spec["user"] is None, name in ("local-technician", "os-agent"), spec["user"])
+        helper = pc.install_spec("helper", "1.0.0")
+        self.assertEqual((helper["units"], helper["mainUnit"], helper["user"]), (["hydra-umc-helper.service", "hydra-umc-helper.path"], "hydra-umc-helper.path", None))
 
     def test_the_spec_says_what_the_installer_did(self) -> None:
         self.assertEqual(pc.install_spec("datalake", "1.0.0")["health"], {"port": 8095, "path": "/stats"})

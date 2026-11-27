@@ -82,6 +82,8 @@ def run_checks(root: Path, component: str) -> list[list[str]]:
         return [["node", "-e", script], ["node", "--check", "dist/server.cjs"]]
     if component == "studio":
         return []
+    if component == "helper":
+        return [[sys.executable, "-I", str(root / "tools" / "root_helper.py"), "--help"]]
     if component == "dashboard-ai":
         return [[sys.executable, "-S", "-B", "-c", "import ast,sys; ast.parse(open('serve_static.py',encoding='utf-8').read())"]]
     path = [str(root)] if component == "os-agent" else [str(root / "src"), str(root / "pydeps")]

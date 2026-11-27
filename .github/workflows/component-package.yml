@@ -24,6 +24,7 @@ on:
           - datalake
           - detection-hef
           - docs-qa
+          - helper
           - hil-bridge
           - job-dispatcher
           - local-technician

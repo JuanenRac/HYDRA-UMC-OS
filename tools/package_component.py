@@ -75,7 +75,11 @@ _PYDEPS = ("package/pydeps", "pydeps")
 _WORKSPACE = ("package/workspace", "workspace")
 _DATALAKE_UNITS = tuple(f"hydra-umc-datalake{suffix}" for suffix in (".service", "-downsample.service", "-downsample.timer", "-retention.service", "-retention.timer"))
 
+# the root helper updates itself like any program: its tools and the key it trusts travel together
+_HELPER_FILES = ("tools/root_helper.py", "tools/package_install.py", "tools/package_component.py", "tools/deploy_release.py", "tools/component_links.py", "config/release_key.pub")
+
 LAYOUT: dict[str, Entry] = {
+    "helper": _entry("HYDRA-UMC-OS", [(name, name) for name in _HELPER_FILES], ("hydra-umc-helper.service", "hydra-umc-helper.path")),
     # the libraries travel with the program: the device installs nothing from the network (`npm ci --omit=dev` runs where the package is built)
     "server": _entry("HYDRA-UMC-SERVER", [("dist", "dist"), ("public", "public"), ("package.json", "package.json"), ("package-lock.json", "package-lock.json"), ("node_modules", "node_modules")],
                      ("hydra-umc-server.service",)),
