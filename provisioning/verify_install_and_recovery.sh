@@ -69,7 +69,7 @@ RESTORED_CONTENT="$(cat /etc/hydra-umc/verify-marker.txt)"
 }
 # --numeric-owner in cm5_recovery.sh's own backup/restore must round-trip
 # real ownership too, not just file content.
-[[ "$(stat -c '%U:%G' /etc/hydra-umc)" == "root:hydra-umc-agent" ]] \
+[[ "$(stat -c '%U:%G:%a' /etc/hydra-umc)" == "root:root:711" ]] \
   || { echo "VERIFY_RECOVERY=FAIL: /etc/hydra-umc ownership was not restored correctly" >&2; exit 1; }
 rm -f "$ARCHIVE"
 echo "VERIFY_RECOVERY=PASS"
