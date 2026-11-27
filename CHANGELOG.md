@@ -197,9 +197,6 @@ All notable changes to this project are documented here.
 ## [0.5.0] - Trixie everywhere
 
 - Comments and docs that still named Debian bookworm as the base (the job dispatcher's Go install note, the Wi-Fi setup module, the installation guide) now say trixie, matching `install_industrial_gateway.sh` and the base image the Rebuilder downloads.
-
-## [0.5.0]
-
 - Automated build version increment from 0.4.9.
 
 ## [0.4.9] - A build that works again, an agent that keeps running, a setup form that stays closed
