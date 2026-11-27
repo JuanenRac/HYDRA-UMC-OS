@@ -19,6 +19,8 @@ on:
           - twin
           - orchestrator
           - studio
+          - server
+          - os-agent
 
 permissions:
   contents: read
@@ -60,6 +62,8 @@ jobs:
             twin) repository=HYDRA-UMC-TWIN ;;
             orchestrator) repository=HYDRA-UMC-ORCHESTRATOR ;;
             studio) repository=HYDRA-UMC-STUDIO ;;
+            server) repository=HYDRA-UMC-SERVER ;;
+            os-agent) repository=HYDRA-UMC-OS ;;
             *) echo "::error::unknown component"; exit 1 ;;
           esac
           tag="$(gh release view --repo "JuanenRac/$repository" --json tagName --jq .tagName)"
@@ -74,13 +78,13 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Set up Rust
-        if: ${{ inputs.component != 'studio' }}
+        if: ${{ inputs.component == 'twin' || inputs.component == 'orchestrator' }}
         uses: dtolnay/rust-toolchain@5445741acf05630efa19e221cc588ebe0842b13d # 1.88.0
         with:
           toolchain: 1.88.0
 
       - name: Build the Rust program
-        if: ${{ inputs.component != 'studio' }}
+        if: ${{ inputs.component == 'twin' || inputs.component == 'orchestrator' }}
         run: |
           set -euo pipefail
           cd "$PROGRAM_DIR"
@@ -98,7 +102,7 @@ jobs:
           done
 
       - name: Set up Node.js
-        if: ${{ inputs.component == 'studio' }}
+        if: ${{ inputs.component == 'studio' || inputs.component == 'server' }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
@@ -112,12 +116,45 @@ jobs:
           npm ci --ignore-scripts
           npm run build
 
+      - name: Build the server with its frontend and its libraries
+        if: ${{ inputs.component == 'server' }}
+        run: |
+          set -euo pipefail
+          tag="$(gh release view --repo JuanenRac/HYDRA-UMC-STUDIO --json tagName --jq .tagName)"
+          [[ "$tag" =~ ^v[0-9]+(\.[0-9]+){2,3}$ ]] || { echo "::error::the newest release of Studio has no version tag"; exit 1; }
+          git clone --quiet --depth 1 --branch "$tag" https://github.com/JuanenRac/HYDRA-UMC-STUDIO.git "$RUNNER_TEMP/HYDRA-UMC-STUDIO"
+          echo "- frontend: HYDRA-UMC-STUDIO $tag" >> "$GITHUB_STEP_SUMMARY"
+          cd "$PROGRAM_DIR"
+          npm ci --ignore-scripts
+          npm run build
+          bash build-frontend.sh < /dev/null
+          # only what the program runs with travels; none of these libraries has an install script or a compiled part
+          npm ci --omit=dev --ignore-scripts
+          find node_modules -name '*.node' -print -quit | grep -q . && { echo "::error::a compiled library appeared: the package must then be built for arm64 with the Node of the device"; exit 1; }
+          echo "server libraries: pure JavaScript"
+
       - name: Pack
         run: |
           set -euo pipefail
           python3 tools/package_component.py pack "$COMPONENT" --repo "$PROGRAM_DIR" --out "$RUNNER_TEMP/out"
           cd "$RUNNER_TEMP/out"
           sha256sum -c ./*.sha256
+          # the same member rules the device applies, with a throw-away key that is never written
+          python3 - "$GITHUB_WORKSPACE/tools" ./*.tgz <<'PY'
+          import os, sys, tempfile, shutil
+          from pathlib import Path
+          sys.path.insert(0, sys.argv[1])
+          import package_component as pc
+          with tempfile.TemporaryDirectory() as folder:
+              seed = os.urandom(32)
+              trust = Path(folder) / "trust.pub"
+              trust.write_text(pc.ed25519_public_key(seed).hex() + "\n", encoding="ascii")
+              copy = Path(folder) / Path(sys.argv[2]).name
+              shutil.copyfile(sys.argv[2], copy)
+              shutil.copyfile(sys.argv[2] + ".sha256", str(copy) + ".sha256")
+              pc.sign_package(copy, seed, trust)
+              print("members accepted:", pc.verify_package(copy, pc.ed25519_public_key(seed).hex())[:2])
+          PY
           { echo "### $COMPONENT $PROGRAM_TAG (unsigned), commit $PROGRAM_COMMIT"; sed 's/^/- /' ./*.sha256; } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Attest the provenance of the package

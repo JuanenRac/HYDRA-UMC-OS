@@ -53,7 +53,7 @@ class DeployTests(unittest.TestCase):
         self.settings = dict(dr.DEFAULTS)
 
     def package(self, version: str, *, sign: bool = True, content: str = "code") -> Path:
-        for relative, text in {"dist/server.cjs": f"{content} {version}", "public/index.html": "<html>", "package.json": "{}", "package-lock.json": "{}",
+        for relative, text in {"dist/server.cjs": f"{content} {version}", "public/index.html": "<html>", "package.json": "{}", "package-lock.json": "{}", "node_modules/a/index.js": "a",
                                "systemd/hydra-umc-server.service": "[Unit]"}.items():
             target = self.repo / relative
             target.parent.mkdir(parents=True, exist_ok=True)

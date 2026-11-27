@@ -54,8 +54,9 @@ LAYOUT: dict[str, tuple[str, list[tuple[str, str]], list[str]]] = {
     "server": (
         "HYDRA-UMC-SERVER",
         [("dist", "dist"), ("public", "public"), ("package.json", "package.json"), ("package-lock.json", "package-lock.json"), ("systemd/hydra-umc-server.service", "systemd/hydra-umc-server.service"),
-         ("hydra-umc.project.json", "hydra-umc.project.json")],
-        ["dist/server.cjs", "public", "package.json", "package-lock.json", "hydra-umc.project.json"],
+         # the libraries travel with the program: the device installs nothing from the network (`npm ci --omit=dev` runs where the package is built)
+         ("node_modules", "node_modules"), ("hydra-umc.project.json", "hydra-umc.project.json")],
+        ["dist/server.cjs", "public", "package.json", "package-lock.json", "node_modules", "hydra-umc.project.json"],
     ),
     "studio": ("HYDRA-UMC-STUDIO", [("dist", "dist"), ("hydra-umc.project.json", "hydra-umc.project.json")], ["dist/index.html", "hydra-umc.project.json"]),
     # the agent runs with PYTHONPATH=<its folder>, so `hydra_umc_os/` is at the root of the package, where install_local_agent.sh puts it
@@ -213,8 +214,11 @@ def version_of(repo: Path) -> str:
 
 
 def files_under(root: Path):
+    # Inside the libraries of Node a nested `node_modules` is part of a library, so only the command links of `.bin` (links are refused by `verify`) are left out.
+    libraries = root.name == "node_modules"
+    skipped = {".bin"} if libraries else SKIP_PARTS
     for path in sorted(root.rglob("*")):
-        if path.is_file() and not (set(path.relative_to(root).parts) & SKIP_PARTS) and not path.name.endswith(SKIP_SUFFIXES):
+        if path.is_file() and not (set(path.relative_to(root).parts) & skipped) and not path.name.endswith(SKIP_SUFFIXES):
             yield path
 
 
