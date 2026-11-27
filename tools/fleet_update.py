@@ -77,6 +77,7 @@ EXTRA = {
 PACKAGE_COMPONENTS = {"server", "studio", "os-agent"}      # the components that have a signed package (tools/package_component.py LAYOUT)
 MAX_PACKAGE_BYTES = 300 * 1024 * 1024
 SKIP_NAMES = {"kiosk", "wifi-provision", "splashscreen", "cm5_base", "gateway-industrial", "mqtt-broker", "mtconnect-adapter", "opcua-server"}
+# the install scripts of the dependencies are added only when allowed (see server_build_command)
 SERVER_BUILD = [("npm ci", "npm ci --no-audit --no-fund"), ("npm run build", "npm run build"), ("frontend", "bash build-frontend.sh")]
 JOURNAL_BAD = re.compile(r"ModuleNotFoundError|ImportError|No such file or directory|FileNotFoundError|cannot find module", re.I)
 STEPS = ["disk", "fetching", "backup", "building", "installing", "verifying"]
@@ -528,6 +529,27 @@ def backup(env: Env, row: dict[str, Any]) -> str:
     return str(out)
 
 
+def npm_scripts_allowed(environ: Any = None) -> bool:
+    """The same setting the installers read (`hydra_npm_install_flags` of provisioning/deploy_lib.sh): HYDRA_UMC_NPM_SCRIPTS, else
+    `npm_scripts = on` of /etc/hydra-umc/provisioning.conf. Off unless it says so."""
+    source = os.environ if environ is None else environ
+    value = source.get("HYDRA_UMC_NPM_SCRIPTS", "")
+    if not value:
+        conf = Path(source.get("HYDRA_UMC_PROVISIONING_CONF", "/etc/hydra-umc/provisioning.conf"))
+        try:
+            found = re.findall(r"^\s*npm_scripts\s*=\s*(.*)$", conf.read_text(encoding="utf-8"), re.M)
+        except (OSError, UnicodeDecodeError):
+            found = []
+        value = re.sub(r"[\s\"]", "", found[-1]) if found else ""
+    return value.lower() in {"on", "1", "true", "yes"}
+
+
+def server_build_command(command: str, environ: Any = None) -> str:
+    if command.startswith("npm ci") and not npm_scripts_allowed(environ):
+        return f"{command} --ignore-scripts"
+    return command
+
+
 def build_server(env: Env, row: dict[str, Any], release: dict[str, Any], studio: dict[str, Any] | None) -> None:
     if studio:
         fetch_tag(env, row, "HYDRA-UMC-STUDIO", studio)
@@ -535,7 +557,7 @@ def build_server(env: Env, row: dict[str, Any], release: dict[str, Any], studio:
     for index, (label, command) in enumerate(SERVER_BUILD, 1):
         row["substep"], row["substeps"] = label, len(SERVER_BUILD)
         step(env, row, "building", f"{label} ({index}/{len(SERVER_BUILD)}) - this takes minutes on the device")
-        rc, text = env.sh(["bash", "-c", f"cd {shlex.quote(path)} && {command} < /dev/null"], 3000, lambda line: (row.update(detail=redact(line)[:200]), env.beat()))
+        rc, text = env.sh(["bash", "-c", f"cd {shlex.quote(path)} && {server_build_command(command)} < /dev/null"], 3000, lambda line: (row.update(detail=redact(line)[:200]), env.beat()))
         if rc != 0:
             raise StepFailed("build_failed", f"{label}: {text.strip()[-160:]}")
 

@@ -41,9 +41,12 @@ PASS_PATH="$PASS_FILE"; if command -v cygpath >/dev/null 2>&1; then PASS_PATH="$
 [[ -s "$PASS_FILE" ]] || { echo "the passphrase file is empty" >&2; exit 1; }
 if [[ "$(head -n1 "$PASS_FILE" | tr -d '\r\n' | wc -c)" -lt 12 ]]; then echo "the passphrase must be at least 12 characters" >&2; exit 1; fi
 
-# the key of the keyed hash: derived from the passphrase, so the passphrase itself is never on a command line
-mac_key() { { printf 'hydra-backup-mac:'; cat "$PASS_FILE"; } | openssl dgst -sha256 -r | cut -d' ' -f1; }
-mac_of() { openssl dgst -sha256 -mac HMAC -macopt "hexkey:$(mac_key)" -r "$1" | cut -d' ' -f1; }
+# the key of the keyed hash: derived from the passphrase with PBKDF2 and a salt of its own, so a guess at the passphrase costs as much against this
+# file as against the archive; the passphrase itself is never on a command line
+command -v python3 >/dev/null || command -v python >/dev/null || { echo "python3 is required" >&2; exit 1; }
+PYTHON="$(command -v python3 || command -v python)"
+mac_key() { "$PYTHON" -c 'import hashlib, sys; word = open(sys.argv[1], "rb").readline().rstrip(b"\r\n"); print(hashlib.pbkdf2_hmac("sha256", word, b"hydra-backup-mac-v2:" + bytes.fromhex(sys.argv[2]), 200000).hex())' "$PASS_PATH" "$1" | tr -d '\r\n'; }
+mac_of() { openssl dgst -sha256 -mac HMAC -macopt "hexkey:$(mac_key "$2")" -r "$1" | cut -d' ' -f1; }
 
 mkdir -p "$OUT_DIR"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -59,5 +62,6 @@ tar -C "$PARENT" -czf - --exclude="$BASE/*.tmp" "$BASE" | openssl enc -aes-256-c
 COUNT="$(openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass "file:$PASS_PATH" -in "$TARGET" | tar -tzf - | wc -l)"
 if [[ "$COUNT" -lt 1 ]]; then rm -f -- "$TARGET"; echo "verification failed: the archive is empty" >&2; exit 1; fi
 ( cd "$OUT_DIR" && sha256sum "$(basename "$TARGET")" >"$(basename "$TARGET").sha256" )
-printf '%s  %s\n' "$(mac_of "$TARGET")" "$(basename "$TARGET")" >"$TARGET.hmac"
+SALT="$(openssl rand -hex 16 | tr -d '\r\n')"
+printf 'v2:%s:%s  %s\n' "$SALT" "$(mac_of "$TARGET" "$SALT")" "$(basename "$TARGET")" >"$TARGET.hmac"
 echo "HYDRA_BACKUP=PASS file=$TARGET entries=$COUNT"

@@ -26,8 +26,10 @@ run install -d -o root -g root -m 0755 "$TARGET"
 run install -m 0755 "$ROOT/provisioning/wifi_provision.py" "$TARGET/wifi_provision.py"
 run install -m 0644 "$ROOT/provisioning/secret_output.py" "$TARGET/secret_output.py"
 run install -m 0644 "$ROOT/provisioning/device_identity.py" "$TARGET/device_identity.py"
+# the backups that root restores live in a folder of root alone, not in one the account of the agent owns
+run install -d -o root -g root -m 0700 /var/lib/hydra-umc-rollback
 run python3 "$ROOT/provisioning/rollback.py" backup /etc/systemd/system/hydra-umc-wifi-provision.service \
-  --backup-dir /var/lib/hydra-umc/rollback --manifest /var/lib/hydra-umc/rollback/manifest.json
+  --backup-dir /var/lib/hydra-umc-rollback --manifest /var/lib/hydra-umc-rollback/manifest.json
 run install -m 0644 "$ROOT/systemd/hydra-umc-wifi-provision.service" /etc/systemd/system/hydra-umc-wifi-provision.service
 run systemctl daemon-reload
 

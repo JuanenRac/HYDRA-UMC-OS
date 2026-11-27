@@ -151,6 +151,26 @@ def main() -> int:
             fail("will_succeed_target should have been genuinely restored before the later failure")
         print("ROLLBACK_VERIFY=PASS restore-partial-failure-is-diagnosed")
 
+        # Case 7: a symbolic link left where the backups, the manifest or a copy would be written is refused; what it points to is untouched.
+        secret = root / "secret.txt"
+        secret.write_text("must not change", encoding="utf-8")
+        source = root / "unit.conf"
+        source.write_text("unit", encoding="utf-8")
+        linked = root / "linked-backups"
+        linked.mkdir()
+        try:
+            (linked / "manifest.json").symlink_to(secret)
+            (root / "backups-link").symlink_to(linked, target_is_directory=True)
+        except OSError:
+            print("ROLLBACK_VERIFY=SKIPPED symbolic links are not available on this host")
+        else:
+            expect_fail("backup-refuses-a-linked-manifest", run("backup", str(source), "--backup-dir", str(root / "plain"), "--manifest", str(linked / "manifest.json")))
+            expect_fail("backup-refuses-a-linked-folder", run("backup", str(source), "--backup-dir", str(root / "backups-link"), "--manifest", str(root / "m7.json")))
+            expect_fail("restore-refuses-a-linked-manifest", run("restore", "--manifest", str(linked / "manifest.json")))
+            if secret.read_text(encoding="utf-8") != "must not change":
+                fail("a file behind a link was written")
+            print("ROLLBACK_VERIFY=PASS nothing-written-through-a-link")
+
     print("ROLLBACK_VERIFY=PASS checks=8")
     return 0
 

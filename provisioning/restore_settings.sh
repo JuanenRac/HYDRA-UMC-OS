@@ -32,12 +32,23 @@ done
 command -v openssl >/dev/null || { echo "openssl is required" >&2; exit 1; }
 [[ -z "${OPENSSL_CONF:-}" || -f "${OPENSSL_CONF:-}" ]] || unset OPENSSL_CONF
 PASS_PATH="$PASS_FILE"; if command -v cygpath >/dev/null 2>&1; then PASS_PATH="$(cygpath -m "$PASS_FILE")"; fi
-mac_key() { { printf 'hydra-backup-mac:'; cat "$PASS_FILE"; } | openssl dgst -sha256 -r | cut -d' ' -f1; }
-mac_of() { openssl dgst -sha256 -mac HMAC -macopt "hexkey:$(mac_key)" -r "$1" | cut -d' ' -f1; }
+# the keyed hash: "v2:<salt>:<hash>" has a key derived with PBKDF2; a bare hash is the form of the archives made before, which are still restored
+PYTHON="$(command -v python3 || command -v python || true)"
+mac_key_v2() { "$PYTHON" -c 'import hashlib, sys; word = open(sys.argv[1], "rb").readline().rstrip(b"\r\n"); print(hashlib.pbkdf2_hmac("sha256", word, b"hydra-backup-mac-v2:" + bytes.fromhex(sys.argv[2]), 200000).hex())' "$PASS_PATH" "$1" | tr -d '\r\n'; }
+mac_key_v1() { { printf 'hydra-backup-mac:'; cat "$PASS_FILE"; } | openssl dgst -sha256 -r | cut -d' ' -f1; }
+mac_with() { openssl dgst -sha256 -mac HMAC -macopt "hexkey:$1" -r "$2" | cut -d' ' -f1; }
 
 [[ -f "$FILE.hmac" ]] || { echo "the keyed hash ($FILE.hmac) is missing: an archive without it is not restored" >&2; exit 1; }
 EXPECTED="$(cut -d' ' -f1 "$FILE.hmac")"
-[[ "$(mac_of "$FILE")" == "$EXPECTED" ]] || { echo "the archive was changed, or the passphrase is wrong" >&2; exit 1; }
+if [[ "$EXPECTED" =~ ^v2:([0-9a-f]{32}):([0-9a-f]{64})$ ]]; then
+  SALT="${BASH_REMATCH[1]}"
+  EXPECTED="${BASH_REMATCH[2]}"
+  [[ -n "$PYTHON" ]] || { echo "python3 is required" >&2; exit 1; }
+  KEY="$(mac_key_v2 "$SALT")"
+else
+  KEY="$(mac_key_v1)"
+fi
+[[ "$(mac_with "$KEY" "$FILE")" == "$EXPECTED" ]] || { echo "the archive was changed, or the passphrase is wrong" >&2; exit 1; }
 if [[ -f "$FILE.sha256" ]]; then
   ( cd "$(dirname "$FILE")" && sha256sum -c "$(basename "$FILE").sha256" >/dev/null ) || { echo "the archive does not match its checksum" >&2; exit 1; }
 fi

@@ -307,6 +307,18 @@ class FleetTests(unittest.TestCase):
         self.assertTrue(any("HYDRA-UMC-STUDIO" in c[2] for c in checkouts))
         self.assertIn("minutes", builds[0])
 
+    def test_the_install_scripts_of_the_dependencies_run_only_when_allowed(self) -> None:
+        missing = {"HYDRA_UMC_PROVISIONING_CONF": str(Path(tempfile.gettempdir()) / "no-such-provisioning.conf")}
+        self.assertEqual(fu.server_build_command("npm ci --no-audit", missing), "npm ci --no-audit --ignore-scripts")
+        self.assertEqual(fu.server_build_command("npm run build", missing), "npm run build")
+        self.assertEqual(fu.server_build_command("npm ci", {**missing, "HYDRA_UMC_NPM_SCRIPTS": "on"}), "npm ci")
+        with tempfile.TemporaryDirectory() as folder:
+            conf = Path(folder) / "provisioning.conf"
+            conf.write_text('# comment\nnpm_scripts = "yes"\n', encoding="utf-8")
+            self.assertTrue(fu.npm_scripts_allowed({"HYDRA_UMC_PROVISIONING_CONF": str(conf)}))
+            conf.write_text("npm_scripts = off\n", encoding="utf-8")
+            self.assertFalse(fu.npm_scripts_allowed({"HYDRA_UMC_PROVISIONING_CONF": str(conf)}))
+
     def test_nothing_is_applied_without_the_yes_and_a_resume_names_its_program(self) -> None:
         environment = self.planned()
         err = io.StringIO()
