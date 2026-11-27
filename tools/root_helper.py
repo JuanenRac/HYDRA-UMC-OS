@@ -190,14 +190,14 @@ def totp_code(secret_base32: str, counter: int) -> str:
     return f"{(struct.unpack('>I', digest[offset:offset + 4])[0] & 0x7FFFFFFF) % 1_000_000:06d}"
 
 
-def totp_enroll(secret_file: Path) -> str:
+def totp_enroll(seed_file: Path) -> str:
     """Makes the secret once, in a file only root can read, and returns it; an existing one is never replaced."""
-    secret = base64.b32encode(secrets.token_bytes(20)).decode("ascii").rstrip("=")
-    secret_file.parent.mkdir(parents=True, exist_ok=True)
-    descriptor = os.open(secret_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    seed_text = base64.b32encode(secrets.token_bytes(20)).decode("ascii").rstrip("=")
+    seed_file.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(seed_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "w", encoding="ascii") as out:
-        out.write(secret + "\n")
-    return secret
+        out.write(seed_text + "\n")
+    return seed_text
 
 
 class Door:
@@ -506,11 +506,11 @@ def main(argv: list[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     if arguments.command == "totp-enroll":
         try:
-            secret = totp_enroll(arguments.secret)
+            seed_text = totp_enroll(arguments.secret)
         except FileExistsError:
             print(f"HELPER=REFUSED {arguments.secret} exists; move it away to make a new one", file=sys.stderr)
             return 2
-        print(f"Add this to an authenticator app, it is not shown again:\n  {secret}\n  otpauth://totp/HYDRA-UMC:helper?secret={secret}&issuer=HYDRA-UMC")
+        print(f"Add this to an authenticator app, it is not shown again:\n  {seed_text}\n  otpauth://totp/HYDRA-UMC:helper?secret={seed_text}&issuer=HYDRA-UMC")
         return 0
     if arguments.state is None or (arguments.command == "request" and arguments.request is None):
         print("HELPER=FAIL --state (and --request for a request) are needed", file=sys.stderr)
