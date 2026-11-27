@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.6.4] - Rust compiler check, fleet update fixes and component packages
+
 - **The fleet update is no longer stopped by the lock files a build rewrites:** a checkout whose only changes are `package-lock.json` files is updated, and they are put aside with `git stash` first, never thrown away (setting `stashLockFiles`, on by default). Any other change still leaves the program alone, and the server is also left alone when the checkout of Studio has other changes.
 - **The fleet update says before it starts that a program needs a newer Rust compiler:** the plan compares `rust-version` of the release with the `rustc` of the device and leaves the program alone with `needs_newer_rustc`.
 - **The twin and the orchestrator can travel as signed packages built in GitHub Actions:** `package_component.py` knows both layouts, the manual workflow `Component package` builds the arm64 program (and Studio) and uploads the unsigned `hydra-<component>-<version>.tgz`, and the fleet update can install them for a program that runs from its release link (`usePackages`, off by default). Not tried on a CM5.
@@ -9,7 +11,6 @@
 - **The keyed hash of a settings backup costs as much to guess as the archive:** its key is derived from the passphrase with PBKDF2 and a salt of its own (`v2:` in the `.hmac`); an archive with the earlier hash is still restored.
 - **Root keeps its rollback backups where only root can write:** the installers that back up a unit file put it in `/var/lib/hydra-umc-rollback` (mode 0700) instead of a folder owned by the account of the agent, and `rollback.py` never reads or writes through a symbolic link. Backups made before stay in `/var/lib/hydra-umc/rollback`; restoring one means naming its manifest.
 - **The builds on the device do not run what a dependency changed:** the Rust hooks compile with `--locked`, and the fleet update installs the server dependencies with `--ignore-scripts` unless `npm_scripts = on`, like the installers. Not tried on a CM5.
-## [0.6.4]
 
 - **A package is installed from the bytes that were verified:** `verify_package_bytes` of `tools/package_component.py` hands back the bytes whose hash and signature were checked, and `deploy_release.py` checks the members and extracts the archive from those bytes instead of opening the file again, so a package swapped in the downloads folder between the check and the extraction is not installed. `verify_package` and `check_members` keep their calls. A test shows that the members are read from the verified bytes.
 
