@@ -26,7 +26,11 @@ A program that runs from `<components>/<name>/current` (see `component_links.py`
 default) it is updated with the signed package of its release (`hydra-<name>-<version>.tgz`, its `.sha256` and its `.sig` from the same release; `package_component.py verify` checks hash and signature,
 `deploy_release.py install` keeps the release in use as `previous`, switches, restarts and goes back by itself); with it off, or when its release carries no package, it is left alone and said so.
 
-Settings, all optional, in `<state folder>/fleet-update.json` or `--config`: `signedTags` (the names of the programs whose release tag must verify with `git verify-tag`: the server and the critical services; the rest are trusted by "the tag is the commit GitHub gives" over TLS), `requireSignedTags` (false; true asks it of every program), `minFreeMb` (800), `minFreeMbServer` (2500), `workspace` (~/hydra-umc),
+A checkout whose only changes are `package-lock.json` files (`npm` rewrites them while a program is built on the device) does not stop its program: with `stashLockFiles` on
+(the default) they are put aside with `git stash` before the checkout, never thrown away; any other change still leaves the program alone. A program whose release says in
+`rust-version` of its `Cargo.toml` that it needs a newer compiler than the `rustc` of the device is left alone too (`needs_newer_rustc`), before anything is fetched or copied.
+
+Settings, all optional, in `<state folder>/fleet-update.json` or `--config`: `stashLockFiles`, `signedTags` (the names of the programs whose release tag must verify with `git verify-tag`: the server and the critical services; the rest are trusted by "the tag is the commit GitHub gives" over TLS), `requireSignedTags` (false; true asks it of every program), `minFreeMb` (800), `minFreeMbServer` (2500), `workspace` (~/hydra-umc),
 `root` (/opt/hydra-umc), `backups` (/opt/hydra-umc-backups), `owner` (JuanenRac), `allowedSigners` (/etc/hydra-umc/allowed_signers: the public keys that `git verify-tag` trusts;
 when the file exists it is passed to git for the check, so the result does not depend on the git configuration of the account that runs the tool). Standard library only.
 
@@ -40,6 +44,7 @@ applied as with `--yes` because the server asks for them only after its own conf
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -64,7 +69,7 @@ STALE_SECONDS = 60
 EXIT_FAILED = 2
 EXIT_BLOCKED = 3
 DEFAULTS: dict[str, Any] = {
-    "signedTags": ["os-tools", "os-agent", "server", "studio", "orchestrator", "safety-zones", "job-dispatcher"], "requireSignedTags": False, "verifyInstallerCheckout": True, "minFreeMb": 800, "minFreeMbServer": 2500, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
+    "signedTags": ["os-tools", "os-agent", "server", "studio", "orchestrator", "safety-zones", "job-dispatcher"], "requireSignedTags": False, "verifyInstallerCheckout": True, "stashLockFiles": True, "minFreeMb": 800, "minFreeMbServer": 2500, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
     "backups": "/opt/hydra-umc-backups", "owner": OWNER, "usePackages": False, "allowedSigners": "/etc/hydra-umc/allowed_signers", "components": "/opt/hydra-umc/.components", "python": "python3",
 }
 ORDER = ["datalake", "twin", "swarm-sync", "telemetry-collector", "anomaly-detector", "detection-hef", "vision-node", "vision-streamer",
@@ -74,7 +79,7 @@ EXTRA = {
     "server": dict(script="server", repo="HYDRA-UMC-SERVER", unit="hydra-umc-server.service", port=18200, health="/api/hydra-info"),
     "os-agent": dict(script="local_agent", repo="HYDRA-UMC-OS", unit="hydra-umc-agent.service", port=None, health=None),
 }
-PACKAGE_COMPONENTS = {"server", "studio", "os-agent"}      # the components that have a signed package (tools/package_component.py LAYOUT)
+PACKAGE_COMPONENTS = {"server", "studio", "os-agent", "twin", "orchestrator"}      # the components that have a signed package (tools/package_component.py LAYOUT)
 MAX_PACKAGE_BYTES = 300 * 1024 * 1024
 SKIP_NAMES = {"kiosk", "wifi-provision", "splashscreen", "cm5_base", "gateway-industrial", "mqtt-broker", "mtconnect-adapter", "opcua-server"}
 # the install scripts of the dependencies are added only when allowed (see server_build_command)
@@ -285,6 +290,50 @@ def build_services(installers: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [services[name] for name in sorted(services, key=lambda n: (rank.get(n, len(ORDER)), n))]
 
 
+def lock_files_only(status_lines: list[str]) -> list[str]:
+    """The paths of `git status --porcelain` when every one of them is a modified `package-lock.json`; empty when anything else changed."""
+    paths: list[str] = []
+    for line in status_lines:
+        match = re.fullmatch(r" ?M[ M]? +((?:[A-Za-z0-9_.-]+/)*package-lock\.json)", line.rstrip())
+        if not match:
+            return []
+        paths.append(match.group(1))
+    return paths
+
+
+def blocks_update(env: Env, repo_state: dict[str, Any] | None) -> bool:
+    """Local changes stop a program, except lock files that are put aside before the checkout."""
+    if not repo_state or not repo_state.get("dirty"):
+        return False
+    return not (env.config.get("stashLockFiles", True) and repo_state.get("lockOnly"))
+
+
+def rustc_version(env: Env) -> tuple[int, ...] | None:
+    try:
+        rc, out = env.sh(["rustc", "--version"], 30)
+    except OSError:
+        return None
+    match = re.match(r"rustc (\d+)\.(\d+)(?:\.(\d+))?", out.strip()) if rc == 0 else None
+    return tuple(int(part or 0) for part in match.groups()) if match else None
+
+
+def required_rustc(env: Env, repo: str, tag: str) -> str | None:
+    """`rust-version` of the `[package]` table of the Cargo.toml of that release; None when there is none (or no Cargo.toml)."""
+    try:
+        data = env.http(f"https://api.github.com/repos/{env.config['owner']}/{repo}/contents/Cargo.toml?ref={tag}")
+        text = base64.b64decode(data["content"]).decode("utf-8", errors="replace")
+    except (OSError, ValueError, KeyError, TypeError, urllib.error.URLError):
+        return None
+    section = ""
+    for line in text.splitlines():
+        if line.startswith("["):
+            section = line.strip()
+        match = re.match(r'rust-version\s*=\s*"(\d+(?:\.\d+){1,2})"', line)
+        if match and section == "[package]":
+            return match.group(1)
+    return None
+
+
 def inventory(env: Env) -> dict[str, Any]:
     """Reads the device: the plan of installers, the checkouts, the installed versions and units, the free space."""
     plan_file = env.workspace / "HYDRA-UMC-OS" / "provisioning" / "install_plan.json"
@@ -295,9 +344,10 @@ def inventory(env: Env) -> dict[str, Any]:
             if folder.name.startswith("HYDRA-UMC-") and (folder / ".git").exists():
                 def git(*args: str, where: Path = folder) -> str:
                     return env.sh(["git", "-C", str(where), *args], 60)[1].strip()
+                changed = [ln for ln in env.sh(["git", "-C", str(folder), "status", "--porcelain"], 60)[1].splitlines() if ln.strip()]
                 repos[folder.name] = {"describe": git("describe", "--tags", "--always"), "head": git("rev-parse", "HEAD"),
                                       "branch": git("symbolic-ref", "-q", "--short", "HEAD"),
-                                      "dirty": len([ln for ln in git("status", "--porcelain").splitlines() if ln.strip()])}
+                                      "dirty": len(changed), "lockOnly": lock_files_only(changed)}
     installed: dict[str, Any] = {}
     if env.root.is_dir():
         for folder in sorted(env.root.iterdir()):
@@ -327,7 +377,7 @@ def latest_release(env: Env, repo: str) -> dict[str, Any] | None:
         return None
 
 
-def classify(row: dict[str, Any], repo_state: dict[str, Any] | None, release: dict[str, Any] | None, include_inactive: bool) -> tuple[str, str]:
+def classify(row: dict[str, Any], dirty: bool, release: dict[str, Any] | None, include_inactive: bool) -> tuple[str, str]:
     installed = vtuple(row["installed"])
     if row["name"] in SKIP_NAMES:
         return "skip", "special_stack"
@@ -342,7 +392,7 @@ def classify(row: dict[str, Any], repo_state: dict[str, Any] | None, release: di
         return "current", ""
     if not row["active"] and not include_inactive:
         return "skip", "unit_inactive"
-    if repo_state and repo_state.get("dirty"):
+    if dirty:
         return "skip", "repo_dirty"
     return "update", ""
 
@@ -371,7 +421,7 @@ def make_plan(env: Env, include_inactive: bool = False, only: set[str] | None = 
         rs, rel = inv["repos"].get(repo), release(repo)
         describe = (rs or {}).get("describe", "")
         tag_now = describe.split("-")[0] if describe else None
-        action, reason = ("skip", "no_release") if rel is None else ("current", "") if tag_now == rel["tag"] else ("skip", "repo_dirty") if rs and rs.get("dirty") else ("update", "") if rs else ("skip", "no_checkout")
+        action, reason = ("skip", "no_release") if rel is None else ("current", "") if tag_now == rel["tag"] else ("skip", "repo_dirty") if blocks_update(env, rs) else ("update", "") if rs else ("skip", "no_checkout")
         rows.append(dict(name=name, kind="repo", repo=repo, unit="", script="", port=None, health=None, installed=tag_now, latest=rel and rel["tag"], action=action, reason=reason,
                          state="waiting", step="", detail="", log=[], active=False))
     for svc in build_services(inv["installers"]):
@@ -383,7 +433,8 @@ def make_plan(env: Env, include_inactive: bool = False, only: set[str] | None = 
         rel = release(svc["repo"]) if svc["repo"] else None
         row = dict(name=svc["name"], kind="svc", repo=svc["repo"], unit=svc["unit"], script=svc["script"], port=svc["port"], health=svc["health"],
                    installed=current["version"], latest=rel and rel["tag"], active=active, state="waiting", step="", detail="", log=[])
-        row["action"], row["reason"] = classify(row, rs, rel, include_inactive)
+        dirty = blocks_update(env, rs) or (svc["name"] == "server" and blocks_update(env, inv["repos"].get("HYDRA-UMC-STUDIO")))
+        row["action"], row["reason"] = classify(row, dirty, rel, include_inactive)
         row["wired"] = is_wired(env, svc["name"])
         if row["wired"] and row["action"] == "update":
             row["mode"] = "package"
@@ -391,6 +442,11 @@ def make_plan(env: Env, include_inactive: bool = False, only: set[str] | None = 
                 row["action"], row["reason"] = "skip", "migrated_needs_packages"
             elif svc["name"] not in PACKAGE_COMPONENTS:
                 row["action"], row["reason"] = "skip", "migrated_no_package"
+        elif row["action"] == "update":
+            have, wanted = rustc_version(env), required_rustc(env, svc["repo"], rel["tag"])
+            if have and wanted and have < tuple(int(part) for part in (wanted + ".0").split(".")[:3]):
+                row["action"], row["reason"] = "skip", "needs_newer_rustc"
+                row["detail"] = f"needs rustc {wanted}; the device has {'.'.join(map(str, have))}"
         rows.append(row)
         if svc["name"] == "server":     # the frontend travels with the server: it is built from its newest release before the installer runs
             srel = release("HYDRA-UMC-STUDIO")
@@ -482,6 +538,13 @@ def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any])
     if needs_signed_tag(env, row):
         if env.sh(["git", "-C", path, *signer_options(env), "verify-tag", release["tag"]], 60)[0] != 0:
             raise StepFailed("tag_unsigned", f"the tag {release['tag']} of {repo} does not verify")
+    status = [ln for ln in env.sh(["git", "-C", path, "status", "--porcelain"], 60)[1].splitlines() if ln.strip()]
+    locks = lock_files_only(status) if env.config.get("stashLockFiles", True) else []
+    if locks:
+        label = f"hydra-fleet {release['tag']} {iso(env.now())}"
+        if env.sh(["git", "-C", path, "stash", "push", "-q", "-m", label, "--", *locks], 120)[0] != 0:
+            raise StepFailed("stash_failed", f"the lock files of {repo} could not be put aside")
+        env.say(row, f"{row['name']}: {len(locks)} lock file(s) of {repo} put aside with git stash ({label})")
     if env.sh(["git", "-C", path, "checkout", "-q", "--detach", release["tag"]], 120)[0] != 0:
         raise StepFailed("checkout_failed", f"git checkout in {repo}")
     return previous

@@ -111,6 +111,21 @@ class PackageTests(unittest.TestCase):
         pc.sign_package(package, self.seed, self.trust)
         return package
 
+    def test_the_rust_programs_pack_what_the_build_left_and_verify(self) -> None:
+        for component, repository, extra in (("twin", "HYDRA-UMC-TWIN", "package/workspace/HYDRA-UMC-HIL-BRIDGE/hydra-umc.project.json"), ("orchestrator", "HYDRA-UMC-ORCHESTRATOR", "")):
+            repo = self.root / repository
+            files = ["hydra-umc.project.json", f"package/hydra-umc-{component}"] + ([extra] if extra else [])
+            for relative in files:
+                target = repo / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(json.dumps({"version": "0.2.1"}), encoding="utf-8")
+            built, version, _digest = pc.build(component, repo, self.out)
+            pc.sign_package(built, self.seed, self.trust)
+            self.assertEqual(self.verify(built)[:2], (component, "0.2.1"))
+            with tarfile.open(built) as tar:
+                names = {member.name for member in tar.getmembers()}
+            self.assertEqual(names, {name.removeprefix("package/") for name in files})
+
     def test_the_package_holds_only_the_layout_and_no_build_leftovers(self) -> None:
         with tarfile.open(self.package) as tar:
             names = {member.name for member in tar.getmembers()}

@@ -57,6 +57,11 @@ LAYOUT: dict[str, tuple[str, list[tuple[str, str]], list[str]]] = {
     ),
     "studio": ("HYDRA-UMC-STUDIO", [("dist", "dist")], ["dist/index.html"]),
     "os-agent": ("HYDRA-UMC-OS", [("agent/src/hydra_umc_os", "agent/src/hydra_umc_os"), ("agent/pyproject.toml", "agent/pyproject.toml")], ["agent/src/hydra_umc_os/agent.py"]),
+    # The Rust programs travel built: `package/` is what the build in GitHub Actions leaves (the arm64 program, and for the twin the manifests of its children).
+    "twin": ("HYDRA-UMC-TWIN", [("package/hydra-umc-twin", "hydra-umc-twin"), ("package/workspace", "workspace"), ("hydra-umc.project.json", "hydra-umc.project.json")],
+             ["package/hydra-umc-twin", "package/workspace", "hydra-umc.project.json"]),
+    "orchestrator": ("HYDRA-UMC-ORCHESTRATOR", [("package/hydra-umc-orchestrator", "hydra-umc-orchestrator"), ("hydra-umc.project.json", "hydra-umc.project.json")],
+                     ["package/hydra-umc-orchestrator", "hydra-umc.project.json"]),
 }
 
 # ---- Ed25519 (RFC 8032), pure Python ----------------------------------------------------------------------------------------------------------------------------------------

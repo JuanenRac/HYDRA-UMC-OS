@@ -1,0 +1,134 @@
+# =============================================================================
+# HYDRA-UMC-OS - Component package (manual): build here, sign locally, install on the device without building
+# Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
+# GPL-3.0-or-later - see LICENSE
+# =============================================================================
+# Started by hand only. It builds the newest published release of one program of the CM5 on GitHub (the Rust programs on an arm64 runner whose C library is older than
+# the one of Debian trixie), packs it with tools/package_component.py as `hydra-<component>-<version>.tgz` with its `.sha256` and uploads it with a build-provenance
+# attestation. It holds no key and signs nothing: `package_component.py sign` runs on the maintainer's machine. The device then only downloads, verifies and installs.
+name: Component package (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: "Program of the CM5 to pack"
+        type: choice
+        required: true
+        options:
+          - twin
+          - orchestrator
+          - studio
+
+permissions:
+  contents: read
+
+concurrency:
+  group: component-package-${{ inputs.component }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Build and pack
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      COMPONENT: ${{ inputs.component }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Only the owner starts a build
+        env:
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          [ "$ACTOR" = "$OWNER" ] || { echo "::error::only the owner of the repository starts a build"; exit 1; }
+
+      - name: Check out this repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Clone the program at its newest published release
+        run: |
+          set -euo pipefail
+          case "$COMPONENT" in
+            twin) repository=HYDRA-UMC-TWIN ;;
+            orchestrator) repository=HYDRA-UMC-ORCHESTRATOR ;;
+            studio) repository=HYDRA-UMC-STUDIO ;;
+            *) echo "::error::unknown component"; exit 1 ;;
+          esac
+          tag="$(gh release view --repo "JuanenRac/$repository" --json tagName --jq .tagName)"
+          [[ "$tag" =~ ^v[0-9]+(\.[0-9]+){2,3}$ ]] || { echo "::error::the newest release of $repository has no version tag"; exit 1; }
+          git clone --quiet --depth 1 --branch "$tag" "https://github.com/JuanenRac/${repository}.git" "$RUNNER_TEMP/$repository"
+          version="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1], encoding='utf-8'))['version'])" "$RUNNER_TEMP/$repository/hydra-umc.project.json")"
+          [ "v$version" = "$tag" ] || { echo "::error::the manifest says $version and the release is $tag"; exit 1; }
+          {
+            echo "PROGRAM_DIR=$RUNNER_TEMP/$repository"
+            echo "PROGRAM_TAG=$tag"
+            echo "PROGRAM_COMMIT=$(git -C "$RUNNER_TEMP/$repository" rev-parse HEAD)"
+          } >> "$GITHUB_ENV"
+
+      - name: Set up Rust
+        if: ${{ inputs.component != 'studio' }}
+        uses: dtolnay/rust-toolchain@5445741acf05630efa19e221cc588ebe0842b13d # 1.88.0
+        with:
+          toolchain: 1.88.0
+
+      - name: Build the Rust program
+        if: ${{ inputs.component != 'studio' }}
+        run: |
+          set -euo pipefail
+          cd "$PROGRAM_DIR"
+          cargo build --release --locked --bin "hydra-umc-$COMPONENT"
+          mkdir -p package
+          install -m 0755 "target/release/hydra-umc-$COMPONENT" "package/hydra-umc-$COMPONENT"
+
+      - name: Add the manifests of the children of the twin
+        if: ${{ inputs.component == 'twin' }}
+        run: |
+          set -euo pipefail
+          for child in HYDRA-UMC-PHYSICS-REPLICA HYDRA-UMC-HIL-BRIDGE HYDRA-UMC-SYNTHETIC-DATA-GEN; do
+            git clone --quiet --depth 1 "https://github.com/JuanenRac/${child}.git" "$RUNNER_TEMP/$child"
+            install -D -m 0644 "$RUNNER_TEMP/$child/hydra-umc.project.json" "$PROGRAM_DIR/package/workspace/$child/hydra-umc.project.json"
+          done
+
+      - name: Set up Node.js
+        if: ${{ inputs.component == 'studio' }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Build Studio
+        if: ${{ inputs.component == 'studio' }}
+        run: |
+          set -euo pipefail
+          cd "$PROGRAM_DIR"
+          npm ci --ignore-scripts
+          npm run build
+
+      - name: Pack
+        run: |
+          set -euo pipefail
+          python3 tools/package_component.py pack "$COMPONENT" --repo "$PROGRAM_DIR" --out "$RUNNER_TEMP/out"
+          cd "$RUNNER_TEMP/out"
+          sha256sum -c ./*.sha256
+          { echo "### $COMPONENT $PROGRAM_TAG (unsigned), commit $PROGRAM_COMMIT"; sed 's/^/- /' ./*.sha256; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attest the provenance of the package
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/out/*.tgz
+
+      - name: Upload the package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: component-${{ inputs.component }}
+          path: ${{ runner.temp }}/out/*
+          if-no-files-found: error
+          retention-days: 30
