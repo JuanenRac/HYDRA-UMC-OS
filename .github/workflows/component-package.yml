@@ -3,9 +3,10 @@
 # Copyright (C) 2026 JuanenRac (Electro Hobby 3D) <electrohobby3d@gmail.com>
 # GPL-3.0-or-later - see LICENSE
 # =============================================================================
-# Started by hand only. It builds the newest published release of one program of the CM5 on GitHub (the Rust programs on an arm64 runner whose C library is older than
-# the one of Debian trixie), packs it with tools/package_component.py as `hydra-<component>-<version>.tgz` with its `.sha256` and uploads it with a build-provenance
-# attestation. It holds no key and signs nothing: `package_component.py sign` runs on the maintainer's machine. The device then only downloads, verifies and installs.
+# Started by hand only. It builds the newest published release of one program of the CM5 (or of all of them) on GitHub, on an arm64 runner whose C library is older
+# than the one of Debian trixie, packs it with tools/package_component.py as `hydra-<component>-<version>.tgz` with its `.sha256`, loads it with no site packages
+# (tools/package_smoke.py) and uploads it with a build-provenance attestation. It holds no key and signs nothing: `package_component.py sign` runs on the maintainer's
+# machine. The device then only downloads, verifies and installs: it compiles nothing and fetches no library.
 name: Component package (manual)
 
 on:
@@ -16,11 +17,32 @@ on:
         type: choice
         required: true
         options:
-          - twin
+          - all
+          - anomaly-detector
+          - cognitive-node
+          - dashboard-ai
+          - datalake
+          - detection-hef
+          - docs-qa
+          - hil-bridge
+          - job-dispatcher
+          - local-technician
+          - node-healing
           - orchestrator
-          - studio
-          - server
           - os-agent
+          - production-reports
+          - safety-zones
+          - semantic-planner
+          - server
+          - studio
+          - swarm-sync
+          - telemetry-collector
+          - twin
+          - vision-node
+          - vision-streamer
+          - visual-servoing-api
+          - vla-engine
+          - voice-ui
 
 permissions:
   contents: read
@@ -30,17 +52,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  package:
-    name: Build and pack
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 45
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-    env:
-      COMPONENT: ${{ inputs.component }}
-      GH_TOKEN: ${{ github.token }}
+  plan:
+    name: List the programs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
     steps:
       - name: Only the owner starts a build
         env:
@@ -55,36 +72,72 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Read the layouts
+        id: list
+        env:
+          CHOICE: ${{ inputs.component }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, sys
+          sys.path.insert(0, "tools")
+          import package_component as pc
+          rust = {"twin", "orchestrator", "hil-bridge", "swarm-sync"}
+          go = {"job-dispatcher", "node-healing", "telemetry-collector"}
+          choice = os.environ["CHOICE"]
+          names = sorted(pc.LAYOUT) if choice == "all" else [choice]
+          rows = [{"component": n, "repository": pc.LAYOUT[n][0], "kind": "rust" if n in rust else "go" if n in go else "node" if n in ("server", "studio", "dashboard-ai") else "python"} for n in names]
+          print("matrix=" + json.dumps({"include": rows}))
+          PY
+
+  package:
+    name: Pack ${{ matrix.component }}
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      COMPONENT: ${{ matrix.component }}
+      REPOSITORY: ${{ matrix.repository }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Clone the program at its newest published release
         run: |
           set -euo pipefail
-          case "$COMPONENT" in
-            twin) repository=HYDRA-UMC-TWIN ;;
-            orchestrator) repository=HYDRA-UMC-ORCHESTRATOR ;;
-            studio) repository=HYDRA-UMC-STUDIO ;;
-            server) repository=HYDRA-UMC-SERVER ;;
-            os-agent) repository=HYDRA-UMC-OS ;;
-            *) echo "::error::unknown component"; exit 1 ;;
-          esac
-          tag="$(gh release view --repo "JuanenRac/$repository" --json tagName --jq .tagName)"
-          [[ "$tag" =~ ^v[0-9]+(\.[0-9]+){2,3}$ ]] || { echo "::error::the newest release of $repository has no version tag"; exit 1; }
-          git clone --quiet --depth 1 --branch "$tag" "https://github.com/JuanenRac/${repository}.git" "$RUNNER_TEMP/$repository"
-          version="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1], encoding='utf-8'))['version'])" "$RUNNER_TEMP/$repository/hydra-umc.project.json")"
+          tag="$(gh release view --repo "JuanenRac/$REPOSITORY" --json tagName --jq .tagName)"
+          [[ "$tag" =~ ^v[0-9]+(\.[0-9]+){2,3}$ ]] || { echo "::error::the newest release of $REPOSITORY has no version tag"; exit 1; }
+          git clone --quiet --depth 1 --branch "$tag" "https://github.com/JuanenRac/${REPOSITORY}.git" "$RUNNER_TEMP/$REPOSITORY"
+          version="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1], encoding='utf-8'))['version'])" "$RUNNER_TEMP/$REPOSITORY/hydra-umc.project.json")"
           [ "v$version" = "$tag" ] || { echo "::error::the manifest says $version and the release is $tag"; exit 1; }
           {
-            echo "PROGRAM_DIR=$RUNNER_TEMP/$repository"
+            echo "PROGRAM_DIR=$RUNNER_TEMP/$REPOSITORY"
             echo "PROGRAM_TAG=$tag"
-            echo "PROGRAM_COMMIT=$(git -C "$RUNNER_TEMP/$repository" rev-parse HEAD)"
+            echo "PROGRAM_COMMIT=$(git -C "$RUNNER_TEMP/$REPOSITORY" rev-parse HEAD)"
           } >> "$GITHUB_ENV"
 
+      - name: Set up Python (the one of the device)
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
       - name: Set up Rust
-        if: ${{ inputs.component == 'twin' || inputs.component == 'orchestrator' }}
+        if: ${{ matrix.kind == 'rust' }}
         uses: dtolnay/rust-toolchain@5445741acf05630efa19e221cc588ebe0842b13d # 1.88.0
         with:
           toolchain: 1.88.0
 
       - name: Build the Rust program
-        if: ${{ inputs.component == 'twin' || inputs.component == 'orchestrator' }}
+        if: ${{ matrix.kind == 'rust' }}
         run: |
           set -euo pipefail
           cd "$PROGRAM_DIR"
@@ -92,32 +145,73 @@ jobs:
           mkdir -p package
           install -m 0755 "target/release/hydra-umc-$COMPONENT" "package/hydra-umc-$COMPONENT"
 
-      - name: Add the manifests of the children of the twin
-        if: ${{ inputs.component == 'twin' }}
+      - name: Set up Go
+        if: ${{ matrix.kind == 'go' }}
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version: "1.26"
+          cache: false
+
+      - name: Build the Go program
+        if: ${{ matrix.kind == 'go' }}
         run: |
           set -euo pipefail
-          for child in HYDRA-UMC-PHYSICS-REPLICA HYDRA-UMC-HIL-BRIDGE HYDRA-UMC-SYNTHETIC-DATA-GEN; do
+          cd "$PROGRAM_DIR"
+          mkdir -p package
+          if [ "$COMPONENT" = telemetry-collector ]; then
+            (cd src && CGO_ENABLED=0 go build -trimpath -o ../package/telemetry-collector .)
+          else
+            CGO_ENABLED=0 go build -trimpath -o "package/hydra-umc-$COMPONENT" .
+          fi
+
+      - name: Add the manifests of the programs this one reports on
+        if: ${{ matrix.component == 'twin' || matrix.component == 'cognitive-node' || matrix.component == 'vision-node' }}
+        run: |
+          set -euo pipefail
+          case "$COMPONENT" in
+            twin) children="PHYSICS-REPLICA HIL-BRIDGE SYNTHETIC-DATA-GEN" ;;
+            cognitive-node) children="VLA-ENGINE VOICE-UI SEMANTIC-PLANNER DOCS-QA" ;;
+            vision-node) children="VISION-STREAMER DETECTION-HEF SAFETY-ZONES VISUAL-SERVOING-API" ;;
+          esac
+          for short in $children; do
+            child="HYDRA-UMC-$short"
             git clone --quiet --depth 1 "https://github.com/JuanenRac/${child}.git" "$RUNNER_TEMP/$child"
             install -D -m 0644 "$RUNNER_TEMP/$child/hydra-umc.project.json" "$PROGRAM_DIR/package/workspace/$child/hydra-umc.project.json"
           done
 
+      - name: Put the Python libraries inside
+        if: ${{ matrix.component == 'anomaly-detector' || matrix.component == 'production-reports' || matrix.component == 'semantic-planner' }}
+        run: |
+          set -euo pipefail
+          python3 - "$PROGRAM_DIR/pyproject.toml" > "$RUNNER_TEMP/requirements.txt" <<'PY'
+          import sys, tomllib
+          with open(sys.argv[1], "rb") as handle:
+              print("\n".join(tomllib.load(handle)["project"]["dependencies"]))
+          PY
+          cat "$RUNNER_TEMP/requirements.txt"
+          python3 -m pip install --quiet --no-compile --target "$PROGRAM_DIR/package/pydeps" -r "$RUNNER_TEMP/requirements.txt"
+          rm -rf "$PROGRAM_DIR/package/pydeps/bin"
+          [ -z "$(find "$PROGRAM_DIR/package/pydeps" -type l -print -quit)" ] || { echo "::error::the libraries hold links, which a package cannot carry"; exit 1; }
+          { echo "### libraries of $COMPONENT"; python3 -m pip list --path "$PROGRAM_DIR/package/pydeps" --format freeze | sed 's/^/- /'; } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Set up Node.js
-        if: ${{ inputs.component == 'studio' || inputs.component == 'server' }}
+        if: ${{ matrix.kind == 'node' }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
           package-manager-cache: false
 
-      - name: Build Studio
-        if: ${{ inputs.component == 'studio' }}
+      - name: Build the web page
+        if: ${{ matrix.component == 'studio' || matrix.component == 'dashboard-ai' }}
         run: |
           set -euo pipefail
           cd "$PROGRAM_DIR"
           npm ci --ignore-scripts
           npm run build
+          if [ "$COMPONENT" = dashboard-ai ]; then mkdir -p package && cp -a dist package/dist; fi
 
       - name: Build the server with its frontend and its libraries
-        if: ${{ inputs.component == 'server' }}
+        if: ${{ matrix.component == 'server' }}
         run: |
           set -euo pipefail
           tag="$(gh release view --repo JuanenRac/HYDRA-UMC-STUDIO --json tagName --jq .tagName)"
@@ -157,6 +251,11 @@ jobs:
           PY
           { echo "### $COMPONENT $PROGRAM_TAG (unsigned), commit $PROGRAM_COMMIT"; sed 's/^/- /' ./*.sha256; } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Load the program from what the package carries
+        run: |
+          set -euo pipefail
+          python3 tools/package_smoke.py "$RUNNER_TEMP"/out/*.tgz --run
+
       - name: Attest the provenance of the package
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
@@ -165,7 +264,7 @@ jobs:
       - name: Upload the package
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: component-${{ inputs.component }}
+          name: component-${{ matrix.component }}
           path: ${{ runner.temp }}/out/*
           if-no-files-found: error
           retention-days: 30

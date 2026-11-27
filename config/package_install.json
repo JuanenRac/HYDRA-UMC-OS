@@ -1,0 +1,16 @@
+{
+  "format": "hydra-package-install/1",
+  "python": "3.13",
+  "pythonDependencies": ["anomaly-detector", "production-reports", "semantic-planner"],
+  "components": {
+    "detection-hef": {"rootDirs": ["models"], "createIfMissing": [{"path": "/etc/hydra-umc-detection-hef/registry.json", "content": "[]\n", "mode": "0644"}]},
+    "node-healing": {"createIfMissing": [{"path": "/etc/hydra-umc-node-healing/journal.env", "content": "HYDRA_UMC_NODE_HEALING_JOURNAL_ARGS=--journal /var/lib/hydra-umc-node-healing/journal.jsonl\n", "mode": "0644"}]},
+    "safety-zones": {"needsFiles": ["/etc/hydra-umc-safety-zones/zones.json"]},
+    "server": {"needsFiles": ["/etc/hydra-umc/server.env"]},
+    "voice-ui": {"mainUnit": "hydra-umc-voice-ui.service", "needsFiles": ["/etc/hydra-umc/voice-ui.env"]},
+    "vla-engine": {"rootDirs": ["workspace"]},
+    "local-technician": {"wrappers": [{"path": "/usr/local/bin/hydra-umc-local-technician", "content": "#!/usr/bin/env sh\nexport PYTHONPATH=/opt/hydra-umc/local-technician/src\n# optional settings, one NAME=value per line\nif [ -r /etc/hydra-umc-local-technician/local-technician.env ]; then\n  set -a\n  . /etc/hydra-umc-local-technician/local-technician.env\n  set +a\nfi\nexec /usr/bin/python3 -m hydra_umc_local_technician.cli \"$@\"\n"}]},
+    "vision-streamer": {"units": ["hydra-umc-vision-streamer@.service"], "mainUnit": null, "user": "hydra-umc-vision-streamer", "aptPackages": ["python3-opencv", "v4l-utils"]},
+    "os-agent": {"units": ["hydra-umc-agent.service"], "mainUnit": "hydra-umc-agent.service", "needsFiles": ["/usr/local/bin/hydra-umc-agent"]}
+  }
+}

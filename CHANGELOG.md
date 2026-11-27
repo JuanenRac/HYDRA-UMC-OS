@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- **Every program of the device can travel as a signed package:** `package_component.py` knows all of them, with their systemd units, the libraries of Python or Node inside and a `hydra-install.json` that says what an installer does with them (`config/package_install.json`). The manual workflow `Component package` builds one or all of them on an arm64 runner and loads each from what its package carries, with no site packages (`tools/package_smoke.py`). Not tried on a CM5.
 - **The Wi-Fi setup waits for a known network:** the service gives NetworkManager 45 seconds to associate before it offers the setup network (`HYDRA_UMC_WIFI_ASSOCIATE_WAIT_S`, `0` does not wait). Not run on a CM5.
 - **A rollback puts the earlier program on an empty place:** the failed program is moved to `<name>.failed` before the copy is extracted, so files only the new version had are not left behind (`cleanRestore` in the fleet settings, on by default; the sudo rule gains the two exact commands, so the helper must be installed again).
 - **The Rust programs are not compiled as root:** their build hooks run `cargo` as the owner of the checkout, like the npm builds.
