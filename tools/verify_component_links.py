@@ -78,7 +78,7 @@ class LinkTests(unittest.TestCase):
         return cl.migrate(self.root, self.components, "server", apply=apply, settings=kwargs.pop("settings", self.settings), unit="u.service", run=self.run_command, say=lambda _m: None, **kwargs)
 
     def package(self, version: str):
-        for relative, text in {"dist/server.cjs": f"new code {version}", "public/index.html": "<html>", "package.json": "{}", "package-lock.json": "{}",
+        for relative, text in {"dist/server.cjs": f"new code {version}", "public/index.html": "<html>", "package.json": "{}", "package-lock.json": "{}", "node_modules/a/index.js": "a",
                                "systemd/hydra-umc-server.service": "[Unit]"}.items():
             target = self.repo / relative
             target.parent.mkdir(parents=True, exist_ok=True)

@@ -12,6 +12,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import re
 import sys
 import tarfile
 import tempfile
@@ -65,6 +66,27 @@ class Ed25519Tests(unittest.TestCase):
             pc.seed_from_pem("-----BEGIN " + "PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----\n")
 
 
+class NamesTheServerLooksForTests(unittest.TestCase):
+    """What HYDRA-UMC-SERVER asks a release for is what this repository packs and what its workflow builds."""
+
+    def test_every_component_of_the_self_update_has_a_layout_and_is_built_by_the_workflow(self) -> None:
+        source = Path(__file__).resolve().parent.parent.parent / "HYDRA-UMC-SERVER" / "src" / "selfUpdate.ts"
+        workflow = (Path(__file__).resolve().parent.parent / ".github" / "workflows" / "component-package.yml").read_text(encoding="utf-8")
+        expected = {"server": "HYDRA-UMC-SERVER", "studio": "HYDRA-UMC-STUDIO", "os-agent": "HYDRA-UMC-OS"}
+        if source.is_file():
+            text = source.read_text(encoding="utf-8")
+            block = re.search(r"SELF_UPDATE_COMPONENTS = \{(.*?)\}", text, re.S)
+            assert block
+            self.assertEqual(dict(re.findall(r'"?([a-z-]+)"?:\s*"(HYDRA-UMC-[A-Z-]+)"', block.group(1))), expected)
+            self.assertIn("`hydra-${component}-${version}.tgz`", text)
+        for component, repository in expected.items():
+            self.assertEqual(pc.LAYOUT[component][0], repository)
+            self.assertTrue(pc.NAME_PATTERN.match(f"hydra-{component}-0.1.0.tgz"))
+        for component in pc.LAYOUT:
+            self.assertRegex(workflow, rf"(?m)^          - {component}$", component)
+            self.assertRegex(workflow, rf"{component}\) repository={pc.LAYOUT[component][0]} ;;", component)
+
+
 class PackageTests(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -76,7 +98,8 @@ class PackageTests(unittest.TestCase):
         self.trust.write_text(self.public + "\n", encoding="ascii")
         self.repo = self.root / "HYDRA-UMC-SERVER"
         for relative, content in {"dist/server.cjs": "code", "dist/server.cjs.map": "no", "dist/__pycache__/x.pyc": "no", "public/index.html": "<html>", "package.json": "{}", "package-lock.json": "{}",
-                                  "systemd/hydra-umc-server.service": "[Unit]", "src/server.ts": "no"}.items():
+                                  "systemd/hydra-umc-server.service": "[Unit]", "src/server.ts": "no",
+                                  "node_modules/a/index.js": "a", "node_modules/a/node_modules/b/index.js": "b", "node_modules/.bin/a": "link"}.items():
             target = self.repo / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(content, encoding="utf-8")
@@ -129,7 +152,8 @@ class PackageTests(unittest.TestCase):
     def test_the_package_holds_only_the_layout_and_no_build_leftovers(self) -> None:
         with tarfile.open(self.package) as tar:
             names = {member.name for member in tar.getmembers()}
-        self.assertEqual(names, {"dist/server.cjs", "public/index.html", "package.json", "package-lock.json", "systemd/hydra-umc-server.service"})
+        self.assertEqual(names, {"dist/server.cjs", "public/index.html", "package.json", "package-lock.json", "systemd/hydra-umc-server.service",
+                                 "node_modules/a/index.js", "node_modules/a/node_modules/b/index.js"})
         self.assertEqual(self.package.name, "hydra-server-0.8.1.0.tgz")
         self.assertEqual(self.digest, hashlib.sha256(self.package.read_bytes()).hexdigest())
 
