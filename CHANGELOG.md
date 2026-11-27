@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- **The signed packages can be installed by the fleet update:** the `server`, `studio` and `os-agent` packages carry `hydra-umc.project.json` (the file the update reads the version from), the `os-agent` package puts `hydra_umc_os/` where the service looks for it, and a release installed over a migrated component keeps the links to its data without naming `stateDirs` (`inheritStateLinks` in `deploy.json`, on by default). A test packs, signs, installs and reads the version with the real tools. Not run on a CM5.
+- **One mode for `/etc/hydra-umc`:** every installer and the Debian package now make it `0711 root:root` with one function (`hydra_etc_dir`), so an account can open by name a file it has the right to read and none can list or change the folder; before, the last installer to run decided and could lock out the update helper or a service. Settings of the fleet update that are there but cannot be read now require signed tags instead of falling back to the defaults. Not run on a CM5.
 ## [0.6.4] - Rust compiler check, fleet update fixes and component packages
 
 - **The fleet update is no longer stopped by the lock files a build rewrites:** a checkout whose only changes are `package-lock.json` files is updated, and they are put aside with `git stash` first, never thrown away (setting `stashLockFiles`, on by default). Any other change still leaves the program alone, and the server is also left alone when the checkout of Studio has other changes.

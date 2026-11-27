@@ -42,6 +42,8 @@ done
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=deploy_lib.sh
+source "$ROOT/provisioning/deploy_lib.sh"
 TOOL="$WORKSPACE/HYDRA-UMC-OS/tools/fleet_update.py"
 run() { if $APPLY; then "$@"; else printf '[dry-run] '; printf '%q ' "$@"; printf '\n'; fi; }
 
@@ -55,7 +57,7 @@ fi
 
 # The folder shared by the two accounts: owned by the server, its group on every new file, closed to everybody else.
 run install -d -o "$SERVER_USER" -g "$SERVER_USER" -m 2770 "$DATA/fleet-update"
-run install -d -o root -g root -m 0755 /etc/hydra-umc
+run hydra_etc_dir
 if [[ -n "$SIGNERS" ]]; then
   run install -m 0644 -o root -g root "$SIGNERS" /etc/hydra-umc/allowed_signers
 fi

@@ -68,7 +68,7 @@ HISTORY_LIMIT = 50
 COMPONENT = re.compile(r"^[a-z][a-z0-9-]*$")
 
 STATE_DIR = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
-DEFAULTS: dict[str, Any] = {"keep": 3, "healthTimeoutS": 30, "healthIntervalS": 1.0, "restartCommand": "", "healthCommand": "", "allowDowngrade": False, "stateDirs": []}
+DEFAULTS: dict[str, Any] = {"keep": 3, "healthTimeoutS": 30, "healthIntervalS": 1.0, "restartCommand": "", "healthCommand": "", "allowDowngrade": False, "stateDirs": [], "inheritStateLinks": True}
 
 
 class DeployError(Exception):
@@ -117,6 +117,11 @@ def load_settings(root: Path, warn: Callable[[str], None] = lambda message: prin
             settings["stateDirs"] = list(dirs)
         else:
             warn(f"{path}: stateDirs must be a list of plain folder names; none is used")
+    if "inheritStateLinks" in raw:
+        if isinstance(raw["inheritStateLinks"], bool):
+            settings["inheritStateLinks"] = raw["inheritStateLinks"]
+        else:
+            warn(f"{path}: inheritStateLinks must be true or false; true is used")
     if "allowDowngrade" in raw:
         if isinstance(raw["allowDowngrade"], bool):
             settings["allowDowngrade"] = raw["allowDowngrade"]
@@ -221,6 +226,12 @@ def extract(package: Path, destination: Path, data: bytes | None = None) -> None
             tar.extractall(destination)
 
 
+def kept_state_dirs(component: Component) -> list[str]:
+    """The folders a migration put in `<component>/state/`: a release installed over a migrated component keeps its data even when `stateDirs` names none."""
+    state = component.base / "state"
+    return sorted(p.name for p in state.iterdir() if p.is_dir() and STATE_DIR.match(p.name)) if state.is_dir() else []
+
+
 def link_state(component: Component, release: Path, names: list[str]) -> list[str]:
     """Each folder of `names` that the component keeps in `<component>/state/` is linked inside the new release, so the program finds its data where it always did. A name the
     release already holds is left alone. Nothing is done when the list is empty (the default)."""
@@ -266,7 +277,7 @@ def install(package: Path, root: Path, *, trusted_key: str | None = None, allow_
         extract(package, staging, verified)
         final = component.releases / release_name
         os.replace(staging, final)
-        link_state(component, final, settings["stateDirs"])
+        link_state(component, final, settings["stateDirs"] or (kept_state_dirs(component) if settings.get("inheritStateLinks", True) else []))
     except (OSError, tarfile.TarError) as error:
         shutil.rmtree(staging, ignore_errors=True)
         raise DeployError(f"refused: the package could not be extracted: {error}") from error

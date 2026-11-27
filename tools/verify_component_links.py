@@ -150,10 +150,13 @@ class LinkTests(unittest.TestCase):
         self.assertEqual((self.program / "data" / "after.db").read_text(encoding="utf-8"), "written by the new program")
         self.assertEqual(dr.Component(self.components, "server").state()["current"]["version"], "0.8.0.0")
 
-    def test_without_state_dirs_in_the_deploy_settings_a_release_gets_no_links_as_before(self) -> None:
+    def test_a_release_over_a_migrated_component_keeps_its_data_without_naming_state_dirs(self) -> None:
         self.migrate()
         dr.install(self.package("0.9.0.0"), self.components, trusted_key=PUBLIC, settings=dict(dr.DEFAULTS), sleep=lambda _s: None)
-        self.assertFalse((self.components / "server" / "releases" / "0.9.0.0-1" / "data").exists())
+        self.assertEqual((self.program / "data" / "store.db").read_text(encoding="utf-8"), "records")
+        self.assertTrue((self.components / "server" / "releases" / "0.9.0.0-1" / "workspace").is_symlink())
+        dr.install(self.package("0.9.1.0"), self.components, trusted_key=PUBLIC, settings=dict(dr.DEFAULTS, inheritStateLinks=False), sleep=lambda _s: None)
+        self.assertFalse((self.components / "server" / "releases" / "0.9.1.0-1" / "data").exists())
         warnings: list[str] = []
         (self.components / "deploy.json").write_text(json.dumps({"stateDirs": ["data", "../x"]}), encoding="utf-8")
         self.assertEqual(dr.load_settings(self.components, warnings.append)["stateDirs"], [])

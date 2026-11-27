@@ -14,7 +14,8 @@ case "$1" in
     if ! getent passwd hydra-umc-agent >/dev/null 2>&1; then
       adduser --system --group --no-create-home --home /nonexistent --shell /usr/sbin/nologin hydra-umc-agent
     fi
-    install -d -o root -g hydra-umc-agent -m 0750 /etc/hydra-umc
+    # the one mode of the shared folder (hydra_etc_dir of provisioning/deploy_lib.sh): pass through, no listing; each file keeps its own mode
+    install -d -o root -g root -m 0711 /etc/hydra-umc
     install -d -o root -g root -m 0755 /var/lib/hydra-umc
     if [ ! -f /etc/hydra-umc/config.json ]; then
       install -m 0640 -o root -g hydra-umc-agent /usr/share/hydra-umc/config/hydra-umc-os.example.json /etc/hydra-umc/config.json

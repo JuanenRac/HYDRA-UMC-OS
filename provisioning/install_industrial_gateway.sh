@@ -67,7 +67,7 @@ NEW_INSTALL=false
 [[ -e "$GATEWAY_ENV" || -e "$LEGACY_ENV" ]] || NEW_INSTALL=true
 # --- gateway env begin
 if $APPLY; then
-  [[ -d "$(dirname "$GATEWAY_ENV")" ]] || install -d -o root -g root -m 0750 "$(dirname "$GATEWAY_ENV")"
+  [[ -d "$(dirname "$GATEWAY_ENV")" ]] || install -d -o root -g root -m 0711 "$(dirname "$GATEWAY_ENV")"
   if [[ -f "$LEGACY_ENV" && ! -e "$GATEWAY_ENV" ]]; then
     mv "$LEGACY_ENV" "$GATEWAY_ENV"
     chown root:root "$GATEWAY_ENV"

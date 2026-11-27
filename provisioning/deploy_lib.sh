@@ -22,6 +22,13 @@
 # contract). HYDRA_UMC_DEPLOY_ROOT and HYDRA_UMC_DEPLOY_TOOL name another releases folder / tool (the tests use them);
 # HYDRA_UMC_DEPLOY_RESULT names a file that receives the JSON of the last step (the `hydra-umc-os deploy` command reads it).
 
+# The shared configuration folder has ONE owner and mode, whichever installer runs last: root, and every other account may pass through it (to open a file it has the
+# right to read, by name) but not list or change it. Each file keeps its own owner, group and mode.
+HYDRA_ETC_MODE=0711
+hydra_etc_dir() {
+  install -d -o root -g root -m "$HYDRA_ETC_MODE" "${1:-/etc/hydra-umc}"
+}
+
 HYDRA_DEPLOY_CONTRACT_SUPPORTED=1
 HYDRA_DEPLOY_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HYDRA_DEPLOY_ROOT="${HYDRA_UMC_DEPLOY_ROOT:-/opt/hydra-umc/.releases}"

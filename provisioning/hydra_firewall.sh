@@ -115,7 +115,7 @@ case "$COMMAND" in
     need_root; need_nft
     text="$(ruleset)"
     printf '%s\n' "$text" | nft -c -f - || fail "nft refused the rules: nothing was changed"
-    install -d -m 0750 "$CONF_DIR"
+    install -d -m 0711 "$CONF_DIR"   # the mode of hydra_etc_dir (deploy_lib.sh)
     printf '%s\n' "$text" > "$CONF_FILE"; chmod 0640 "$CONF_FILE"
     nft delete table inet "$TABLE" 2>/dev/null || true
     nft -f "$CONF_FILE"
