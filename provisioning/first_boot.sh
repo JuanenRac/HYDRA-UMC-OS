@@ -23,6 +23,8 @@ run() {
 # An explicit HYDRA_UMC_HOSTNAME is used as given; otherwise the name ends with a part taken from
 # this device (see provisioning/device_identity.py; HYDRA_UMC_DEVICE_SUFFIX=off keeps a fixed name).
 IDENTITY_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=deploy_lib.sh
+source "$IDENTITY_DIR/deploy_lib.sh"   # hydra_etc_dir
 HOSTNAME="${HYDRA_UMC_HOSTNAME:-$(python3 "$IDENTITY_DIR/device_identity.py" hostname 2>/dev/null || echo hydra-umc-test)}"
 ADMIN_USER="${HYDRA_UMC_ADMIN_USER:-hydra-umc}"
 SERVICE_USER="hydra-umc-agent"
