@@ -197,6 +197,23 @@ class InstallTests(Base):
             pi.install(self.package("vision-streamer", "0.3.0"), self.device, allow_first_install=True)
         self.assertEqual(caught.exception.code, "missing_system_package")
 
+    def test_the_helper_installs_itself_with_the_key_it_trusts_beside_its_tools(self) -> None:
+        repo = pc.LAYOUT["helper"][0]
+        files = {source: "x\n" for source, _target in pc.LAYOUT["helper"][1] if source != "hydra-umc.project.json"}
+        for relative, content in {**files, "hydra-umc.project.json": json.dumps({"version": "0.6.5"})}.items():
+            target = self.root / "src" / "helper" / repo / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+        package = pc.build("helper", self.root / "src" / "helper" / repo, self.root / "out" / "helper")[0]
+        pc.sign_package(package, self.seed, self.trust)
+        done = pi.install(package, self.device, allow_first_install=True)
+        self.assertEqual((done["mode"], done["restarted"]), ("first", []))
+        installed = self.device.root / "helper"
+        self.assertTrue((installed / "tools" / "root_helper.py").is_file())
+        self.assertTrue((installed / "config" / "release_key.pub").is_file())
+        self.assertTrue((self.device.unit_dir / "hydra-umc-helper.path").is_file())
+        self.assertEqual(self.system.ran("systemctl", "enable"), [])
+
     def test_libraries_for_another_python_are_refused_before_anything_changes(self) -> None:
         self.old_install("anomaly-detector", "0.2.6")
         self.device.python_version = "3.11"
