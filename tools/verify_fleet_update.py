@@ -87,6 +87,9 @@ class Device:
         self.install_noop: set[str] = set()
         self.offline = False
         self.dirty: set[str] = set()
+        self.status: dict[str, str] = {}
+        self.rustc = ""
+        self.cargo: dict[str, str] = {}
 
     def write_version(self, name: str, version: str) -> None:
         folder = self.root / name
@@ -114,6 +117,8 @@ class Device:
                 return 3, f"DEPLOY=FAIL {name.group(1)} did not pass the health check; the release in use is {self.versions[name.group(1)]}\n"
             self.write_version(name.group(1), name.group(2))
             return 0, "DEPLOY=PASS\n"
+        if argv[0] == "rustc":
+            return (0, f"rustc {self.rustc} (abc 2026-01-01)\n") if self.rustc else (127, "")
         if argv[0] == "git":
             repo = Path(argv[2]).name
             at = 3
@@ -130,7 +135,7 @@ class Device:
             if verb == "symbolic-ref":
                 return 0, "main\n"
             if verb == "status":
-                return 0, " M file.py\n" if repo in self.dirty else ""
+                return 0, self.status.get(repo, " M file.py\n" if repo in self.dirty else "")
             if verb == "verify-tag":
                 self.verify_args = list(argv[3:at])
                 return (0 if self.verify_tag_ok else 1), ""
@@ -197,6 +202,11 @@ class Device:
         if self.offline:
             raise OSError("offline")
         repo = url.split("/repos/JuanenRac/")[1].split("/")[0]
+        if "/contents/Cargo.toml" in url:
+            if repo not in self.cargo:
+                raise OSError("404")
+            import base64
+            return {"content": base64.b64encode(self.cargo[repo].encode()).decode()}
         if "/releases/latest" in url:
             return {"tag_name": self.releases[repo], "assets": []}
         return {"sha": SHA.get(url.rsplit("/", 1)[1], "e" * 40)}
@@ -593,6 +603,45 @@ class FleetTests(unittest.TestCase):
         self.go(environment)
         self.assertEqual(self.row(environment, "datalake")["state"], "waiting")
         self.assertEqual(self.row(environment, "semantic-planner")["state"], "done")
+
+    def test_lock_files_rewritten_by_a_build_are_put_aside_and_do_not_stop_the_program(self) -> None:
+        self.device.status["HYDRA-UMC-DATALAKE"] = " M package-lock.json\n M web/package-lock.json\n"
+        environment = self.planned()
+        self.assertEqual(self.row(environment, "datalake")["action"], "update")
+        self.assertEqual(self.go(environment), 0)
+        git = [c for c in self.device.calls if c[0] == "git" and Path(c[2]).name == "HYDRA-UMC-DATALAKE"]
+        stash = next(i for i, c in enumerate(git) if c[3:5] == ["stash", "push"])
+        self.assertEqual(git[stash][-2:], ["package-lock.json", "web/package-lock.json"])
+        self.assertLess(stash, next(i for i, c in enumerate(git) if c[3] == "checkout"))
+        self.assertFalse([c for c in git if "drop" in c or "reset" in c or "clean" in c])
+
+    def test_another_change_next_to_a_lock_file_or_the_switch_off_leaves_the_program_alone(self) -> None:
+        for status, config in ((" M package-lock.json\n M server.ts\n", {}), ("?? package-lock.json\n", {}), (" M package-lock.json\n", {"stashLockFiles": False})):
+            self.device.status["HYDRA-UMC-DATALAKE"] = status
+            environment = self.planned(**config)
+            self.assertEqual((self.row(environment, "datalake")["action"], self.row(environment, "datalake")["reason"]), ("skip", "repo_dirty"), status)
+
+    def test_the_server_is_left_alone_when_studio_has_other_changes(self) -> None:
+        self.device.releases["HYDRA-UMC-SERVER"] = "v1.0.0"
+        self.device.status["HYDRA-UMC-STUDIO"] = " M src/App.tsx\n"
+        environment = self.planned()
+        self.assertEqual((self.row(environment, "server")["action"], self.row(environment, "server")["reason"]), ("skip", "repo_dirty"))
+
+    def test_a_release_that_needs_a_newer_rustc_is_said_before_anything_is_touched(self) -> None:
+        self.device.rustc = "1.85.1"
+        self.device.cargo["HYDRA-UMC-DATALAKE"] = '[package]\nname = "x"\nrust-version = "1.88"\n'
+        environment = self.planned()
+        row = self.row(environment, "datalake")
+        self.assertEqual((row["action"], row["reason"]), ("skip", "needs_newer_rustc"))
+        self.assertEqual(row["detail"], "needs rustc 1.88; the device has 1.85.1")
+        self.go(environment)
+        self.assertFalse([c for c in self.device.calls if c[0] == "git" and Path(c[2]).name == "HYDRA-UMC-DATALAKE" and c[3] in ("fetch", "checkout")])
+
+    def test_a_release_the_rustc_can_build_is_updated(self) -> None:
+        for rustc, wanted in (("1.85.1", "1.85"), ("1.88.0", "1.88"), ("", "1.88")):
+            self.device.rustc = rustc
+            self.device.cargo["HYDRA-UMC-DATALAKE"] = f'[package]\nrust-version = "{wanted}"\n'
+            self.assertEqual(self.row(self.planned(), "datalake")["action"], "update", (rustc, wanted))
 
     def test_an_inactive_unit_is_updated_only_when_asked_and_is_not_started_or_judged_by_its_health(self) -> None:
         self.device.active["hydra-umc-datalake.service"] = "inactive"
