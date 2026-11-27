@@ -124,6 +124,20 @@ hydra_npm_install_flags() {
 
 # hydra_npm_in DIR npm-arguments...   runs npm in DIR as the owner of DIR when this script runs as root and DIR belongs to somebody else.
 hydra_npm_in() {
+  local dir="$1"
+  shift
+  hydra_run_as_owner "$dir" npm "$@"
+}
+
+# The same for cargo: a build runs the build.rs of every crate, which must not happen as root.
+hydra_cargo_in() {
+  local dir="$1"
+  shift
+  hydra_run_as_owner "$dir" cargo "$@"
+}
+
+# hydra_run_as_owner DIR PROGRAM ARGS...: runs PROGRAM in DIR as the owner of DIR when this script runs as root.
+hydra_run_as_owner() {
   local dir="$1" owner="" home=""
   shift
   if [[ $EUID -eq 0 ]]; then
@@ -132,12 +146,12 @@ hydra_npm_in() {
   if [[ -n "$owner" && "$owner" != "root" && "$owner" != "UNKNOWN" ]]; then
     home="$(getent passwd "$owner" | cut -d: -f6)"
     if command -v runuser >/dev/null 2>&1; then
-      (cd "$dir" && runuser -u "$owner" -- env "PATH=$PATH" "HOME=${home:-/tmp}" npm "$@")
+      (cd "$dir" && runuser -u "$owner" -- env "PATH=$PATH" "HOME=${home:-/tmp}" "$@")
     else
-      (cd "$dir" && sudo -H -u "$owner" env "PATH=$PATH" npm "$@")
+      (cd "$dir" && sudo -H -u "$owner" env "PATH=$PATH" "$@")
     fi
   else
-    (cd "$dir" && npm "$@")
+    (cd "$dir" && "$@")
   fi
 }
 

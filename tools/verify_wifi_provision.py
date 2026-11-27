@@ -103,6 +103,23 @@ class FakeNetworkManager:
         return ["HomeNetwork", "Neighbor5G"]
 
 
+# --- wait_for_association: a known network is given time before the setup network is offered -----------------------------------------
+class _Late:
+    def __init__(self, answers):
+        self.answers = list(answers)
+
+    def active_wifi_connection(self, ifname):
+        answer = self.answers.pop(0) if self.answers else None
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+
+_ticks = iter(range(0, 1000, 2))
+check("a network that associates late is waited for", wp.wait_for_association(_Late([wp.NmcliError("starting"), None, "home"]), "wlan0", 45.0, sleep=lambda _s: None, clock=lambda: next(_ticks)), True)
+_ticks = iter(range(0, 1000, 2))
+check("no known network ends the wait", wp.wait_for_association(_Late([]), "wlan0", 10.0, sleep=lambda _s: None, clock=lambda: next(_ticks)), False)
+
 # --- ensure_hotspot_if_disconnected ---------------------------------------
 
 already_connected = FakeNetworkManager()

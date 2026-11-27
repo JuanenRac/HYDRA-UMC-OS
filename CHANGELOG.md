@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- **The Wi-Fi setup waits for a known network:** the service gives NetworkManager 45 seconds to associate before it offers the setup network (`HYDRA_UMC_WIFI_ASSOCIATE_WAIT_S`, `0` does not wait). Not run on a CM5.
+- **A rollback puts the earlier program on an empty place:** the failed program is moved to `<name>.failed` before the copy is extracted, so files only the new version had are not left behind (`cleanRestore` in the fleet settings, on by default; the sudo rule gains the two exact commands, so the helper must be installed again).
+- **The Rust programs are not compiled as root:** their build hooks run `cargo` as the owner of the checkout, like the npm builds.
 - **The signed packages can be installed by the fleet update:** the `server`, `studio` and `os-agent` packages carry `hydra-umc.project.json` (the file the update reads the version from), the `os-agent` package puts `hydra_umc_os/` where the service looks for it, and a release installed over a migrated component keeps the links to its data without naming `stateDirs` (`inheritStateLinks` in `deploy.json`, on by default). A test packs, signs, installs and reads the version with the real tools. Not run on a CM5.
 - **One mode for `/etc/hydra-umc`:** every installer and the Debian package now make it `0711 root:root` with one function (`hydra_etc_dir`), so an account can open by name a file it has the right to read and none can list or change the folder; before, the last installer to run decided and could lock out the update helper or a service. Settings of the fleet update that are there but cannot be read now require signed tags instead of falling back to the defaults. Not run on a CM5.
 ## [0.6.4] - Rust compiler check, fleet update fixes and component packages
