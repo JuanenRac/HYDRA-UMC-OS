@@ -30,7 +30,7 @@ BASH = shutil.which("bash")
 # page, the local agent (its own unit, not a project of the family), a command-line tool and a unit template per camera.
 NOT_REGISTRY_SERVICES = frozenset({
     "install_cm5_base.sh", "install_kiosk.sh", "install_local_agent.sh", "install_local_technician.sh",
-    "install_fleet_helper.sh", "install_node_healing.sh", "install_splashscreen.sh", "install_vision_streamer.sh", "install_wifi_provision.sh",
+    "install_fleet_helper.sh", "install_node_healing.sh", "install_root_helper.sh", "install_splashscreen.sh", "install_vision_streamer.sh", "install_wifi_provision.sh",
 })
 
 
