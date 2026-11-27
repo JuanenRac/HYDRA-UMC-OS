@@ -170,6 +170,8 @@ HYDRA-UMC-OS/
 
 **Go サービス用に固定した Go。** ジョブディスパッチャー、ノード監視役、テレメトリコレクターはデバイス上でビルドされ、その `go.mod` は Debian アーカイブの `golang-go` より新しい Go を求めるため、それではビルドできませんでした。インストーラーは `provisioning/go_toolchain.sh` を読み込みます。go.dev の公式リリースを、固定した SHA-256 と照合してから `/usr/local/go-<バージョン>` に展開します(システムの Go には手を触れません)。`tools/verify_go_toolchain.py` は、ダウンロードを模したもの(正しいアーカイブ、壊れたもの、インストール済みのもの)でヘルパーを実行し、固定バージョンを兄弟プロジェクトの `go.mod` と比べます。実機の CM5 へのインストールはまだ行われていません。
 
+**ビルド前に Rust コンパイラーを確認します。** Rust のプログラムは、Debian アーカイブの `cargo` を使ってデバイス上でビルドされます。そのビルドフックは `provisioning/rust_toolchain.sh` を読み込み、プログラムの `rust-version` と `rustc --version` を比較し、コンパイラーが古い場合はビルド前に停止して両方のバージョンを表示します。`tools/verify_rust_toolchain.py` が代役のコンパイラーで確認しますが、実際の CM5 ではまだ実行していません。
+
 **サービスレジストリは 1 つ。** 各サービスのポート、ヘルスルート、systemd ユニットは `provisioning/ports.yaml`(プロジェクトのマニフェストから生成される SDK の `contracts/ports.yaml` のコピー)から取得します。サービスの各インストーラーは、起動後にどこを確認すればよいかを表示して終わり、`verify_cm5_runtime.sh --with-services` は実行中の各サービスのヘルスルートを確認します(読み取り専用。動いていないものはスキップ)。`tools/verify_service_registry.py` が、ヘルパー、インストーラー、実行時チェックをスタブで検証します。実機の CM5 へのインストールはまだ行われていません。
 
 ### 最初のマイルストーン
