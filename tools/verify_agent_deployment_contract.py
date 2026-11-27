@@ -79,8 +79,9 @@ def main() -> int:
         fail("agent code directory must be root-owned and non-writable by the service")
     if 'chown -R root:root "$TARGET/hydra_umc_os"' not in installer or 'chmod -R go-w "$TARGET/hydra_umc_os"' not in installer:
         fail("installed agent files must be root-owned and not group/world writable")
-    if 'install -d -o root -g "$SERVICE_USER" -m 0750 /etc/hydra-umc' not in installer:
-        fail("configuration directory must be root-owned and readable only by the service group")
+    lib = (ROOT / "provisioning" / "deploy_lib.sh").read_text(encoding="utf-8")
+    if "run hydra_etc_dir" not in installer or "HYDRA_ETC_MODE=0711" not in lib or 'install -d -o root -g root -m "$HYDRA_ETC_MODE"' not in lib:
+        fail("configuration directory must be root-owned, passable but not listable, and made by hydra_etc_dir")
     if 'install -m 0640 -o root -g "$SERVICE_USER"' not in installer:
         fail("configuration file must be root-owned with restricted service-group read access")
 

@@ -11,7 +11,7 @@
 [[ -d "$SOURCE/src/hydra_umc_voice_ui" ]] || { echo "HYDRA-UMC-VOICE-UI source is incomplete: $SOURCE" >&2; exit 2; }
 OS_ROOT="$(cd "$HERE/.." && pwd)"
 ENV_FILE=/etc/hydra-umc/voice-ui.env
-[[ -d /etc/hydra-umc ]] || install -d -o root -g root -m 0750 /etc/hydra-umc
+hydra_etc_dir   # deploy_lib.sh, sourced by the installer: one mode for the shared folder
 python3 "$OS_ROOT/provisioning/generate_secrets.py" "$ENV_FILE" --create-from "$SOURCE/deploy/voice-ui.env.example" --apply --adopt "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/server.env:HYDRA_UMC_VOICE_UI_TOKEN" --ensure HYDRA_UMC_VOICE_UI_RESULT_KEY --adopt "HYDRA_UMC_VOICE_UI_RESULT_KEY=/etc/hydra-umc/server.env:HYDRA_UMC_VOICE_UI_RESULT_KEY" --ensure HYDRA_UMC_VOICE_UI_REQUIRE_SUBJECT=1
 python3 "$OS_ROOT/provisioning/generate_secrets.py" "$ENV_FILE" --check || { echo "Fix $ENV_FILE (no example value) and rerun." >&2; exit 2; }
 command -v python3 >/dev/null || { echo "HYDRA-UMC-VOICE-UI requires python3." >&2; exit 2; }

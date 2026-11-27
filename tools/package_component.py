@@ -48,15 +48,19 @@ TRUST_FILE = Path(__file__).resolve().parent.parent / "config" / "release_key.pu
 MESSAGE_PREFIX = "hydra-pkg/1"
 NAME_PATTERN = re.compile(r"^hydra-([a-z][a-z0-9-]*)-(\d+\.\d+\.\d+(?:\.\d+)?)\.tgz$")
 
-# component -> (repository, [(path in the repository, path in the package)], what must be there before packing)
+# component -> (repository, [(path in the repository, path in the package)], what must be there before packing). Every package carries `hydra-umc.project.json`:
+# the fleet update reads the installed version from it.
 LAYOUT: dict[str, tuple[str, list[tuple[str, str]], list[str]]] = {
     "server": (
         "HYDRA-UMC-SERVER",
-        [("dist", "dist"), ("public", "public"), ("package.json", "package.json"), ("package-lock.json", "package-lock.json"), ("systemd/hydra-umc-server.service", "systemd/hydra-umc-server.service")],
-        ["dist/server.cjs", "public", "package.json", "package-lock.json"],
+        [("dist", "dist"), ("public", "public"), ("package.json", "package.json"), ("package-lock.json", "package-lock.json"), ("systemd/hydra-umc-server.service", "systemd/hydra-umc-server.service"),
+         ("hydra-umc.project.json", "hydra-umc.project.json")],
+        ["dist/server.cjs", "public", "package.json", "package-lock.json", "hydra-umc.project.json"],
     ),
-    "studio": ("HYDRA-UMC-STUDIO", [("dist", "dist")], ["dist/index.html"]),
-    "os-agent": ("HYDRA-UMC-OS", [("agent/src/hydra_umc_os", "agent/src/hydra_umc_os"), ("agent/pyproject.toml", "agent/pyproject.toml")], ["agent/src/hydra_umc_os/agent.py"]),
+    "studio": ("HYDRA-UMC-STUDIO", [("dist", "dist"), ("hydra-umc.project.json", "hydra-umc.project.json")], ["dist/index.html", "hydra-umc.project.json"]),
+    # the agent runs with PYTHONPATH=<its folder>, so `hydra_umc_os/` is at the root of the package, where install_local_agent.sh puts it
+    "os-agent": ("HYDRA-UMC-OS", [("agent/src/hydra_umc_os", "hydra_umc_os"), ("agent/pyproject.toml", "pyproject.toml"), ("hydra-umc.project.json", "hydra-umc.project.json")],
+                 ["agent/src/hydra_umc_os/agent.py", "hydra-umc.project.json"]),
     # The Rust programs travel built: `package/` is what the build in GitHub Actions leaves (the arm64 program, and for the twin the manifests of its children).
     "twin": ("HYDRA-UMC-TWIN", [("package/hydra-umc-twin", "hydra-umc-twin"), ("package/workspace", "workspace"), ("hydra-umc.project.json", "hydra-umc.project.json")],
              ["package/hydra-umc-twin", "package/workspace", "hydra-umc.project.json"]),

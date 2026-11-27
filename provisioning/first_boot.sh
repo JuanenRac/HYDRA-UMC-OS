@@ -68,7 +68,7 @@ elif ! $APPLY; then
 fi
 # Configuration may later contain service credentials, so it stays owned by
 # root. The restricted service account only owns its mutable runtime state.
-run install -d -o root -g "$SERVICE_USER" -m 0750 /etc/hydra-umc
+run hydra_etc_dir
 run install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0750 /var/lib/hydra-umc
 run install -d -o root -g root -m 0755 /opt/hydra-umc
 

@@ -10,6 +10,8 @@ APPLY=false
 [[ "${1:-}" == "--apply" ]] && APPLY=true
 [[ $EUID -eq 0 ]] || { echo "Run as root with sudo." >&2; exit 2; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=deploy_lib.sh
+source "$ROOT/provisioning/deploy_lib.sh"
 TARGET=/opt/hydra-umc/os-agent
 SERVICE_USER=hydra-umc-agent
 
@@ -19,7 +21,7 @@ if $APPLY && ! id -u "$SERVICE_USER" >/dev/null 2>&1; then
   exit 2
 fi
 run install -d -o root -g root -m 0755 "$TARGET"
-run install -d -o root -g "$SERVICE_USER" -m 0750 /etc/hydra-umc
+run hydra_etc_dir
 run cp -a "$ROOT/agent/src/hydra_umc_os" "$TARGET/"
 run chown -R root:root "$TARGET/hydra_umc_os"
 run chmod -R go-w "$TARGET/hydra_umc_os"

@@ -126,10 +126,43 @@ class PackageTests(unittest.TestCase):
                 names = {member.name for member in tar.getmembers()}
             self.assertEqual(names, {name.removeprefix("package/") for name in files})
 
+    def test_every_package_installs_with_the_version_where_the_fleet_update_reads_it(self) -> None:
+        # the real packer and the real installer, no stand-ins: pack, sign, install, read <component>/current/hydra-umc.project.json
+        spec = importlib.util.spec_from_file_location("hydra_deploy_release_e2e", Path(__file__).resolve().parent / "deploy_release.py")
+        assert spec and spec.loader
+        deploy = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(deploy)
+        sources = {
+            "server": ("HYDRA-UMC-SERVER", ["dist/server.cjs", "public/index.html", "package.json", "package-lock.json", "systemd/hydra-umc-server.service"]),
+            "studio": ("HYDRA-UMC-STUDIO", ["dist/index.html"]),
+            "os-agent": ("HYDRA-UMC-OS", ["agent/src/hydra_umc_os/agent.py", "agent/pyproject.toml"]),
+        }
+        expected = {"server": "dist/server.cjs", "studio": "dist/index.html", "os-agent": "hydra_umc_os/agent.py"}
+        for component, (repository, files) in sources.items():
+            repo = self.root / "e2e" / repository
+            for relative in files:
+                target = repo / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("code", encoding="utf-8")
+            (repo / "hydra-umc.project.json").write_text(json.dumps({"version": "0.9.1"}), encoding="utf-8")
+            built, _version, _digest = pc.build(component, repo, self.out)
+            pc.sign_package(built, self.seed, self.trust)
+            with tarfile.open(built) as tar:
+                names = {member.name for member in tar.getmembers()}
+            self.assertIn("hydra-umc.project.json", names, component)
+            self.assertIn(expected[component], names, component)
+            installed = self.root / "e2e" / "installed"
+            try:
+                deploy.install(built, installed, trusted_key=self.public, settings=dict(deploy.DEFAULTS), sleep=lambda _s: None)
+            except OSError as error:  # a Windows account without the right to make links
+                self.skipTest(f"links cannot be made here: {error}")
+            current = installed / component / "current"
+            self.assertEqual(json.loads((current / "hydra-umc.project.json").read_text(encoding="utf-8"))["version"], "0.9.1", component)
+
     def test_the_package_holds_only_the_layout_and_no_build_leftovers(self) -> None:
         with tarfile.open(self.package) as tar:
             names = {member.name for member in tar.getmembers()}
-        self.assertEqual(names, {"dist/server.cjs", "public/index.html", "package.json", "package-lock.json", "systemd/hydra-umc-server.service"})
+        self.assertEqual(names, {"dist/server.cjs", "public/index.html", "package.json", "package-lock.json", "systemd/hydra-umc-server.service", "hydra-umc.project.json"})
         self.assertEqual(self.package.name, "hydra-server-0.8.1.0.tgz")
         self.assertEqual(self.digest, hashlib.sha256(self.package.read_bytes()).hexdigest())
 

@@ -51,6 +51,7 @@ import os
 import re
 import secrets
 import shlex
+import stat
 import subprocess
 import sys
 import threading
@@ -120,7 +121,18 @@ def vtuple(version: Any) -> tuple[int, ...] | None:
 
 def load_config(path: Path | None, warn: Callable[[str], None] = lambda m: print(m, file=sys.stderr)) -> dict[str, Any]:
     settings = dict(DEFAULTS)
-    if path is None or not path.is_file():
+    if path is None:
+        return settings
+    try:
+        found = stat.S_ISREG(os.stat(path).st_mode)
+    except FileNotFoundError:
+        return settings
+    except OSError as problem:
+        # a file that is there but cannot be read must not silently become the permissive defaults
+        warn(f"{path} cannot be read ({type(problem).__name__}); signed tags are required until it can")
+        settings["requireSignedTags"] = True
+        return settings
+    if not found:
         return settings
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
@@ -521,9 +533,15 @@ def needs_signed_tag(env: Env, row: dict[str, Any]) -> bool:
 def signer_options(env: Env) -> list[str]:
     """The public keys the check of a tag trusts: the file of the device when it is there (the same for whichever account runs the tool), else the git configuration of that account."""
     signers = str(env.config.get("allowedSigners") or "")
-    if signers and os.path.isfile(signers):
-        return ["-c", "gpg.format=ssh", "-c", f"gpg.ssh.allowedSignersFile={signers}"]
-    return []
+    if not signers:
+        return []
+    try:
+        os.stat(signers)
+    except FileNotFoundError:
+        return []
+    except OSError:
+        pass  # it is there but this account cannot reach it: name it anyway, so that the check fails instead of using the account's own list
+    return ["-c", "gpg.format=ssh", "-c", f"gpg.ssh.allowedSignersFile={signers}"]
 
 
 def fetch_tag(env: Env, row: dict[str, Any], repo: str, release: dict[str, Any]) -> str:

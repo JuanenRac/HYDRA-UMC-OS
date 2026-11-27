@@ -11,7 +11,7 @@
 [[ -d "$SOURCE/dist" && -d "$SOURCE/public" && -f "$SOURCE/package.json" && -f "$SOURCE/package-lock.json" ]] || { echo "HYDRA-UMC-SERVER build is incomplete: $SOURCE" >&2; exit 2; }
 [[ -n "$(find "$SOURCE/public/models" -iname '*.stl' -print -quit 2>/dev/null)" ]] || { echo "The frontend in $SOURCE/public has no 3D models. Run: node HYDRA-UMC-STUDIO/scripts/mesh_pack.mjs ensure --source auto (offline: copy the package to ~/.cache/hydra-umc/meshes or set HYDRA_UMC_MESH_PACKAGE), then HYDRA-UMC-SERVER/build-frontend.sh, then rerun this." >&2; exit 2; }
 OS_ROOT="$(cd "$HERE/.." && pwd)"
-[[ -d /etc/hydra-umc ]] || install -d -o root -g root -m 0750 /etc/hydra-umc
+hydra_etc_dir   # deploy_lib.sh, sourced by the installer: one mode for the shared folder
 python3 "$OS_ROOT/provisioning/generate_secrets.py" /etc/hydra-umc/server.env --create-from "$OS_ROOT/provisioning/server.env.example" --apply --adopt "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_TOKEN" --mirror "HYDRA_UMC_VOICE_UI_TOKEN=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_TOKEN" --ensure HYDRA_UMC_VOICE_UI_RESULT_KEY --adopt "HYDRA_UMC_VOICE_UI_RESULT_KEY=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_RESULT_KEY" --mirror "HYDRA_UMC_VOICE_UI_RESULT_KEY=/etc/hydra-umc/voice-ui.env:HYDRA_UMC_VOICE_UI_RESULT_KEY" --ensure HYDRA_UMC_VOICE_CONFIRM_REQUIRE_SIGNATURE=1
 python3 "$OS_ROOT/provisioning/generate_secrets.py" /etc/hydra-umc/server.env --check || { echo "Fix /etc/hydra-umc/server.env (no example value, secrets long enough) and rerun." >&2; exit 2; }
 command -v node >/dev/null || { echo "HYDRA-UMC-SERVER requires Node.js 20 or later." >&2; exit 2; }
