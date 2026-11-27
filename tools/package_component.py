@@ -52,8 +52,10 @@ NAME_PATTERN = re.compile(r"^hydra-([a-z][a-z0-9-]*)-(\d+\.\d+\.\d+(?:\.\d+)?)\.
 LAYOUT: dict[str, tuple[str, list[tuple[str, str]], list[str]]] = {
     "server": (
         "HYDRA-UMC-SERVER",
-        [("dist", "dist"), ("public", "public"), ("package.json", "package.json"), ("package-lock.json", "package-lock.json"), ("systemd/hydra-umc-server.service", "systemd/hydra-umc-server.service")],
-        ["dist/server.cjs", "public", "package.json", "package-lock.json"],
+        [("dist", "dist"), ("public", "public"), ("package.json", "package.json"), ("package-lock.json", "package-lock.json"), ("systemd/hydra-umc-server.service", "systemd/hydra-umc-server.service"),
+         # the libraries travel with the program: the device installs nothing from the network (`npm ci --omit=dev` runs where the package is built)
+         ("node_modules", "node_modules")],
+        ["dist/server.cjs", "public", "package.json", "package-lock.json", "node_modules"],
     ),
     "studio": ("HYDRA-UMC-STUDIO", [("dist", "dist")], ["dist/index.html"]),
     "os-agent": ("HYDRA-UMC-OS", [("agent/src/hydra_umc_os", "agent/src/hydra_umc_os"), ("agent/pyproject.toml", "agent/pyproject.toml")], ["agent/src/hydra_umc_os/agent.py"]),
@@ -209,8 +211,11 @@ def version_of(repo: Path) -> str:
 
 
 def files_under(root: Path):
+    # Inside the libraries of Node a nested `node_modules` is part of a library, so only the command links of `.bin` (links are refused by `verify`) are left out.
+    libraries = root.name == "node_modules"
+    skipped = {".bin"} if libraries else SKIP_PARTS
     for path in sorted(root.rglob("*")):
-        if path.is_file() and not (set(path.relative_to(root).parts) & SKIP_PARTS) and not path.name.endswith(SKIP_SUFFIXES):
+        if path.is_file() and not (set(path.relative_to(root).parts) & skipped) and not path.name.endswith(SKIP_SUFFIXES):
             yield path
 
 
