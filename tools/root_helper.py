@@ -501,14 +501,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--state", type=Path)
     parser.add_argument("--request", type=Path)
     parser.add_argument("--config", type=Path, default=Path("/etc/hydra-umc/helper.json"))
-    parser.add_argument("--secret", type=Path, default=Path("/etc/hydra-umc/helper.totp"))
+    parser.add_argument("--secret", dest="seed_file", metavar="FILE", type=Path, default=Path("/etc/hydra-umc/helper.totp"))
     parser.add_argument("--private", type=Path, default=Path("/var/lib/hydra-umc-helper"))
     arguments = parser.parse_args(argv)
     if arguments.command == "totp-enroll":
         try:
-            seed_text = totp_enroll(arguments.secret)
+            seed_text = totp_enroll(arguments.seed_file)
         except FileExistsError:
-            print(f"HELPER=REFUSED {arguments.secret} exists; move it away to make a new one", file=sys.stderr)
+            print(f"HELPER=REFUSED {arguments.seed_file} exists; move it away to make a new one", file=sys.stderr)
             return 2
         print(f"Add this to an authenticator app, it is not shown again:\n  {seed_text}\n  otpauth://totp/HYDRA-UMC:helper?secret={seed_text}&issuer=HYDRA-UMC")
         return 0
@@ -529,7 +529,7 @@ def main(argv: list[str] | None = None) -> int:
         print("HELPER=FAIL the request must be beside the state file", file=sys.stderr)
         return 64
     device = pi.Device(health_timeout_s=settings["healthTimeoutS"])
-    helper = Helper(arguments.state, device, settings, Door(arguments.private, arguments.secret), arguments.private / "downloads")
+    helper = Helper(arguments.state, device, settings, Door(arguments.private, arguments.seed_file), arguments.private / "downloads")
     if arguments.command == "plan":
         return helper.plan()
     return helper.handle(arguments.request.name)
