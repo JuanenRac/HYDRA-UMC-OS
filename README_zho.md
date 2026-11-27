@@ -170,6 +170,8 @@ HYDRA-UMC-OS/
 
 **为 Go 服务固定的 Go 版本。** 作业调度器、节点看门狗和遥测收集器都在设备上构建，它们的 `go.mod` 要求的 Go 比 Debian 软件库里的 `golang-go` 更新，后者无法构建它们。它们的安装器现在会加载 `provisioning/go_toolchain.sh`：来自 go.dev 的一个官方发行版，先用固定的 SHA-256 校验，再解压到 `/usr/local/go-<版本>`（系统自带的 Go 不受影响）。`tools/verify_go_toolchain.py` 用模拟下载（正确的压缩包、损坏的、已安装的）运行该辅助脚本，并把固定版本与同级项目的 `go.mod` 比较；尚未在真实 CM5 上用它安装过。
 
+**构建前检查 Rust 编译器。** Rust 程序在设备上使用 Debian 软件库中的 `cargo` 构建。它们的构建钩子会加载 `provisioning/rust_toolchain.sh`，将程序的 `rust-version` 与 `rustc --version` 进行比较；如果编译器过旧，就在构建前停止并给出两个版本号。`tools/verify_rust_toolchain.py` 使用替身编译器进行检查；尚未在真实的 CM5 上运行过。
+
 **统一的服务注册表。** 每个服务的端口、健康路由和 systemd 单元都来自 `provisioning/ports.yaml`(由项目清单生成的 SDK `contracts/ports.yaml` 的副本)。服务的每个安装脚本结束时都会说明运行后在哪里查看,`verify_cm5_runtime.sh --with-services` 会探测每个正在运行的服务的健康路由(只读;未运行的会被跳过)。`tools/verify_service_registry.py` 用桩程序检查辅助脚本、安装脚本和运行时检查;尚未在真实 CM5 上用它安装过任何内容。
 
 ### 第一个里程碑

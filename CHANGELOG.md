@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- **A Rust program that needs a newer compiler is refused with a plain message:** the hooks that build the digital twin, the orchestrator, the HIL bridge and the swarm sync compare `rust-version` of the program with `rustc --version` before they build, and say which version is needed and which one the device has (`provisioning/rust_toolchain.sh`, checked by `tools/verify_rust_toolchain.py` with a stand-in compiler). Not tried on a CM5.
 - **The keyed hash of a settings backup costs as much to guess as the archive:** its key is derived from the passphrase with PBKDF2 and a salt of its own (`v2:` in the `.hmac`); an archive with the earlier hash is still restored.
 - **Root keeps its rollback backups where only root can write:** the installers that back up a unit file put it in `/var/lib/hydra-umc-rollback` (mode 0700) instead of a folder owned by the account of the agent, and `rollback.py` never reads or writes through a symbolic link. Backups made before stay in `/var/lib/hydra-umc/rollback`; restoring one means naming its manifest.
 - **The builds on the device do not run what a dependency changed:** the Rust hooks compile with `--locked`, and the fleet update installs the server dependencies with `--ignore-scripts` unless `npm_scripts = on`, like the installers. Not tried on a CM5.
