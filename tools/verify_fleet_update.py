@@ -166,6 +166,9 @@ class Device:
             for path in argv[2:]:
                 shutil.rmtree(path, ignore_errors=True)
             return 0, ""
+        if argv[0] == "mv":
+            Path(argv[1]).replace(argv[2])
+            return 0, ""
         if argv[0] == "mkdir":
             return 0, ""
         if argv[0] == "journalctl":

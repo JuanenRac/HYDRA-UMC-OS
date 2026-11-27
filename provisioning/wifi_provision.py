@@ -94,6 +94,9 @@ DEFAULT_STATE_DIR = "/var/lib/hydra-umc/wifi-provision"
 # The seconds between sending the answer to the phone and taking the setup network down to join: the answer must reach the phone first.
 # Configurable (--join-delay-seconds or HYDRA_UMC_JOIN_DELAY_S in /etc/hydra-umc/wifi-provision.env).
 DEFAULT_JOIN_DELAY_SECONDS = 3.0
+# How long NetworkManager is given to finish associating to a network it knows, before the setup network is offered. At boot the interface is not connected yet when this
+# service starts. HYDRA_UMC_WIFI_ASSOCIATE_WAIT_S changes it; 0 does not wait.
+DEFAULT_ASSOCIATE_WAIT_SECONDS = 45.0
 LAST_JOIN_FILE = "last_join.json"
 _PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"  # no look-alike characters (0/o, 1/l/i)
 
@@ -220,6 +223,32 @@ class RealNetworkManager:
 class JoinResult:
     ok: bool
     reason: str
+
+
+def _associate_wait_from_environment() -> float:
+    """HYDRA_UMC_WIFI_ASSOCIATE_WAIT_S, or the default when it is unset or not a number from 0 to 600."""
+    raw = os.environ.get("HYDRA_UMC_WIFI_ASSOCIATE_WAIT_S")
+    if raw is None:
+        return DEFAULT_ASSOCIATE_WAIT_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        value = -1.0
+    return value if 0 <= value <= 600 else DEFAULT_ASSOCIATE_WAIT_SECONDS
+
+
+def wait_for_association(runner: NetworkManagerRunner, ifname: str, wait_s: float, *, sleep=time.sleep, clock=time.monotonic, poll_s: float = 2.0) -> bool:
+    """True as soon as `ifname` is connected, False when `wait_s` passed without it. An nmcli that fails is asked again: NetworkManager may still be starting."""
+    end = clock() + wait_s
+    while True:
+        try:
+            if runner.active_wifi_connection(ifname) is not None:
+                return True
+        except NmcliError:
+            pass
+        if clock() >= end:
+            return False
+        sleep(poll_s)
 
 
 def ensure_hotspot_if_disconnected(
@@ -592,6 +621,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} password={password} code={code} (generated now; print_once is on)")
     else:
         print(f"WIFI_PROVISION=CREDENTIALS ssid={args.ap_ssid} (password and code are in {credentials_file}; read them with: sudo cat {credentials_file})")
+    wait_s = _associate_wait_from_environment()
+    if wait_s and wait_for_association(runner, args.ifname, wait_s):
+        print(f"WIFI_PROVISION=CONNECTED {args.ifname} joined a known network: no setup network is offered")
+        return 0
     serve_until_joined(runner, args.ifname, args.ap_ssid, password, args.host, args.port, setup_code=code, window_s=args.window_seconds, state_dir=Path(args.state_dir), join_delay_s=max(0.0, args.join_delay_seconds))
     return 0
 

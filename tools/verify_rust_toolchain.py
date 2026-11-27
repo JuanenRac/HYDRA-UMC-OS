@@ -41,7 +41,7 @@ class RustToolchainTests(unittest.TestCase):
             check = f'require_rust "$SOURCE" {project}'
             self.assertIn('source "$HERE/rust_toolchain.sh"', text, short)
             self.assertIn(check, text, short)
-            self.assertLess(text.index(check), text.index("cargo build"), short)
+            self.assertLess(text.index(check), text.index('hydra_cargo_in "$SOURCE" build'), short)
 
     def run_helper(self, rust_version: str | None, rustc: str) -> subprocess.CompletedProcess[str]:
         with tempfile.TemporaryDirectory() as temporary:

@@ -70,7 +70,7 @@ STALE_SECONDS = 60
 EXIT_FAILED = 2
 EXIT_BLOCKED = 3
 DEFAULTS: dict[str, Any] = {
-    "signedTags": ["os-tools", "os-agent", "server", "studio", "orchestrator", "safety-zones", "job-dispatcher"], "requireSignedTags": False, "verifyInstallerCheckout": True, "stashLockFiles": True, "minFreeMb": 800, "minFreeMbServer": 2500, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
+    "signedTags": ["os-tools", "os-agent", "server", "studio", "orchestrator", "safety-zones", "job-dispatcher"], "requireSignedTags": False, "verifyInstallerCheckout": True, "stashLockFiles": True, "minFreeMb": 800, "minFreeMbServer": 2500, "cleanRestore": True, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
     "backups": "/opt/hydra-umc-backups", "owner": OWNER, "usePackages": False, "allowedSigners": "/etc/hydra-umc/allowed_signers", "components": "/opt/hydra-umc/.components", "python": "python3",
 }
 ORDER = ["datalake", "twin", "swarm-sync", "telemetry-collector", "anomaly-detector", "detection-hef", "vision-node", "vision-streamer",
@@ -712,6 +712,15 @@ def roll_back(env: Env, row: dict[str, Any], previous: str | None) -> None:
     env.say(row, f"{name}: putting the earlier program back")
     if row.get("backup"):
         env.sh(sudo(["rm", "-rf", str(env.unit_dir / f"{unit}.d"), f"{env.root}/{name}.tmp"]), 120)
+        # The copy is extracted onto an empty place: extracted over the failed program, the files only the new version had would stay and be loaded with the old ones.
+        # The failed tree is moved aside, not deleted, so that what it wrote can still be read.
+        program = env.root / name
+        if env.config.get("cleanRestore", True) and program.is_dir() and not program.is_symlink():
+            env.sh(sudo(["rm", "-rf", f"{env.root}/{name}.failed"]), 300)
+            code, text = env.sh(sudo(["mv", f"{env.root}/{name}", f"{env.root}/{name}.failed"]), 120)
+            if code != 0:
+                raise RuntimeError(f"the failed program could not be moved aside (status {code}): {text.strip()[-100:]}")
+            env.say(row, f"{name}: the failed program is kept in {env.root}/{name}.failed")
         # A step that fails is not "put back": the state stays failed and the line says by hand (a half-extracted copy is a mixed tree).
         code, text = env.sh(sudo(["tar", "xzf", row["backup"], "-C", "/"]), 900)
         if code != 0:

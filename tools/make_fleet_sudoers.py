@@ -29,7 +29,7 @@ fu = importlib.util.module_from_spec(_spec)
 sys.modules["fleet_update_for_sudoers"] = fu
 _spec.loader.exec_module(fu)
 
-BINARIES = {"bash": "/usr/bin/bash", "tar": "/usr/bin/tar", "rm": "/usr/bin/rm", "mkdir": "/usr/bin/mkdir", "systemctl": "/usr/bin/systemctl", "journalctl": "/usr/bin/journalctl"}
+BINARIES = {"bash": "/usr/bin/bash", "tar": "/usr/bin/tar", "rm": "/usr/bin/rm", "mv": "/usr/bin/mv", "mkdir": "/usr/bin/mkdir", "systemctl": "/usr/bin/systemctl", "journalctl": "/usr/bin/journalctl"}
 
 
 def commands(installers: list[dict], workspace: str, root: str, backups: str, unit_dir: str) -> list[list[str]]:
@@ -43,6 +43,8 @@ def commands(installers: list[dict], workspace: str, root: str, backups: str, un
             ["tar", "czf", archive, "--ignore-failed-read", "-C", "/", *members],
             ["tar", "xzf", archive, "-C", "/"],
             ["rm", "-rf", f"{unit_dir}/{unit}.d", f"{root}/{name}.tmp"],
+            ["rm", "-rf", f"{root}/{name}.failed"],
+            ["mv", f"{root}/{name}", f"{root}/{name}.failed"],
             ["systemctl", "restart", unit],
             ["journalctl", "-u", unit, "-n", "40", "--no-pager", "--since", "-2min"],
             ["bash", f"{workspace}/HYDRA-UMC-OS/provisioning/install_{svc['script']}.sh", "--apply"],

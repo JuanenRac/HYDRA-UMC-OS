@@ -99,7 +99,7 @@ class GenerateInstallersTests(unittest.TestCase):
 
     def test_what_the_hand_written_ones_did_is_kept_by_the_hooks(self) -> None:
         facts = {
-            "cargo build --release": ("hil-bridge", "orchestrator", "swarm-sync", "twin"),
+            "hydra_cargo_in \"$SOURCE\" build --release": ("hil-bridge", "orchestrator", "swarm-sync", "twin"),
             '"$GO_BIN" build': ("job-dispatcher", "node-healing", "telemetry-collector"),
             "npm ci": ("dashboard-ai", "server"),
             "generate_secrets.py": ("server", "voice-ui"),
