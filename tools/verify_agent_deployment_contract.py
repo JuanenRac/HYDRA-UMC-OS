@@ -31,6 +31,30 @@ def fail(message: str) -> None:
     raise SystemExit(1)
 
 
+def check_probes_dropin(installer: str) -> None:
+    """The probes of the diagnostics keep PrivateDevices=true: a drop-in with their two device nodes only while they are on."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import make_agent_probes_dropin as dropin
+
+    if "make_agent_probes_dropin.py" not in installer:
+        fail("the installer does not write the drop-in of the optional probes")
+    for off in ({}, {"enabled": False}, {"enabled": "true"}, {"enabled": False, "hailo_device": "/dev/hailo0"}):
+        if dropin.render(off) != "":
+            fail(f"probes that are off must add nothing: {off}")
+    on = dropin.render({"enabled": True, "hailo_device": "/dev/hailo0"})
+    for line in ("DeviceAllow=/dev/vcio rw", "BindPaths=-/dev/vcio", "DeviceAllow=/dev/hailo0 r", "BindReadOnlyPaths=-/dev/hailo0"):
+        if line not in on.splitlines():
+            fail(f"the drop-in of the probes is missing {line}")
+    if "PrivateDevices" in on or "hailo" in dropin.render({"enabled": True}):
+        fail("the drop-in must not open the devices of the unit nor name a node that is not configured")
+    for wrong in ("/etc/shadow", "/dev/../etc", "/dev/a b", 3):
+        try:
+            dropin.render({"enabled": True, "hailo_device": wrong})
+        except ValueError:
+            continue
+        fail(f"a device that is not a node under /dev must be refused: {wrong!r}")
+
+
 def unit_value(text: str, name: str) -> str:
     match = re.search(rf"(?m)^{re.escape(name)}=(.*)$", text)
     if match is None:
@@ -85,6 +109,7 @@ def main() -> int:
     if 'install -m 0640 -o root -g "$SERVICE_USER"' not in installer:
         fail("configuration file must be root-owned with restricted service-group read access")
 
+    check_probes_dropin(installer)
     print(f"AGENT_DEPLOYMENT_CONTRACT=PASS user={SERVICE_USER} command={AGENT_COMMAND}")
     return 0
 

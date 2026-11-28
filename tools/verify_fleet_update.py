@@ -16,6 +16,8 @@ import io
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -33,6 +35,11 @@ assert _spec2 and _spec2.loader
 ms = importlib.util.module_from_spec(_spec2)
 sys.modules["make_fleet_sudoers"] = ms
 _spec2.loader.exec_module(ms)
+_spec3 = importlib.util.spec_from_file_location("stage_installers", HERE / "stage_installers.py")
+assert _spec3 and _spec3.loader
+si = importlib.util.module_from_spec(_spec3)
+sys.modules["stage_installers"] = si
+_spec3.loader.exec_module(si)
 
 FAKE_DIGEST = "a" * 64
 SHA = {"v0.2.0": "a" * 40, "v0.3.0": "b" * 40, "v1.0.0": "c" * 40}
@@ -44,6 +51,8 @@ INSTALLERS = [
 
 class Device:
     """A device in a folder: the checkouts, the installed programs, the units and the commands that touch them."""
+
+    stage_ok = True      # whether the copy of root of the installers can be made
 
     def __init__(self, base: Path) -> None:
         self.base = base
@@ -101,6 +110,8 @@ class Device:
         if argv[:2] == ["sudo", "-n"]:
             argv = argv[2:]
         self.calls.append(argv)
+        if argv[0] == "python3" and argv[1].endswith("stage_installers.py"):
+            return (0, "STAGED=v0.6.0\n") if self.stage_ok else (2, "STAGE=FAIL the tag does not verify\n")
         if argv[0] == "python3" and argv[1].endswith("package_component.py"):
             name = Path(argv[3]).name
             m = re.match(r"hydra-([a-z-]+)-([0-9.]+)\.tgz$", name)
@@ -258,6 +269,47 @@ class FleetTests(unittest.TestCase):
     def go(self, environment, names=None) -> int:
         environment.state = fu.load_state(environment)
         return fu.run_plan(environment, names)
+
+    # ---- installers from a copy of root, and the working copy of the plan -----------------------------------------------------------------------------
+
+    def test_with_the_root_copy_the_installers_run_from_it_and_sudo_names_it(self) -> None:
+        copy = (self.device.base / "installers").as_posix()
+        environment = self.planned(installersFromRootCopy=True, installersRoot=copy, stageTool="/usr/local/lib/hydra-umc/stage_installers.py")
+        self.assertEqual(self.go(environment, {"datalake"}), 0, self.row(environment, "datalake"))
+        scripts = [c[1] for c in self.device.calls if c[0] == "bash" and c[1].endswith(".sh")]
+        self.assertTrue(scripts and all(s.replace("\\", "/").startswith(copy + "/current/HYDRA-UMC-OS/provisioning/") for s in scripts), scripts)
+        self.assertIn(["python3", "/usr/local/lib/hydra-umc/stage_installers.py"], self.device.calls)
+        self.assertEqual(self.row(environment, "datalake")["installersTag"], "v0.6.0")
+        allowed = ms.commands(INSTALLERS, "/home/x/hydra-umc", "/opt/hydra-umc", "/opt/hydra-umc-backups", "/etc/systemd/system", installers_root=copy)
+        for script in scripts:
+            self.assertIn(["bash", script.replace("\\", "/"), "--apply"], allowed)
+        self.assertIn(["python3", "/usr/local/lib/hydra-umc/stage_installers.py"], allowed)
+        rule = ms.render("hydra-umc", INSTALLERS, "/home/hydra-umc/hydra-umc", "/opt/hydra-umc", "/opt/hydra-umc-backups", "/etc/systemd/system", installers_root="/opt/hydra-umc/.installers")
+        self.assertNotIn("/home/", rule)
+        self.assertIn("/usr/bin/python3 /usr/local/lib/hydra-umc/stage_installers.py", rule)
+
+    def test_a_root_copy_that_cannot_be_made_runs_no_installer(self) -> None:
+        environment = self.planned(installersFromRootCopy=True, installersRoot=(self.device.base / "installers").as_posix())
+        self.device.stage_ok = False
+        self.assertNotEqual(self.go(environment, {"datalake"}), 0)
+        self.assertEqual(self.row(environment, "datalake")["error"], "tag_unsigned")
+        self.assertEqual([c for c in self.device.calls if c[0] == "bash" and c[1].endswith(".sh")], [])
+
+    def test_with_a_private_folder_the_file_of_the_server_does_not_decide_what_runs(self) -> None:
+        private = self.device.base / "private"
+        environment = self.planned(privateStateDir=str(private))
+        kept = private / "fleet-state.json"
+        self.assertEqual(json.loads(kept.read_text(encoding="utf-8")), json.loads(environment.state_path.read_text(encoding="utf-8")))
+        forged = json.loads(environment.state_path.read_text(encoding="utf-8"))
+        for row in forged["services"]:
+            row["action"] = "current"
+        environment.state_path.write_text(json.dumps(forged), encoding="utf-8")
+        self.assertEqual(fu.load_state(environment)["services"], json.loads(kept.read_text(encoding="utf-8"))["services"])
+        self.assertEqual(self.go(environment, {"datalake"}), 0)
+        self.assertEqual(self.row(environment, "datalake")["state"], "done")
+        kept.unlink()
+        with self.assertRaises(SystemExit):
+            fu.load_state(environment)
 
     # ---- the plan -------------------------------------------------------------------------------------------------------------------------------------
     def test_the_plan_sets_the_installed_against_the_newest_and_writes_nothing_else(self) -> None:
@@ -1142,6 +1194,64 @@ class FleetTests(unittest.TestCase):
             unit = sibling.read_text(encoding="utf-8")
             self.assertEqual(get(unit, "Group"), get(service, "Group"))
             self.assertEqual(get(unit, "ReadWritePaths"), os.path.dirname(os.path.dirname(state)))
+
+
+@unittest.skipUnless(os.name == "posix" and shutil.which("git") and shutil.which("ssh-keygen"), "needs a POSIX system with git and ssh-keygen")
+class StageInstallersTests(unittest.TestCase):
+    """tools/stage_installers.py against a real repository with signed tags in a temporary folder (no network, no root)."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        base = Path(self.tmp.name)
+        self.source, self.installers, self.workspace = base / "source", base / "installers", base / "ws"
+        (self.workspace / "HYDRA-UMC-DATALAKE").mkdir(parents=True)
+        key = base / "key"
+        subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key)], check=True)
+        self.signers = base / "allowed_signers"
+        self.signers.write_text("release@example.test " + key.with_suffix(".pub").read_text(encoding="utf-8"), encoding="utf-8")
+        self.git("init", "-q", str(self.source), folder=False)
+        for name, value in (("user.email", "release@example.test"), ("user.name", "Release"), ("gpg.format", "ssh"), ("user.signingkey", str(key))):
+            self.git("config", name, value)
+        self.release("v0.1.0", "one")
+
+    def git(self, *words: str, folder: bool = True) -> None:
+        subprocess.run(["git", *(["-C", str(self.source)] if folder else []), *words], check=True, capture_output=True)
+
+    def release(self, tag: str, content: str, signed: bool = True) -> None:
+        (self.source / "provisioning").mkdir(exist_ok=True)
+        (self.source / "provisioning" / "install_x.sh").write_text(content, encoding="utf-8")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", tag)
+        self.git("tag", *(["-s"] if signed else ["-a"]), "-m", tag, tag)
+
+    def staged(self) -> str:
+        return si.stage(self.installers, str(self.source), self.signers, self.workspace)
+
+    def installer(self) -> str:
+        return (self.installers / "current" / "HYDRA-UMC-OS" / "provisioning" / "install_x.sh").read_text(encoding="utf-8")
+
+    def test_the_newest_signed_release_is_staged_and_the_link_moves_forward(self) -> None:
+        self.assertEqual(self.staged(), "v0.1.0")
+        self.assertEqual(self.installer(), "one")
+        self.assertTrue((self.installers / "current" / "HYDRA-UMC-DATALAKE").is_dir())
+        self.release("v0.2.0", "two")
+        self.assertEqual(self.staged(), "v0.2.0")
+        self.assertEqual(self.installer(), "two")
+        self.assertEqual(self.staged(), "v0.2.0")
+
+    def test_an_unsigned_newest_release_changes_nothing(self) -> None:
+        self.staged()
+        self.release("v0.3.0", "evil", signed=False)
+        with self.assertRaises(si.StageError):
+            self.staged()
+        self.assertEqual(self.installer(), "one")
+
+    def test_without_the_signers_file_nothing_is_made(self) -> None:
+        self.signers.unlink()
+        with self.assertRaises(si.StageError):
+            self.staged()
+        self.assertFalse(self.installers.exists())
 
 
 if __name__ == "__main__":
