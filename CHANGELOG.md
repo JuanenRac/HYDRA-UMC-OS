@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+- **The installers of the fleet update can run from a copy only root writes (off by default):** `installersFromRootCopy` with `install_fleet_helper.sh --root-copy`; `tools/stage_installers.py` makes the copy from the newest signed release, and the rule of sudo names no file of a home folder. The programs the installers copy still come from the checkouts. Not run on a CM5. Tests added.
+- **A working copy of the plan the server cannot reach (`privateStateDir`, empty by default):** `run` and `resume` read the plan from that folder; the file of the server is only a mirror. Test added.
+- **The optional probes of the diagnostics agent get their two device nodes:** while `diagnostics.probes.enabled` is true, the installer of the agent writes a drop-in that adds `/dev/vcio` and the Hailo node and keeps `PrivateDevices=true`; off, nothing is added. Not run on a CM5.
+
 ## [0.6.5] - Signed packages installed by a root helper
 
 - **A root helper that installs signed releases and compiles nothing:** `tools/root_helper.py` answers the request the server leaves (the same files and the same progress format as the earlier fleet update), takes the newest signed package of each installed program from its release, installs it with its systemd units (`tools/package_install.py`), restarts only what was running (stopped services are updated and left stopped), checks health and journal and puts program and units back when they do not hold; the server is taken last and the helper updates itself like any program. Off until `/etc/hydra-umc/helper.json` says `enabled`; applying and going back need the identifier of a look made less than 15 minutes before and a one-time code (`root_helper.py totp-enroll`). First installation with `provisioning/install_root_helper.sh`. Checked with stand-ins for systemd; not run on a CM5.

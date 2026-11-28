@@ -50,5 +50,7 @@ exec /usr/bin/python3 -m hydra_umc_os.agent "$@"
 EOF
   chmod 0755 /usr/local/bin/hydra-umc-agent
 fi
+# The optional probes of the diagnostics need two device nodes that PrivateDevices=true hides: a drop-in only while they are switched on in the configuration.
+run python3 "$ROOT/tools/make_agent_probes_dropin.py" --config /etc/hydra-umc/config.json --out /etc/systemd/system/hydra-umc-agent.service.d/20-probes.conf
 run systemctl daemon-reload
 echo "Agent installed. Review config, then enable manually: systemctl enable --now hydra-umc-agent"

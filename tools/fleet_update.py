@@ -72,6 +72,8 @@ EXIT_BLOCKED = 3
 DEFAULTS: dict[str, Any] = {
     "signedTags": ["os-tools", "os-agent", "server", "studio", "orchestrator", "safety-zones", "job-dispatcher"], "requireSignedTags": False, "verifyInstallerCheckout": True, "stashLockFiles": True, "minFreeMb": 800, "minFreeMbServer": 2500, "cleanRestore": True, "workspace": "~/hydra-umc", "root": "/opt/hydra-umc",
     "backups": "/opt/hydra-umc-backups", "owner": OWNER, "usePackages": False, "allowedSigners": "/etc/hydra-umc/allowed_signers", "components": "/opt/hydra-umc/.components", "python": "python3",
+    # off by default: the installers from a copy only root writes (tools/stage_installers.py), and a working copy of the plan in a folder the server cannot reach
+    "installersFromRootCopy": False, "installersRoot": "/opt/hydra-umc/.installers", "stageTool": "/usr/local/lib/hydra-umc/stage_installers.py", "privateStateDir": "",
 }
 ORDER = ["datalake", "twin", "swarm-sync", "telemetry-collector", "anomaly-detector", "detection-hef", "vision-node", "vision-streamer",
          "visual-servoing-api", "vla-engine", "semantic-planner", "safety-zones", "cognitive-node", "docs-qa", "hil-bridge", "production-reports",
@@ -257,8 +259,18 @@ class Env:
     def heartbeat_path(self) -> Path:
         return self.state_path.with_name(self.state_path.name + ".hb")
 
+    @property
+    def private_state_path(self) -> Path | None:
+        """The working copy of the plan in a folder of the account of the helper alone (`privateStateDir`); None keeps the single file of before."""
+        folder = str(self.config.get("privateStateDir") or "")
+        return Path(os.path.expanduser(folder)) / "fleet-state.json" if folder else None
+
     def save(self) -> None:
         self.state["updatedAt"] = iso(self.now())
+        private = self.private_state_path
+        if private is not None:
+            private.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            write_atomically(private, json.dumps(self.state, indent=1))
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         write_atomically(self.state_path, json.dumps(self.state, indent=1))
 
@@ -575,6 +587,13 @@ def verify_installer_checkout(env: Env) -> str:
     """The installers run as root from the checkout of this repository, so before any of them runs that checkout must be exactly at a release tag that verifies with `git verify-tag`,
     with no tracked file changed. This does not depend on `signedTags` (a program may be trusted by the commit GitHub gives, the code that installs it as root may not). Off only with
     `verifyInstallerCheckout` false in the settings file of root. Returns the tag."""
+    if env.config.get("installersFromRootCopy"):
+        # root makes (or keeps) its own copy of the newest signed release; the installers run from there and not from the checkout
+        rc, out = env.sh(sudo(["python3", str(env.config["stageTool"])]), 900)
+        staged = re.findall(r"^STAGED=(v\d+(?:\.\d+){1,4})$", out, re.M)
+        if rc != 0 or not staged:
+            raise StepFailed("tag_unsigned", f"the copy of the installers that belongs to root could not be made: {redact(out.strip()[-160:])}")
+        return staged[-1]
     if not env.config.get("verifyInstallerCheckout", True):
         return ""
     path = str(env.workspace / "HYDRA-UMC-OS")
@@ -645,7 +664,8 @@ def build_server(env: Env, row: dict[str, Any], release: dict[str, Any], studio:
 
 def install(env: Env, row: dict[str, Any]) -> None:
     row["installersTag"] = verify_installer_checkout(env)
-    script = env.workspace / "HYDRA-UMC-OS" / "provisioning" / f"install_{row['script']}.sh"
+    base = Path(str(env.config["installersRoot"])) / "current" if env.config.get("installersFromRootCopy") else env.workspace
+    script = base / "HYDRA-UMC-OS" / "provisioning" / f"install_{row['script']}.sh"
     step(env, row, "installing", "the installer compiles and restarts the unit; this can take minutes")
     started = env.now()
 
@@ -951,10 +971,11 @@ def pid_alive(pid: Any) -> bool:
 
 
 def load_state(env: Env) -> dict[str, Any]:
+    source = env.private_state_path or env.state_path      # with a private folder, the file the server can write is only a mirror
     try:
-        state = json.loads(env.state_path.read_text(encoding="utf-8"))
+        state = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
-        raise SystemExit(f"no usable file at {env.state_path}: run plan first ({error})") from error
+        raise SystemExit(f"no usable file at {source}: run plan first ({error})") from error
     if state.get("schema") != SCHEMA:
         raise SystemExit("the file is not a plan of this tool")
     try:

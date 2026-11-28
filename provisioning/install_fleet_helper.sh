@@ -9,7 +9,9 @@
 # checkouts, with a rule of sudo that names every command (no wildcard). Nothing is started unless --enable is given, and the server only uses it when its configuration says
 # "fleetUpdate": { "helper": true } (off by default).
 #
-#   install_fleet_helper.sh [--user ACCOUNT] [--workspace DIR] [--signers FILE] [--enable] [--apply]
+#   install_fleet_helper.sh [--user ACCOUNT] [--workspace DIR] [--signers FILE] [--root-copy] [--enable] [--apply]
+#     --root-copy  the installers run from a copy only root writes (tools/stage_installers.py, made from the newest signed release): installs that tool and a rule
+#                  of sudo that names no file of a home folder. Also set "installersFromRootCopy": true in /etc/hydra-umc/fleet-update.json
 #     --user       the account that owns the checkouts and runs the tool (default hydra-umc; it must exist, it must not be the account of the server)
 #     --workspace  its folder of checkouts (default /home/ACCOUNT/hydra-umc; HYDRA-UMC-OS, HYDRA-UMC-SDK and the programs are cloned there)
 #     --signers    a file of public keys for `git verify-tag` (allowed_signers format), installed as /etc/hydra-umc/allowed_signers (root-owned, read by every account)
@@ -19,6 +21,7 @@ set -euo pipefail
 
 APPLY=false
 ENABLE=false
+ROOT_COPY=false
 HELPER_USER=hydra-umc
 WORKSPACE=""
 SIGNERS=""
@@ -28,6 +31,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply) APPLY=true ;;
     --enable) ENABLE=true ;;
+    --root-copy) ROOT_COPY=true ;;
     --user) HELPER_USER="${2:?--user needs an account}"; shift ;;
     --workspace) WORKSPACE="${2:?--workspace needs a folder}"; shift ;;
     --signers) SIGNERS="${2:?--signers needs a file}"; shift ;;
@@ -66,7 +70,13 @@ fi
 RULE="$(mktemp)"
 SERVICE_TMP="$(mktemp)"
 trap 'rm -f "$RULE" "$SERVICE_TMP"' EXIT
-python3 "$ROOT/tools/make_fleet_sudoers.py" --user "$HELPER_USER" --install-plan "$ROOT/provisioning/install_plan.json" --workspace "$WORKSPACE" > "$RULE"
+RULE_ARGS=(--user "$HELPER_USER" --install-plan "$ROOT/provisioning/install_plan.json" --workspace "$WORKSPACE")
+if $ROOT_COPY; then
+  run install -d -o root -g root -m 0755 /usr/local/lib/hydra-umc
+  run install -m 0755 -o root -g root "$ROOT/tools/stage_installers.py" /usr/local/lib/hydra-umc/stage_installers.py
+  RULE_ARGS+=(--installers-root /opt/hydra-umc/.installers)
+fi
+python3 "$ROOT/tools/make_fleet_sudoers.py" "${RULE_ARGS[@]}" > "$RULE"
 if $APPLY; then
   visudo -cf "$RULE" >/dev/null || { echo "visudo refuses the rule; nothing was installed." >&2; exit 2; }
 fi

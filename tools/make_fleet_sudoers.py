@@ -29,12 +29,16 @@ fu = importlib.util.module_from_spec(_spec)
 sys.modules["fleet_update_for_sudoers"] = fu
 _spec.loader.exec_module(fu)
 
-BINARIES = {"bash": "/usr/bin/bash", "tar": "/usr/bin/tar", "rm": "/usr/bin/rm", "mv": "/usr/bin/mv", "mkdir": "/usr/bin/mkdir", "systemctl": "/usr/bin/systemctl", "journalctl": "/usr/bin/journalctl"}
+BINARIES = {"bash": "/usr/bin/bash", "tar": "/usr/bin/tar", "rm": "/usr/bin/rm", "mv": "/usr/bin/mv", "mkdir": "/usr/bin/mkdir", "systemctl": "/usr/bin/systemctl", "journalctl": "/usr/bin/journalctl", "python3": "/usr/bin/python3"}
 
 
-def commands(installers: list[dict], workspace: str, root: str, backups: str, unit_dir: str) -> list[list[str]]:
-    """Every command (without `sudo -n`) that fleet_update.py passes to sudo, for the programs of the plan of installers."""
+def commands(installers: list[dict], workspace: str, root: str, backups: str, unit_dir: str, installers_root: str | None = None) -> list[list[str]]:
+    """Every command (without `sudo -n`) that fleet_update.py passes to sudo, for the programs of the plan of installers. With `installers_root` (the setting
+    `installersFromRootCopy`) the installers are the ones of the copy of root, which the staging tool (no argument) makes."""
     out: list[list[str]] = [["mkdir", "-p", backups], ["systemctl", "daemon-reload"]]
+    base = f"{installers_root}/current" if installers_root else workspace
+    if installers_root:
+        out.append(["python3", str(fu.DEFAULTS["stageTool"])])
     for svc in fu.build_services(installers):
         name, unit = svc["name"], svc["unit"]
         archive = f"{backups}/{name}.bak.tgz"
@@ -47,7 +51,7 @@ def commands(installers: list[dict], workspace: str, root: str, backups: str, un
             ["mv", f"{root}/{name}", f"{root}/{name}.failed"],
             ["systemctl", "restart", unit],
             ["journalctl", "-u", unit, "-n", "40", "--no-pager", "--since", "-2min"],
-            ["bash", f"{workspace}/HYDRA-UMC-OS/provisioning/install_{svc['script']}.sh", "--apply"],
+            ["bash", f"{base}/HYDRA-UMC-OS/provisioning/install_{svc['script']}.sh", "--apply"],
         ]
     seen: set[tuple[str, ...]] = set()
     unique = []
@@ -65,9 +69,9 @@ def escape(word: str) -> str:
     return "".join("\\" + c if c in ",:=\\ " else c for c in word)
 
 
-def render(user: str, installers: list[dict], workspace: str, root: str, backups: str, unit_dir: str) -> str:
+def render(user: str, installers: list[dict], workspace: str, root: str, backups: str, unit_dir: str, installers_root: str | None = None) -> str:
     lines = [f"# Written by tools/make_fleet_sudoers.py: exactly the commands of tools/fleet_update.py for {user}, no wildcard.", "Cmnd_Alias HYDRA_FLEET = \\"]
-    commands_ = commands(installers, workspace, root, backups, unit_dir)
+    commands_ = commands(installers, workspace, root, backups, unit_dir, installers_root)
     for index, command in enumerate(commands_):
         binary = BINARIES[command[0]]
         text = " ".join([binary, *(escape(w) for w in command[1:])])
@@ -85,13 +89,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", default="/opt/hydra-umc")
     parser.add_argument("--backups", default="/opt/hydra-umc-backups")
     parser.add_argument("--unit-dir", default="/etc/systemd/system")
+    parser.add_argument("--installers-root", help="the installers run from this copy of root (setting installersFromRootCopy), e.g. /opt/hydra-umc/.installers")
     args = parser.parse_args(argv)
     if not args.user.replace("-", "").replace("_", "").isalnum():
         print("the account name is not valid", file=sys.stderr)
         return 64
     installers = json.loads(args.install_plan.read_text(encoding="utf-8"))["installers"]
     workspace = args.workspace or f"/home/{args.user}/hydra-umc"
-    sys.stdout.write(render(args.user, installers, workspace, args.root, args.backups, args.unit_dir))
+    sys.stdout.write(render(args.user, installers, workspace, args.root, args.backups, args.unit_dir, args.installers_root))
     return 0
 
 
